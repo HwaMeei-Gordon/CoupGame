@@ -23,6 +23,26 @@
       const p = presets[this.difficulty] || presets.normal;
       this.bluff = p.bluff;
       this.aggr = p.challenge;
+      this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
+    }
+
+    // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
+    observe(game, claimantId, character) {
+      if (claimantId === this.id) return;
+      const target = game.players[claimantId];
+      const m = this.model[claimantId] ||
+        (this.model[claimantId] = { claims: {}, lostSeen: target.lost.length });
+      // 對手手牌一旦變動（失牌），先前宣稱的參考價值降低 → 重置
+      if (target.lost.length !== m.lostSeen) { m.claims = {}; m.lostSeen = target.lost.length; }
+      m.claims[character] = (m.claims[character] || 0) + 1;
+    }
+
+    // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
+    suspicion(claimantId, influence) {
+      const m = this.model[claimantId];
+      if (!m) return 0;
+      const distinct = Object.keys(m.claims).length;
+      return Math.max(0, distinct - influence); // 例如 2 影響力卻宣稱過 3 種角色 → 1
     }
 
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
@@ -59,6 +79,8 @@
       let threshold = 0.45 * this.aggr;
       if (claimant.cards.length === 1) threshold += 0.10; // 殘血積極抓
       if (me.cards.length === 1) threshold -= 0.15;       // 自己殘血保守
+      // 對手建模：宣稱角色種類數超過手牌數 → 提高質疑意願
+      threshold += this.suspicion(claimantId, claimant.cards.length) * 0.18;
       threshold += (Math.random() - 0.5) * 0.10;
       return truth < threshold;
     }

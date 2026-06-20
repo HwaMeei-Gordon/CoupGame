@@ -144,10 +144,21 @@
       player.cards[i] = this.deck.pop();
     }
 
+    // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
+    notifyClaim(claimantId, character) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observe === 'function') {
+          try { a.observe(this, claimantId, character); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
     // 質疑窗口：詢問其他存活玩家是否質疑 claimant 的 character 宣稱
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
     async runChallenge(claimantId, character) {
       const claimant = this.players[claimantId];
+      this.notifyClaim(claimantId, character);
       for (const pid of this.aliveOrderFrom(claimantId)) {
         const p = this.players[pid];
         if (!p.alive) continue;
