@@ -120,10 +120,14 @@
 
     showWinner(w) {
       const isMe = w && w.isHuman;
+      const hand = (w && w.cards && w.cards.length)
+        ? `<div class="win-hand">勝者手牌：${w.cards.map(c => `【${ZH[c]} ${c}】`).join(' ')}</div>`
+        : '';
       this.els.overlay.innerHTML =
         `<div class="win-box ${isMe ? 'win' : 'lose'}">
           <div class="win-title">${isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了'}</div>
           <div class="win-sub">勝者：${w ? w.name : '無'}</div>
+          ${hand}
           <button id="againBtn" class="pbtn act">再來一局</button>
         </div>`;
       this.els.overlay.classList.add('show');
@@ -207,9 +211,13 @@
       const actor = game.players[action.actorId];
 
       if (action.type === 'foreign_aid') {
-        if (!me.cards.includes('Duke')) return { block: false }; // 沒公爵自動放行
-        const v = await this.prompt(`${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`, [
-          { label: '🛡️ 用公爵阻擋', value: true, cls: 'shield' },
+        const hasDuke = me.cards.includes('Duke');
+        const title = hasDuke
+          ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
+          : `${actor.name} 想拿外援。你沒有公爵——要<b>詐唬</b>宣稱【公爵 Duke】阻擋嗎？` +
+            `<br><small>若被質疑拆穿，你將失去一張影響力</small>`;
+        const v = await this.prompt(title, [
+          { label: hasDuke ? '🛡️ 用公爵阻擋' : '🎭 詐唬公爵阻擋', value: true, cls: 'shield' },
           { label: '放行', value: false, cls: '' }
         ]);
         return { block: v, character: 'Duke' };

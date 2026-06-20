@@ -238,7 +238,8 @@ main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: 
   font-family: "Cinzel","Noto Serif TC",serif; margin-bottom: 8px; color: var(--gold-lt);
 }
 .win-box.lose .win-title { color: #e7889a; }
-.win-sub { color: var(--muted); margin-bottom: 22px; }
+.win-sub { color: var(--muted); margin-bottom: 12px; }
+.win-hand { color: var(--gold-lt); font-size: 14px; margin-bottom: 22px; letter-spacing: .5px; }
 
 /* ============================================================
    響應式：手機
