@@ -7,6 +7,15 @@
   const Coup = root.Coup = root.Coup || {};
   const ZH = Coup.ZH;
 
+  // 將 Coup 角色對應到古典塔羅大阿爾克那（羅馬數字 + 象徵）
+  const ARCANA = {
+    Duke:       { zh: '公爵', en: 'Duke',       arcana: '皇帝 The Emperor',      roman: 'IV',   sym: '♔' },
+    Assassin:   { zh: '刺客', en: 'Assassin',   arcana: '死神 Death',           roman: 'XIII', sym: '⚔' },
+    Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
+    Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
+    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
+  };
+
   const UI = {
     game: null,
     speed: 800,
@@ -61,9 +70,18 @@
 
     // ---------- 渲染 ----------
     cardEl(ch, faceUp, lost) {
-      if (!faceUp) return '<div class="card back"></div>';
-      return `<div class="card ${ch} ${lost ? 'lost' : ''}">` +
-        `<span class="cn">${ZH[ch]}</span><span class="en">${ch}</span></div>`;
+      if (!faceUp) {
+        return '<div class="card back"><div class="back-orn">✦</div></div>';
+      }
+      const a = ARCANA[ch];
+      return `<div class="card ${ch} ${lost ? 'lost' : ''}">
+        <div class="card-corner tl">${a.roman}</div>
+        <div class="card-corner br">${a.roman}</div>
+        <div class="card-sym">${a.sym}</div>
+        <div class="card-name">${a.zh}</div>
+        <div class="card-en">${a.en}</div>
+        <div class="card-arcana">${a.arcana}</div>
+      </div>`;
     },
 
     playerEl(p) {
@@ -75,11 +93,15 @@
 
       const hidden = p.cards.map(c => this.cardEl(c, isMe, false)).join('');
       const lost = p.lost.map(c => this.cardEl(c, true, true)).join('');
+      const coinPips = '●'.repeat(Math.min(p.coins, 12)) + (p.coins > 12 ? '…' : '');
       return `<div class="${cls.join(' ')}">
-        <div class="phead"><span class="pname">${p.name}${isMe ? '' : ''}</span>
-          <span class="pcoins">🪙 ${p.coins}</span></div>
+        <div class="phead">
+          <span class="pname">${p.name}</span>
+          <span class="pcoins" title="金幣"><b>${p.coins}</b><i class="coin">⊚</i></span>
+        </div>
         <div class="pcards">${hidden}${lost}</div>
-        <div class="pinfo">影響力 ${p.cards.length}${p.alive ? '' : ' · 出局'}</div>
+        <div class="pinfo"><span class="pips">${coinPips || '○'}</span>
+          <span class="inf">影響力 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span></div>
       </div>`;
     },
 
@@ -233,10 +255,15 @@
         const redraw = () => {
           el.innerHTML =
             `<div class="prompt-title">大使交換：選擇保留 ${keep} 張（已選 ${sel.size}）</div>` +
-            `<div class="exchange">` + pool.map((c, i) =>
-              `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
-              `<span class="cn">${ZH[c]}</span><span class="en">${c}</span></button>`
-            ).join('') + `</div>` +
+            `<div class="exchange">` + pool.map((c, i) => {
+              const a = ARCANA[c];
+              return `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
+                `<div class="card-corner tl">${a.roman}</div>` +
+                `<div class="card-sym">${a.sym}</div>` +
+                `<div class="card-name">${a.zh}</div>` +
+                `<div class="card-en">${a.en}</div>` +
+                `<div class="card-arcana">${a.arcana}</div></button>`;
+            }).join('') + `</div>` +
             `<div class="prompt-btns"><button class="pbtn act confirm" ${sel.size === keep ? '' : 'disabled'}>確定保留</button></div>`;
           el.querySelectorAll('.card').forEach(b => {
             b.onclick = () => {
