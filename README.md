@@ -30,7 +30,10 @@ python3 -m http.server 8000
 ```bash
 node test/sim.js 600       # AI-vs-AI 跑 600 局，驗證規則引擎正確、不崩、卡牌守恆
 node test/ui-smoke.js      # 無頭 DOM mock，驗證 UI 渲染與人類 Agent 路徑
+node test/browser-e2e.js   # Playwright + Chromium 真實瀏覽器端對端測試
 ```
+
+![遊戲畫面](docs/screenshot.png)
 
 ## 🗂️ 專案結構 Structure
 
