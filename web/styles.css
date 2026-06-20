@@ -1,0 +1,153 @@
+:root {
+  --bg: #0f1320;
+  --panel: #1a2034;
+  --panel2: #232b45;
+  --line: #313a5c;
+  --text: #e7ecf7;
+  --muted: #9aa6c4;
+  --accent: #5b8cff;
+  --duke: #e0498f;
+  --assassin: #4a4a4a;
+  --ambassador: #c2c43a;
+  --captain: #4a90d9;
+  --contessa: #e0544a;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 14px;
+}
+header h1 { margin: 0; font-size: 28px; letter-spacing: 2px; }
+header h1 span { color: var(--accent); font-size: 18px; margin-left: 6px; }
+
+#setup { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+#setup label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+#setup select {
+  background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 8px; font-size: 13px;
+}
+#newGame {
+  background: var(--accent); color: #fff; border: none; border-radius: 7px;
+  padding: 8px 16px; font-size: 14px; cursor: pointer; font-weight: 600;
+}
+#newGame:hover { filter: brightness(1.1); }
+
+main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+@media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+#table {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; position: relative; min-height: 520px;
+}
+
+#opponents {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+#center {
+  text-align: center; margin: 18px 0; color: var(--muted); font-size: 14px;
+  display: flex; gap: 24px; justify-content: center;
+}
+#center .turn-info { color: var(--accent); font-weight: 600; }
+
+#human { display: flex; justify-content: center; margin-top: 8px; }
+
+/* 玩家面板 */
+.player {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 10px 12px; min-width: 150px; transition: box-shadow .2s, border-color .2s;
+}
+.player.me { min-width: 220px; border-color: var(--accent); }
+.player.current { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.35); }
+.player.dead { opacity: .45; filter: grayscale(.6); }
+.phead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.pname { font-weight: 600; }
+.pcoins { color: #ffd166; font-size: 14px; }
+.pinfo { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.pcards { display: flex; gap: 6px; }
+
+/* 卡牌 */
+.card {
+  width: 58px; height: 80px; border-radius: 8px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  color: #fff; font-weight: 700; border: 2px solid rgba(255,255,255,.15);
+  user-select: none;
+}
+.me .card { width: 70px; height: 96px; }
+.card .cn { font-size: 15px; }
+.card .en { font-size: 10px; opacity: .85; font-weight: 500; }
+.card.back {
+  background: repeating-linear-gradient(45deg, #2a3556, #2a3556 6px, #243050 6px, #243050 12px);
+  border-color: #3a466e;
+}
+.card.lost { opacity: .5; filter: grayscale(.5); transform: rotate(-3deg); }
+.card.Duke { background: var(--duke); }
+.card.Assassin { background: var(--assassin); }
+.card.Ambassador { background: var(--ambassador); color: #1a1a1a; }
+.card.Captain { background: var(--captain); }
+.card.Contessa { background: var(--contessa); }
+
+/* 提示區 */
+#prompt {
+  margin-top: 16px; min-height: 70px; background: var(--panel2);
+  border: 1px dashed var(--line); border-radius: 12px; padding: 14px;
+}
+#prompt:empty { display: none; }
+.prompt-title { font-size: 15px; margin-bottom: 12px; line-height: 1.5; }
+.prompt-title small { color: var(--muted); }
+.prompt-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.pbtn {
+  background: var(--panel); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; font-weight: 600;
+}
+.pbtn:hover:not(:disabled) { border-color: var(--accent); }
+.pbtn:disabled { opacity: .35; cursor: not-allowed; }
+.pbtn.act { background: var(--accent); color: #fff; border: none; }
+.pbtn.danger { background: var(--contessa); color: #fff; border: none; }
+.pbtn.shield { background: #2e8b6f; color: #fff; border: none; }
+.pbtn.target { background: var(--panel); }
+.pbtn.cancel { background: transparent; color: var(--muted); }
+
+.exchange { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.exchange .card { cursor: pointer; border-width: 2px; }
+.exchange .card.picked { outline: 3px solid #ffd166; transform: translateY(-4px); }
+
+/* 日誌 */
+#logPanel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px; display: flex; flex-direction: column;
+}
+#logPanel h3 { margin: 0 0 10px; font-size: 15px; }
+#log {
+  flex: 1; overflow-y: auto; max-height: 360px; font-size: 13px; line-height: 1.6;
+  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+}
+.log-line { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.04); }
+.legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
+.legend h4 { margin: 0 0 6px; color: var(--text); font-size: 13px; }
+.legend ul { margin: 0; padding-left: 16px; }
+.legend li { margin: 3px 0; }
+
+/* 勝負遮罩 */
+#overlay {
+  position: fixed; inset: 0; background: rgba(8,10,18,.78);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+#overlay.show { display: flex; }
+.win-box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 32px 40px; text-align: center;
+}
+.win-box.win { border-color: #ffd166; box-shadow: 0 0 30px rgba(255,209,102,.3); }
+.win-box.lose { border-color: var(--contessa); }
+.win-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.win-sub { color: var(--muted); margin-bottom: 20px; }
