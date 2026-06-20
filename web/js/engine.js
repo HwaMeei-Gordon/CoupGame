@@ -77,6 +77,7 @@
       this.deck = [];
       this.current = 0;
       this.over = false;
+      this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
       this.winner = null;
       this.setup();
     }
@@ -391,7 +392,7 @@
       this.log('🎬 遊戲開始！');
       this.hooks.onState();
       let safety = 0;
-      while (!this.over) {
+      while (!this.over && !this.cancelled) {
         if (++safety > 5000) {
           this.log('⚠️ 達到回合上限，依影響力/金幣判定勝者');
           const ranked = this.alive().slice().sort((a, b) =>
@@ -405,10 +406,13 @@
 
         this.hooks.onTurn(actor.id);
         await this.hooks.pause();
+        if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
 
         let action = await this.agents[actor.id].chooseAction(this);
+        if (this.cancelled) return null;
         action = this.sanitizeAction(actor, action);
         await this.resolveAction(action);
+        if (this.cancelled) return null;
 
         if (this.checkGameOver()) break;
         this.advance();
@@ -418,6 +422,8 @@
       this.hooks.onGameOver(this.winner);
       return this.winner;
     }
+
+    cancel() { this.cancelled = true; } // 終止此局（開新局時呼叫）
   }
 
   Coup.GameController = GameController;

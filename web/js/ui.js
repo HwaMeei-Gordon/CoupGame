@@ -25,6 +25,7 @@
 
     // ---------- 開新局 ----------
     newGame(numPlayers, difficulty, speed) {
+      if (this.game) this.game.cancel(); // 終止上一局，避免並行
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
