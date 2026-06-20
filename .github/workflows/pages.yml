@@ -1,8 +1,8 @@
 name: Deploy Coup to GitHub Pages
 
 on:
-  push:
-    branches: ["main", "claude/game-deep-research-lghzbr"]
+  # 設為手動觸發：避免在私有 repo（無法發佈 Pages）上每次 push 都失敗。
+  # 一旦 repo 改為 Public（或啟用 Pages），即可在 Actions 頁面手動執行，或由我代為觸發。
   workflow_dispatch:
 
 permissions:
