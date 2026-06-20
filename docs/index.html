@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coup · 政變 — 塔羅人機對戰</title>
+  <meta name="theme-color" content="#0a0712" />
+  <meta name="description" content="Coup 政變・古典塔羅牌風格・手機可玩・人類 vs AI" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+/* ============================================================
+   Coup · 政變 — 古典塔羅牌風格 Classical Tarot Theme
+   響應式：桌機雙欄 / 手機單欄、可觸控
+   ============================================================ */
+
+:root {
+  --bg0: #0a0712;
+  --bg1: #140d24;
+  --ink: #efe6cf;          /* 羊皮紙字色 */
+  --muted: #b6a987;
+  --gold: #c9a227;
+  --gold-lt: #e8cf72;
+  --line: #4a3c6b;
+  --panel: rgba(28, 20, 48, 0.72);
+  --panel2: rgba(40, 28, 66, 0.85);
+  --parch: #efe2bf;
+
+  /* 角色（塔羅化配色）*/
+  --duke: #6d2f86;        /* 皇帝 */
+  --assassin: #2b2b33;    /* 死神 */
+  --captain: #1f5f8b;     /* 戰車 */
+  --ambassador: #3a7d44;  /* 女祭司 */
+  --contessa: #a83246;    /* 女皇 */
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+body {
+  font-family: "Noto Serif TC", "Songti TC", "Times New Roman", serif;
+  color: var(--ink);
+  background:
+    radial-gradient(1100px 700px at 50% -8%, #271a44 0%, rgba(20,13,36,0) 60%),
+    radial-gradient(2px 2px at 20% 30%, rgba(232,207,114,.7), transparent 60%),
+    radial-gradient(1.5px 1.5px at 70% 18%, rgba(232,207,114,.5), transparent 60%),
+    radial-gradient(1.5px 1.5px at 85% 60%, rgba(232,207,114,.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 12% 70%, rgba(232,207,114,.4), transparent 60%),
+    radial-gradient(2px 2px at 40% 85%, rgba(232,207,114,.4), transparent 60%),
+    linear-gradient(160deg, var(--bg1), var(--bg0));
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+#app { max-width: 1180px; margin: 0 auto; padding: 16px clamp(10px, 3vw, 22px) 40px; }
+
+/* ---------- 標題 ---------- */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-bottom: 8px;
+}
+header h1 {
+  margin: 0; font-family: "Cinzel", "Noto Serif TC", serif;
+  font-weight: 700; font-size: clamp(26px, 6vw, 40px);
+  letter-spacing: 4px; color: var(--gold-lt);
+  text-shadow: 0 2px 0 #3a2a12, 0 0 22px rgba(201,162,39,.35);
+}
+header h1 span { color: var(--ink); font-size: .5em; letter-spacing: 6px; margin-left: 8px; }
+
+.divider {
+  text-align: center; color: var(--gold); letter-spacing: 8px;
+  margin: 2px 0 14px; font-size: 14px; opacity: .8;
+}
+
+#setup { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+#setup label { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+#setup select {
+  background: #1b1330; color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 7px 9px; font-size: 13px; font-family: inherit;
+}
+#newGame {
+  background: linear-gradient(180deg, var(--gold-lt), var(--gold));
+  color: #2a1d05; border: none; border-radius: 8px;
+  padding: 9px 18px; font-size: 14px; cursor: pointer; font-weight: 700;
+  font-family: "Cinzel", serif; letter-spacing: 1px;
+  box-shadow: 0 3px 10px rgba(0,0,0,.4);
+}
+#newGame:hover { filter: brightness(1.08); }
+
+/* ---------- 主版面 ---------- */
+main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+
+#table {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px; padding: clamp(12px, 2.4vw, 20px);
+  position: relative; min-height: 480px;
+  box-shadow: 0 0 0 1px rgba(201,162,39,.18) inset, 0 10px 40px rgba(0,0,0,.5);
+}
+
+#opponents {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+#center {
+  text-align: center; margin: 16px 0; color: var(--muted); font-size: 14px;
+  display: flex; gap: 22px; justify-content: center; flex-wrap: wrap;
+  font-family: "Cinzel", "Noto Serif TC", serif;
+}
+#center .turn-info { color: var(--gold-lt); }
+#center .deck-info::before { content: "❖ "; color: var(--gold); }
+
+#human { display: flex; justify-content: center; margin-top: 6px; }
+
+/* ---------- 玩家面板 ---------- */
+.player {
+  background: var(--panel2);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 10px 12px; min-width: 154px;
+  transition: box-shadow .25s, border-color .25s, transform .25s;
+}
+.player.me { min-width: 230px; border-color: var(--gold); }
+.player.current {
+  border-color: var(--gold-lt);
+  box-shadow: 0 0 0 2px rgba(232,207,114,.4), 0 0 22px rgba(201,162,39,.35);
+}
+.player.dead { opacity: .42; filter: grayscale(.7) saturate(.6); }
+.phead { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+.pname { font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+.pcoins { color: var(--gold-lt); font-size: 15px; display: inline-flex; align-items: center; gap: 3px; }
+.pcoins .coin { font-style: normal; }
+.pinfo { color: var(--muted); font-size: 11px; margin-top: 7px; display: flex; justify-content: space-between; gap: 8px; }
+.pips { color: var(--gold); letter-spacing: 1px; overflow: hidden; max-width: 60%; }
+.pcards { display: flex; gap: 7px; }
+
+/* ---------- 塔羅卡牌 ---------- */
+.card {
+  width: 72px; height: 108px; border-radius: 9px;
+  position: relative; overflow: hidden; flex: 0 0 auto;
+  color: var(--parch);
+  border: 2px solid var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12),
+              inset 0 0 26px rgba(0,0,0,.45),
+              0 5px 14px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #333;
+  user-select: none;
+}
+.me .card { width: 86px; height: 128px; }
+
+.card-sym { font-size: 30px; line-height: 1; margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.me .card-sym { font-size: 38px; }
+.card-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 15px; letter-spacing: 1px; }
+.me .card-name { font-size: 18px; }
+.card-en { font-size: 9px; letter-spacing: 1.5px; opacity: .8; margin-top: 1px; }
+.card-arcana { font-size: 8.5px; color: rgba(243,233,200,.78); margin-top: 5px; text-align: center; padding: 0 4px; }
+.me .card-arcana { font-size: 10px; }
+.card-corner {
+  position: absolute; font-family: "Cinzel", serif; font-size: 10px;
+  color: rgba(243,233,200,.85); letter-spacing: 1px;
+}
+.card-corner.tl { top: 4px; left: 6px; }
+.card-corner.br { bottom: 4px; right: 6px; transform: rotate(180deg); }
+
+/* 角色配色：深色漸層 + 中央羊皮紙光暈 */
+.card.Duke       { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #2a1233, var(--duke)); }
+.card.Assassin   { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.20), transparent 62%), linear-gradient(165deg, #0e0e12, var(--assassin)); }
+.card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #0c2438, var(--captain)); }
+.card.Ambassador { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #11301a, var(--ambassador)); }
+.card.Contessa   { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #3a0e18, var(--contessa)); }
+
+.card.lost { opacity: .5; filter: grayscale(.55); transform: rotate(-3deg); }
+
+/* 牌背 */
+.card.back {
+  background:
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 7px, rgba(201,162,39,.10) 7px 8px),
+    radial-gradient(circle at 50% 35%, #2b2350, #130f2b);
+  border: 2px solid var(--gold);
+}
+.card.back .back-orn { color: var(--gold-lt); font-size: 30px; text-shadow: 0 0 14px rgba(201,162,39,.6); }
+.card.back::after {
+  content: ""; position: absolute; inset: 6px; border: 1px solid rgba(201,162,39,.5);
+  border-radius: 5px;
+}
+
+/* ---------- 提示區 ---------- */
+#prompt {
+  margin-top: 16px; min-height: 64px;
+  background: linear-gradient(180deg, rgba(40,28,66,.6), rgba(28,20,48,.6));
+  border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+}
+#prompt:empty { display: none; }
+.prompt-title { font-size: 16px; margin-bottom: 13px; line-height: 1.55; letter-spacing: .5px; }
+.prompt-title small { color: var(--muted); }
+.prompt-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+.pbtn {
+  background: linear-gradient(180deg, #241a3e, #1a1330);
+  color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 11px 16px; font-size: 14px; cursor: pointer; font-weight: 700;
+  font-family: inherit; letter-spacing: .5px; min-height: 44px;
+}
+.pbtn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold-lt); }
+.pbtn:disabled { opacity: .32; cursor: not-allowed; }
+.pbtn.act { background: linear-gradient(180deg, var(--gold-lt), var(--gold)); color: #2a1d05; border: none; }
+.pbtn.danger { background: linear-gradient(180deg, #c0455a, #8d2236); color: #fff; border: none; }
+.pbtn.shield { background: linear-gradient(180deg, #3a9b7b, #237055); color: #fff; border: none; }
+.pbtn.cancel { background: transparent; color: var(--muted); }
+
+.exchange { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.exchange .card { cursor: pointer; padding: 0; }
+.exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-5px); }
+
+/* ---------- 日誌 ---------- */
+#logPanel {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px 16px; display: flex; flex-direction: column;
+  box-shadow: 0 0 0 1px rgba(201,162,39,.14) inset;
+}
+#logPanel h3 {
+  margin: 0 0 10px; font-size: 15px; font-family: "Cinzel","Noto Serif TC",serif;
+  color: var(--gold-lt); letter-spacing: 2px;
+}
+#log {
+  flex: 1; overflow-y: auto; max-height: 360px; font-size: 13px; line-height: 1.65;
+  border-bottom: 1px solid var(--line); padding-bottom: 10px;
+}
+.log-line { padding: 2px 0; border-bottom: 1px solid rgba(201,162,39,.06); }
+.legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
+.legend h4 { margin: 0 0 6px; color: var(--gold-lt); font-size: 13px; letter-spacing: 1px; }
+.legend ul { margin: 0; padding-left: 16px; }
+.legend li { margin: 4px 0; }
+
+/* ---------- 勝負遮罩 ---------- */
+#overlay {
+  position: fixed; inset: 0; background: rgba(8,6,14,.82);
+  display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px;
+  backdrop-filter: blur(3px);
+}
+#overlay.show { display: flex; }
+.win-box {
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 18px;
+  padding: 34px 40px; text-align: center; max-width: 92vw;
+}
+.win-box.win { box-shadow: 0 0 40px rgba(201,162,39,.4); }
+.win-box.lose { border-color: var(--contessa); }
+.win-title {
+  font-size: clamp(24px, 7vw, 32px); font-weight: 700;
+  font-family: "Cinzel","Noto Serif TC",serif; margin-bottom: 8px; color: var(--gold-lt);
+}
+.win-box.lose .win-title { color: #e7889a; }
+.win-sub { color: var(--muted); margin-bottom: 22px; }
+
+/* ============================================================
+   響應式：手機
+   ============================================================ */
+@media (max-width: 820px) {
+  main { grid-template-columns: 1fr; }
+  #opponents { gap: 9px; }
+  .player { min-width: 0; flex: 1 1 calc(50% - 9px); padding: 9px 10px; }
+  .player.me { width: 100%; flex-basis: 100%; }
+  .card { width: 58px; height: 86px; }
+  .me .card { width: 76px; height: 114px; }
+  .card-sym { font-size: 24px; }
+  .card-name { font-size: 13px; }
+  .card-arcana { display: none; }
+  .me .card-arcana { display: block; font-size: 9px; }
+  #logPanel { order: 3; }
+  #log { max-height: 200px; }
+  .pbtn { flex: 1 1 calc(50% - 10px); justify-content: center; display: flex; align-items: center; }
+  .pbtn.act, .pbtn.danger, .pbtn.shield { flex-basis: 100%; }
+  #center { gap: 14px; font-size: 13px; }
+}
+
+@media (max-width: 420px) {
+  .player { flex-basis: 100%; }
+  header { justify-content: center; }
+  #setup { justify-content: center; width: 100%; }
+}
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Coup <span>政變</span></h1>
+      <div id="setup">
+        <label>人數
+          <select id="numPlayers">
+            <option value="2">2 人</option>
+            <option value="3">3 人</option>
+            <option value="4" selected>4 人</option>
+            <option value="5">5 人</option>
+            <option value="6">6 人</option>
+          </select>
+        </label>
+        <label>AI 難度
+          <select id="difficulty">
+            <option value="easy">簡單</option>
+            <option value="normal" selected>普通</option>
+            <option value="hard">困難</option>
+          </select>
+        </label>
+        <label>速度
+          <select id="speed">
+            <option value="fast">快</option>
+            <option value="normal" selected>普通</option>
+            <option value="slow">慢</option>
+          </select>
+        </label>
+        <button id="newGame">開新局</button>
+      </div>
+    </header>
+
+    <div class="divider">✦ ❖ ✦ ❖ ✦</div>
+
+    <main>
+      <section id="table">
+        <div id="opponents"></div>
+        <div id="center"></div>
+        <div id="human"></div>
+        <div id="prompt"></div>
+      </section>
+
+      <aside id="logPanel">
+        <h3>行動日誌</h3>
+        <div id="log"></div>
+        <div class="legend">
+          <h4>角色速查</h4>
+          <ul>
+            <li><b style="color:#e0498f">公爵 Duke</b>：課稅+3 / 擋外援</li>
+            <li><b style="color:#bbb">刺客 Assassin</b>：付3 暗殺</li>
+            <li><b style="color:#d4d63a">大使 Ambassador</b>：換牌 / 擋偷</li>
+            <li><b style="color:#4a90d9">隊長 Captain</b>：偷2 / 擋偷</li>
+            <li><b style="color:#e0544a">夫人 Contessa</b>：擋暗殺</li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <div id="overlay"></div>
+  </div>
+
+  <script>
+/*
+ * Coup 規則引擎 + 回合結算狀態機
+ * 相容瀏覽器（掛 globalThis.Coup）與 Node（module.exports）。
+ *
+ * 透過統一的 Agent 介面驅動人類與 AI：
+ *   chooseAction / decideChallenge / decideBlock /
+ *   decideChallengeBlock / chooseCardToLose / chooseExchange
+ */
+(function (root) {
+  'use strict';
+  const Coup = root.Coup = root.Coup || {};
+
+  const CHARACTERS = ['Duke', 'Assassin', 'Captain', 'Ambassador', 'Contessa'];
+  Coup.CHARACTERS = CHARACTERS;
+
+  // 角色中文名（顯示用）
+  const ZH = {
+    Duke: '公爵', Assassin: '刺客', Captain: '隊長',
+    Ambassador: '大使', Contessa: '夫人'
+  };
+  Coup.ZH = ZH;
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  Coup.shuffle = shuffle;
+
+  // 組合數 C(n, k)
+  function comb(n, k) {
+    if (k < 0 || k > n || n < 0) return 0;
+    k = Math.min(k, n - k);
+    let r = 1;
+    for (let i = 0; i < k; i++) r = (r * (n - i)) / (i + 1);
+    return r;
+  }
+  Coup.comb = comb;
+
+  // 行動中繼資料
+  const ACTIONS = {
+    income:      { character: null,         targeted: false },
+    foreign_aid: { character: null,         targeted: false },
+    coup:        { character: null,         targeted: true  },
+    tax:         { character: 'Duke',       targeted: false },
+    assassinate: { character: 'Assassin',   targeted: true  },
+    steal:       { character: 'Captain',    targeted: true  },
+    exchange:    { character: 'Ambassador', targeted: false }
+  };
+  Coup.ACTIONS = ACTIONS;
+
+  const noop = () => {};
+  const resolved = () => Promise.resolve();
+
+  class GameController {
+    constructor(playerConfigs, hooks) {
+      this.hooks = Object.assign({
+        onState: noop,    // () => void        重新渲染
+        onLog: noop,      // (msg) => void     寫入日誌
+        onTurn: noop,     // (playerId) => void
+        onGameOver: noop, // (winner) => void
+        pause: resolved   // () => Promise     AI 節奏延遲
+      }, hooks || {});
+
+      this.players = playerConfigs.map((c, i) => ({
+        id: i,
+        name: c.name,
+        isHuman: !!c.isHuman,
+        cards: [],
+        lost: [],
+        coins: 0,
+        alive: true
+      }));
+      this.agents = {}; // id -> Agent，由外部設定
+      this.deck = [];
+      this.current = 0;
+      this.over = false;
+      this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
+      this.winner = null;
+      this.setup();
+    }
+
+    setup() {
+      const deck = [];
+      CHARACTERS.forEach(ch => deck.push(ch, ch, ch)); // 每角色 3 張，共 15
+      shuffle(deck);
+      this.players.forEach(p => {
+        p.cards = [deck.pop(), deck.pop()];
+        p.lost = [];
+        p.coins = 2;
+        p.alive = true;
+      });
+      // 2 人對局：先手只拿 1 金幣
+      if (this.players.length === 2) this.players[0].coins = 1;
+      this.deck = deck;
+      this.current = 0;
+      this.over = false;
+      this.winner = null;
+    }
+
+    // ---- 工具 ----
+    log(msg) { this.hooks.onLog(msg); }
+    alive() { return this.players.filter(p => p.alive); }
+    influence(p) { return p.cards.length; }
+
+    // 從 startId 之後，依回合順序回傳其他存活玩家 id
+    aliveOrderFrom(startId) {
+      const n = this.players.length;
+      const res = [];
+      for (let k = 1; k <= n; k++) {
+        const id = (startId + k) % n;
+        if (id === startId) continue;
+        if (this.players[id].alive) res.push(id);
+      }
+      return res;
+    }
+
+    // 失去影響力（攤一張牌）
+    async loseInfluence(player) {
+      if (!player.alive || player.cards.length === 0) return;
+      let idx = 0;
+      if (player.cards.length > 1) {
+        idx = await this.agents[player.id].chooseCardToLose(this, player.id);
+        if (typeof idx !== 'number' || idx < 0 || idx >= player.cards.length) idx = 0;
+      }
+      const card = player.cards.splice(idx, 1)[0];
+      player.lost.push(card);
+      this.log(`💥 ${player.name} 失去影響力，攤開【${ZH[card]} ${card}】`);
+      if (player.cards.length === 0) {
+        player.alive = false;
+        this.log(`☠️ ${player.name} 出局！`);
+      }
+      this.hooks.onState();
+    }
+
+    // 誠實者被質疑後：攤示真牌 → 洗回牌庫 → 抽新牌替換
+    swapCard(player, character) {
+      const i = player.cards.indexOf(character);
+      if (i < 0) return;
+      this.deck.push(player.cards[i]);
+      shuffle(this.deck);
+      player.cards[i] = this.deck.pop();
+    }
+
+    // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
+    notifyClaim(claimantId, character) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observe === 'function') {
+          try { a.observe(this, claimantId, character); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
+    // 質疑窗口：詢問其他存活玩家是否質疑 claimant 的 character 宣稱
+    // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
+    async runChallenge(claimantId, character) {
+      const claimant = this.players[claimantId];
+      this.notifyClaim(claimantId, character);
+      for (const pid of this.aliveOrderFrom(claimantId)) {
+        const p = this.players[pid];
+        if (!p.alive) continue;
+        const wants = await this.agents[pid].decideChallenge(this, claimantId, character);
+        if (!wants) continue;
+
+        this.log(`❓ ${p.name} 質疑 ${claimant.name} 的【${ZH[character]} ${character}】`);
+        this.hooks.onState();
+        await this.hooks.pause();
+
+        const truthful = claimant.cards.includes(character);
+        if (truthful) {
+          this.log(`✅ ${claimant.name} 亮出【${ZH[character]} ${character}】，質疑失敗！`);
+          await this.loseInfluence(p);
+          this.swapCard(claimant, character); // 換新牌，身分重新隱藏
+          this.hooks.onState();
+          return { challenged: true, success: false, challenger: pid };
+        } else {
+          this.log(`❌ ${claimant.name} 並沒有【${ZH[character]} ${character}】，質疑成功！`);
+          await this.loseInfluence(claimant);
+          return { challenged: true, success: true, challenger: pid };
+        }
+      }
+      return { challenged: false, success: false };
+    }
+
+    // 反制窗口：回傳 true 表示行動被擋下
+    async runBlock(action) {
+      const actor = this.players[action.actorId];
+      let blockerIds, blockChars;
+      if (action.type === 'foreign_aid') {
+        blockerIds = this.aliveOrderFrom(actor.id); // 任何人可宣稱 Duke 擋
+        blockChars = ['Duke'];
+      } else if (action.type === 'steal') {
+        blockerIds = [action.targetId];
+        blockChars = ['Captain', 'Ambassador'];
+      } else if (action.type === 'assassinate') {
+        blockerIds = [action.targetId];
+        blockChars = ['Contessa'];
+      } else {
+        return false;
+      }
+
+      for (const bid of blockerIds) {
+        const b = this.players[bid];
+        if (!b || !b.alive) continue;
+        const dec = await this.agents[bid].decideBlock(this, action, blockChars);
+        if (!dec || !dec.block) continue;
+        const ch = dec.character;
+
+        this.log(`🛡️ ${b.name} 宣稱【${ZH[ch]} ${ch}】反制`);
+        this.hooks.onState();
+        await this.hooks.pause();
+
+        // 反制本身可被質疑（任何人，含原行動者）
+        const res = await this.runChallenge(bid, ch);
+        if (res.challenged && res.success) {
+          this.log('➡️ 反制被拆穿，原行動繼續生效');
+          return false; // 反制者吹牛被抓 → 反制失敗 → 行動續行
+        }
+        return true; // 反制成立 → 行動被擋
+      }
+      return false;
+    }
+
+    // 把要保留的牌（multiset）從牌池移除後，其餘退回牌庫
+    applyExchange(player, kept) {
+      const pool = player.cards.slice(); // 注意：呼叫前 drawn 已併入 player.cards
+      const keep = [];
+      const remainder = pool.slice();
+      kept.forEach(c => {
+        const i = remainder.indexOf(c);
+        if (i >= 0) { keep.push(c); remainder.splice(i, 1); }
+      });
+      // 若代理人回傳不足或不合法，補足
+      while (keep.length < player.originalInfluence) {
+        keep.push(remainder.shift());
+      }
+      player.cards = keep.slice(0, player.originalInfluence);
+      // 多餘的退回牌庫
+      const leftover = pool.slice();
+      player.cards.forEach(c => {
+        const i = leftover.indexOf(c);
+        if (i >= 0) leftover.splice(i, 1);
+      });
+      leftover.forEach(c => this.deck.push(c));
+      shuffle(this.deck);
+    }
+
+    async doExchange(actor) {
+      const keepCount = actor.cards.length;
+      const drawn = [this.deck.pop(), this.deck.pop()].filter(Boolean);
+      this.log(`🔄 ${actor.name} 從牌庫抽 ${drawn.length} 張交換`);
+      actor.originalInfluence = keepCount;
+      actor.cards = actor.cards.concat(drawn); // 暫時併入牌池
+      let kept = await this.agents[actor.id].chooseExchange(this, actor.id, drawn);
+      if (!Array.isArray(kept)) kept = actor.cards.slice(0, keepCount);
+      this.applyExchange(actor, kept);
+      delete actor.originalInfluence;
+      this.log(`🔄 ${actor.name} 完成交換（保留 ${actor.cards.length} 張）`);
+      this.hooks.onState();
+    }
+
+    // 修正不合法行動（資源/規則把關）
+    sanitizeAction(actor, action) {
+      action = action || { type: 'income' };
+      const opps = this.alive().filter(p => p.id !== actor.id);
+      const pickTarget = () => (opps.sort((a, b) =>
+        (b.coins + b.cards.length * 3) - (a.coins + a.cards.length * 3))[0]);
+
+      // 10 金幣強制政變
+      if (actor.coins >= 10) action = { type: 'coup', targetId: action.targetId };
+      // 負擔不起 → 退回收入
+      if (action.type === 'coup' && actor.coins < 7) action = { type: 'income' };
+      if (action.type === 'assassinate' && actor.coins < 3) action = { type: 'income' };
+      // 目標行動需有合法目標
+      if (ACTIONS[action.type] && ACTIONS[action.type].targeted) {
+        const valid = opps.some(p => p.id === action.targetId);
+        if (!valid) {
+          const t = pickTarget();
+          if (!t) return { type: 'income', actorId: actor.id };
+          action.targetId = t.id;
+        }
+      }
+      action.actorId = actor.id;
+      return action;
+    }
+
+    // 核心：結算一個行動
+    async resolveAction(action) {
+      const actor = this.players[action.actorId];
+      const meta = ACTIONS[action.type];
+      const target = action.targetId != null ? this.players[action.targetId] : null;
+
+      if (action.type === 'income') {
+        actor.coins += 1;
+        this.log(`💰 ${actor.name} 收入 +1（共 ${actor.coins}）`);
+        this.hooks.onState();
+        return;
+      }
+
+      if (action.type === 'coup') {
+        actor.coins -= 7;
+        this.log(`🎯 ${actor.name} 對 ${target.name} 發動政變（付 7）`);
+        this.hooks.onState();
+        await this.hooks.pause();
+        await this.loseInfluence(target);
+        return;
+      }
+
+      if (action.type === 'foreign_aid') {
+        this.log(`🤝 ${actor.name} 宣告外援（+2）`);
+        this.hooks.onState();
+        await this.hooks.pause();
+        const blocked = await this.runBlock(action);
+        if (!blocked) {
+          actor.coins += 2;
+          this.log(`💰 ${actor.name} 取得外援 +2（共 ${actor.coins}）`);
+        } else {
+          this.log(`🚫 ${actor.name} 的外援被阻擋`);
+        }
+        this.hooks.onState();
+        return;
+      }
+
+      // === 角色行動：tax / steal / assassinate / exchange ===
+      if (action.type === 'assassinate') actor.coins -= 3; // 先付費
+      const claimZh = `【${ZH[meta.character]} ${meta.character}】`;
+      const label =
+        action.type === 'tax' ? '課稅 +3' :
+        action.type === 'steal' ? `偷竊 ${target.name}` :
+        action.type === 'assassinate' ? `暗殺 ${target.name}` :
+        '交換手牌';
+      this.log(`🗣️ ${actor.name} 宣稱${claimZh} 執行「${label}」`);
+      this.hooks.onState();
+      await this.hooks.pause();
+
+      const cres = await this.runChallenge(actor.id, meta.character);
+      if (cres.challenged && cres.success) {
+        if (action.type === 'assassinate') {
+          actor.coins += 3; // 行動作廢 → 退費
+          this.log(`↩️ 暗殺作廢，退回 3 金幣`);
+        }
+        this.hooks.onState();
+        return;
+      }
+      if (!actor.alive) return; // 理論上不會發生（誠實者）
+
+      // 反制窗口（偷竊、暗殺）
+      if (action.type === 'assassinate' || action.type === 'steal') {
+        const blocked = await this.runBlock(action);
+        if (blocked) {
+          this.log(`🚫 ${actor.name} 的「${label}」被阻擋`);
+          this.hooks.onState();
+          return; // 暗殺費已付且不退
+        }
+      }
+
+      // 套用效果
+      switch (action.type) {
+        case 'tax':
+          actor.coins += 3;
+          this.log(`💰 ${actor.name} 課稅 +3（共 ${actor.coins}）`);
+          break;
+        case 'steal': {
+          const amt = Math.min(2, target.coins);
+          target.coins -= amt;
+          actor.coins += amt;
+          this.log(`💰 ${actor.name} 從 ${target.name} 偷走 ${amt} 金幣`);
+          break;
+        }
+        case 'assassinate':
+          this.log(`🗡️ ${actor.name} 暗殺命中 ${target.name}`);
+          await this.loseInfluence(target);
+          break;
+        case 'exchange':
+          await this.doExchange(actor);
+          break;
+      }
+      this.hooks.onState();
+    }
+
+    advance() {
+      if (this.alive().length <= 1) return;
+      do {
+        this.current = (this.current + 1) % this.players.length;
+      } while (!this.players[this.current].alive);
+    }
+
+    checkGameOver() {
+      const a = this.alive();
+      if (a.length <= 1) {
+        this.over = true;
+        this.winner = a[0] || null;
+        return true;
+      }
+      return false;
+    }
+
+    // 主回合循環
+    async play() {
+      this.log('🎬 遊戲開始！');
+      this.hooks.onState();
+      let safety = 0;
+      while (!this.over && !this.cancelled) {
+        if (++safety > 5000) {
+          this.log('⚠️ 達到回合上限，依影響力/金幣判定勝者');
+          const ranked = this.alive().slice().sort((a, b) =>
+            (b.cards.length - a.cards.length) || (b.coins - a.coins));
+          this.over = true;
+          this.winner = ranked[0] || null;
+          break;
+        }
+        const actor = this.players[this.current];
+        if (!actor.alive) { this.advance(); continue; }
+
+        this.hooks.onTurn(actor.id);
+        await this.hooks.pause();
+        if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
+
+        let action = await this.agents[actor.id].chooseAction(this);
+        if (this.cancelled) return null;
+        action = this.sanitizeAction(actor, action);
+        await this.resolveAction(action);
+        if (this.cancelled) return null;
+
+        if (this.checkGameOver()) break;
+        this.advance();
+      }
+      this.log(`🏁 遊戲結束，勝者：${this.winner ? this.winner.name : '無'}`);
+      this.hooks.onState();
+      this.hooks.onGameOver(this.winner);
+      return this.winner;
+    }
+
+    cancel() { this.cancelled = true; } // 終止此局（開新局時呼叫）
+  }
+
+  Coup.GameController = GameController;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Coup;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+  <script>
+/*
+ * AIAgent：以牌面機率 + 期望值 + 混合策略吹牛驅動的電腦對手。
+ * 同步回傳決策（引擎負責加上節奏延遲）。
+ */
+(function (root) {
+  'use strict';
+  const Coup = root.Coup = root.Coup || {};
+  const CHARACTERS = Coup.CHARACTERS;
+  const comb = Coup.comb;
+
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3 };
+
+  class AIAgent {
+    constructor(id, difficulty) {
+      this.id = id;
+      this.difficulty = difficulty || 'normal';
+      // 吹牛係數 / 質疑積極度
+      const presets = {
+        easy:   { bluff: 0.20, challenge: 0.85 },
+        normal: { bluff: 0.45, challenge: 1.00 },
+        hard:   { bluff: 0.60, challenge: 1.15 }
+      };
+      const p = presets[this.difficulty] || presets.normal;
+      this.bluff = p.bluff;
+      this.aggr = p.challenge;
+      this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
+    }
+
+    // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
+    observe(game, claimantId, character) {
+      if (claimantId === this.id) return;
+      const target = game.players[claimantId];
+      const m = this.model[claimantId] ||
+        (this.model[claimantId] = { claims: {}, lostSeen: target.lost.length });
+      // 對手手牌一旦變動（失牌），先前宣稱的參考價值降低 → 重置
+      if (target.lost.length !== m.lostSeen) { m.claims = {}; m.lostSeen = target.lost.length; }
+      m.claims[character] = (m.claims[character] || 0) + 1;
+    }
+
+    // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
+    suspicion(claimantId, influence) {
+      const m = this.model[claimantId];
+      if (!m) return 0;
+      const distinct = Object.keys(m.claims).length;
+      return Math.max(0, distinct - influence); // 例如 2 影響力卻宣稱過 3 種角色 → 1
+    }
+
+    // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
+    estimateOpponentHas(game, targetId, character) {
+      const me = game.players[this.id];
+      let seen = 0;
+      me.cards.forEach(c => { if (c === character) seen++; });
+      let totalLost = 0;
+      game.players.forEach(p => p.lost.forEach(c => {
+        totalLost++;
+        if (c === character) seen++;
+      }));
+      const unknownTotal = 15 - me.cards.length - totalLost;
+      const copies = 3 - seen;
+      const target = game.players[targetId];
+      const h = target.cards.length;
+      if (copies <= 0 || unknownTotal <= 0 || h <= 0) return copies <= 0 ? 0 : 0;
+      if (unknownTotal - copies < 0) return 1;
+      const pNone = comb(unknownTotal - copies, h) / comb(unknownTotal, h);
+      return 1 - pNone;
+    }
+
+    // ---- Agent 介面 ----
+
+    decideChallenge(game, claimantId, character) {
+      if (claimantId === this.id) return false;
+      const me = game.players[this.id];
+      const claimant = game.players[claimantId];
+      const p = this.estimateOpponentHas(game, claimantId, character);
+      if (p <= 0.0001) return true; // 牌面不可能 → 必抓
+
+      // 行為偏差：會宣稱者通常更可能為真
+      const truth = p + (1 - p) * 0.30;
+      let threshold = 0.45 * this.aggr;
+      if (claimant.cards.length === 1) threshold += 0.10; // 殘血積極抓
+      if (me.cards.length === 1) threshold -= 0.15;       // 自己殘血保守
+      // 對手建模：宣稱角色種類數超過手牌數 → 提高質疑意願
+      threshold += this.suspicion(claimantId, claimant.cards.length) * 0.18;
+      threshold += (Math.random() - 0.5) * 0.10;
+      return truth < threshold;
+    }
+
+    decideChallengeBlock(game, blockerId, character) {
+      return this.decideChallenge(game, blockerId, character);
+    }
+
+    decideBlock(game, action, blockChars) {
+      const me = game.players[this.id];
+
+      if (action.type === 'foreign_aid') {
+        const actor = game.players[action.actorId];
+        if (me.cards.includes('Duke')) {
+          // 真 Duke：對手越領先越想擋
+          const lead = actor.coins >= 5 ? 0.8 : 0.5;
+          return { block: Math.random() < lead, character: 'Duke' };
+        }
+        return { block: Math.random() < 0.05 * this.bluff, character: 'Duke' };
+      }
+
+      if (action.type === 'steal') {
+        if (me.cards.includes('Captain')) return { block: true, character: 'Captain' };
+        if (me.cards.includes('Ambassador')) return { block: true, character: 'Ambassador' };
+        if (Math.random() < 0.35 * this.bluff) {
+          return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
+        }
+        return { block: false };
+      }
+
+      if (action.type === 'assassinate') {
+        if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
+        // 假 Contessa：高風險（被拆穿一次失兩張）。保命時更願意賭。
+        const wouldDie = me.cards.length === 1;
+        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff);
+        if (Math.random() < prob) return { block: true, character: 'Contessa' };
+        return { block: false };
+      }
+
+      return { block: false };
+    }
+
+    chooseCardToLose(game, playerId) {
+      const me = game.players[playerId];
+      let idx = 0, min = Infinity;
+      me.cards.forEach((c, i) => {
+        const v = (VALUE[c] || 3) + Math.random() * 0.01;
+        if (v < min) { min = v; idx = i; }
+      });
+      return idx;
+    }
+
+    chooseExchange(game, playerId, drawn) {
+      const me = game.players[playerId];
+      const pool = me.cards.slice(); // 引擎已把 drawn 併入 me.cards
+      const keepCount = me.originalInfluence != null ? me.originalInfluence : (pool.length - drawn.length);
+      const scored = pool.map(c => ({ c, v: (VALUE[c] || 3) + Math.random() * 0.2 }));
+      // 略為懲罰重複（保留多樣性）
+      const seen = {};
+      scored.forEach(s => { if (seen[s.c]) s.v -= 1.0; seen[s.c] = true; });
+      scored.sort((a, b) => b.v - a.v);
+      return scored.slice(0, keepCount).map(s => s.c);
+    }
+
+    pickTarget(game) {
+      const opps = game.players.filter(p => p.alive && p.id !== this.id);
+      if (opps.length === 0) return null;
+      const weak = opps.filter(o => o.cards.length === 1);
+      const pool = weak.length ? weak : opps;
+      return pool.slice().sort((a, b) =>
+        (b.coins + b.cards.length * 3) - (a.coins + a.cards.length * 3))[0];
+    }
+
+    chooseAction(game) {
+      const me = game.players[this.id];
+      const opps = game.players.filter(p => p.alive && p.id !== this.id);
+      const target = this.pickTarget(game);
+      if (!target) return { type: 'income' };
+
+      // 強制 / 划算政變
+      if (me.coins >= 10) return { type: 'coup', targetId: target.id };
+      if (me.coins >= 7) return { type: 'coup', targetId: target.id };
+
+      // 真 Assassin 暗殺
+      if (me.cards.includes('Assassin') && me.coins >= 3) {
+        return { type: 'assassinate', targetId: target.id };
+      }
+      // 真 Captain 偷竊
+      if (me.cards.includes('Captain')) {
+        const rich = opps.filter(o => o.coins >= 2).sort((a, b) => b.coins - a.coins)[0];
+        if (rich && Math.random() < 0.85) return { type: 'steal', targetId: rich.id };
+      }
+      // 真 Duke 課稅
+      if (me.cards.includes('Duke')) return { type: 'tax' };
+      // 大使換牌（手牌偏弱時）
+      if (me.cards.includes('Ambassador')) {
+        const weakHand = !me.cards.includes('Duke') && !me.cards.includes('Contessa');
+        if (weakHand && Math.random() < 0.45) return { type: 'exchange' };
+      }
+
+      // === 吹牛 / 累積 ===
+      const r = Math.random();
+      // 吹牛暗殺（有錢、夠兇）
+      if (me.coins >= 3 && r < 0.12 * this.bluff) {
+        return { type: 'assassinate', targetId: target.id };
+      }
+      // 吹牛課稅（宣稱 Duke）
+      if (r < 0.30 + 0.25 * this.bluff) return { type: 'tax' };
+      // 吹牛偷竊（宣稱 Captain）
+      if (r < 0.45 + 0.25 * this.bluff) {
+        const rich = opps.filter(o => o.coins >= 2).sort((a, b) => b.coins - a.coins)[0];
+        if (rich) return { type: 'steal', targetId: rich.id };
+      }
+      // 保守：外援 / 收入
+      if (Math.random() < 0.5) return { type: 'foreign_aid' };
+      return { type: 'income' };
+    }
+  }
+
+  Coup.AIAgent = AIAgent;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Coup;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+  <script>
+/*
+ * UI：渲染遊戲狀態 + 行動日誌，並實作「人類玩家」的 Agent 介面。
+ * 人類決策以 Promise 回傳，由提示區按鈕點擊解析。
+ */
+(function (root) {
+  'use strict';
+  const Coup = root.Coup = root.Coup || {};
+  const ZH = Coup.ZH;
+
+  // 將 Coup 角色對應到古典塔羅大阿爾克那（羅馬數字 + 象徵）
+  const ARCANA = {
+    Duke:       { zh: '公爵', en: 'Duke',       arcana: '皇帝 The Emperor',      roman: 'IV',   sym: '♔' },
+    Assassin:   { zh: '刺客', en: 'Assassin',   arcana: '死神 Death',           roman: 'XIII', sym: '⚔' },
+    Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
+    Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
+    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
+  };
+
+  const UI = {
+    game: null,
+    speed: 800,
+    currentTurn: -1,
+
+    init() {
+      this.els = {
+        opponents: document.getElementById('opponents'),
+        human: document.getElementById('human'),
+        center: document.getElementById('center'),
+        prompt: document.getElementById('prompt'),
+        log: document.getElementById('log'),
+        overlay: document.getElementById('overlay')
+      };
+    },
+
+    // ---------- 開新局 ----------
+    newGame(numPlayers, difficulty, speed) {
+      if (this.game) this.game.cancel(); // 終止上一局，避免並行
+      this.speed = speed;
+      this.els.log.innerHTML = '';
+      this.els.prompt.innerHTML = '';
+      this.els.overlay.classList.remove('show');
+      this.els.overlay.innerHTML = '';
+
+      const configs = [{ name: '你', isHuman: true }];
+      for (let i = 1; i < numPlayers; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+
+      const game = new Coup.GameController(configs, {
+        onLog: (m) => this.log(m),
+        onState: () => this.render(),
+        onTurn: (id) => { this.currentTurn = id; this.render(); },
+        onGameOver: (w) => this.showWinner(w),
+        pause: () => new Promise(r => setTimeout(r, this.speed))
+      });
+      game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
+      for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, difficulty);
+
+      this.game = game;
+      this.currentTurn = 0;
+      this.render();
+      game.play();
+    },
+
+    log(msg) {
+      const div = document.createElement('div');
+      div.className = 'log-line';
+      div.textContent = msg;
+      this.els.log.appendChild(div);
+      this.els.log.scrollTop = this.els.log.scrollHeight;
+    },
+
+    // ---------- 渲染 ----------
+    cardEl(ch, faceUp, lost) {
+      if (!faceUp) {
+        return '<div class="card back"><div class="back-orn">✦</div></div>';
+      }
+      const a = ARCANA[ch];
+      return `<div class="card ${ch} ${lost ? 'lost' : ''}">
+        <div class="card-corner tl">${a.roman}</div>
+        <div class="card-corner br">${a.roman}</div>
+        <div class="card-sym">${a.sym}</div>
+        <div class="card-name">${a.zh}</div>
+        <div class="card-en">${a.en}</div>
+        <div class="card-arcana">${a.arcana}</div>
+      </div>`;
+    },
+
+    playerEl(p) {
+      const isMe = p.isHuman;
+      const cls = ['player'];
+      if (isMe) cls.push('me');
+      if (this.currentTurn === p.id && p.alive) cls.push('current');
+      if (!p.alive) cls.push('dead');
+
+      const hidden = p.cards.map(c => this.cardEl(c, isMe, false)).join('');
+      const lost = p.lost.map(c => this.cardEl(c, true, true)).join('');
+      const coinPips = '●'.repeat(Math.min(p.coins, 12)) + (p.coins > 12 ? '…' : '');
+      return `<div class="${cls.join(' ')}">
+        <div class="phead">
+          <span class="pname">${p.name}</span>
+          <span class="pcoins" title="金幣"><b>${p.coins}</b><i class="coin">⊚</i></span>
+        </div>
+        <div class="pcards">${hidden}${lost}</div>
+        <div class="pinfo"><span class="pips">${coinPips || '○'}</span>
+          <span class="inf">影響力 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span></div>
+      </div>`;
+    },
+
+    render() {
+      if (!this.game) return;
+      const g = this.game;
+      this.els.opponents.innerHTML = g.players
+        .filter(p => !p.isHuman).map(p => this.playerEl(p)).join('');
+      this.els.human.innerHTML = g.players
+        .filter(p => p.isHuman).map(p => this.playerEl(p)).join('');
+      const cur = g.players[this.currentTurn];
+      this.els.center.innerHTML =
+        `<div class="deck-info">牌庫 Court Deck：${g.deck.length} 張</div>` +
+        `<div class="turn-info">${g.over ? '遊戲結束' : '目前回合：' + (cur ? cur.name : '')}</div>`;
+    },
+
+    showWinner(w) {
+      const isMe = w && w.isHuman;
+      this.els.overlay.innerHTML =
+        `<div class="win-box ${isMe ? 'win' : 'lose'}">
+          <div class="win-title">${isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了'}</div>
+          <div class="win-sub">勝者：${w ? w.name : '無'}</div>
+          <button id="againBtn" class="pbtn act">再來一局</button>
+        </div>`;
+      this.els.overlay.classList.add('show');
+      const btn = document.getElementById('againBtn');
+      if (btn) btn.onclick = () => root.CoupMain.start();
+    },
+
+    // ---------- 提示工具 ----------
+    prompt(title, buttons) {
+      return new Promise(resolve => {
+        const el = this.els.prompt;
+        el.innerHTML = `<div class="prompt-title">${title}</div>` +
+          `<div class="prompt-btns">` +
+          buttons.map((b, i) =>
+            `<button class="pbtn ${b.cls || ''}" data-i="${i}" ${b.disabled ? 'disabled' : ''}>${b.label}</button>`
+          ).join('') + `</div>`;
+        el.querySelectorAll('button').forEach(btn => {
+          btn.onclick = () => {
+            const b = buttons[+btn.dataset.i];
+            if (b.disabled) return;
+            el.innerHTML = '';
+            resolve(b.value);
+          };
+        });
+      });
+    },
+
+    // ========== Agent 介面（人類 = players[0]）==========
+
+    async chooseAction(game) {
+      const me = game.players[0];
+      const opps = game.players.filter(p => p.alive && p.id !== 0);
+      const forced = me.coins >= 10;
+      const defs = [
+        { type: 'income',      label: '收入 +1',            ok: !forced },
+        { type: 'foreign_aid', label: '外援 +2',            ok: !forced },
+        { type: 'tax',         label: '課稅 (公爵) +3',     ok: !forced },
+        { type: 'steal',       label: '偷竊 (隊長)',        ok: !forced && opps.length > 0 },
+        { type: 'exchange',    label: '交換 (大使)',        ok: !forced },
+        { type: 'assassinate', label: '暗殺 (刺客) 付3',    ok: !forced && me.coins >= 3 && opps.length > 0 },
+        { type: 'coup',        label: '政變 付7',           ok: me.coins >= 7 && opps.length > 0 }
+      ];
+      const buttons = defs.map(d => ({
+        label: d.label, value: d.type, disabled: !d.ok, cls: 'act'
+      }));
+      const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
+      const type = await this.prompt(title, buttons);
+
+      if (Coup.ACTIONS[type].targeted) {
+        const tbtns = opps.map(o => ({
+          label: `${o.name}（影響 ${o.cards.length} / 🪙 ${o.coins}）`, value: o.id, cls: 'target'
+        }));
+        tbtns.push({ label: '↩ 重選行動', value: '__cancel__', cls: 'cancel' });
+        const verb = type === 'coup' ? '政變' : type === 'assassinate' ? '暗殺' : '偷竊';
+        const tid = await this.prompt(`選擇要${verb}的目標：`, tbtns);
+        if (tid === '__cancel__') return this.chooseAction(game);
+        return { type, targetId: tid };
+      }
+      return { type };
+    },
+
+    decideChallenge(game, claimantId, character) {
+      if (claimantId === 0) return false;
+      const claimant = game.players[claimantId];
+      let visible = 0;
+      game.players.forEach(p => p.lost.forEach(c => { if (c === character) visible++; }));
+      const title = `${claimant.name} 宣稱【${ZH[character]} ${character}】。是否質疑？` +
+        `<br><small>檯面已公開 ${visible} 張此角色（共 3 張）</small>`;
+      return this.prompt(title, [
+        { label: '❓ 質疑！', value: true, cls: 'danger' },
+        { label: '放過', value: false, cls: '' }
+      ]);
+    },
+
+    decideChallengeBlock(game, blockerId, character) {
+      return this.decideChallenge(game, blockerId, character);
+    },
+
+    async decideBlock(game, action, blockChars) {
+      const me = game.players[0];
+      const actor = game.players[action.actorId];
+
+      if (action.type === 'foreign_aid') {
+        if (!me.cards.includes('Duke')) return { block: false }; // 沒公爵自動放行
+        const v = await this.prompt(`${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`, [
+          { label: '🛡️ 用公爵阻擋', value: true, cls: 'shield' },
+          { label: '放行', value: false, cls: '' }
+        ]);
+        return { block: v, character: 'Duke' };
+      }
+
+      if (action.type === 'steal') {
+        const v = await this.prompt(`${actor.name} 要偷你 2 金幣，如何反制？`, [
+          { label: '🛡️ 宣稱隊長 Captain', value: 'Captain', cls: 'shield' },
+          { label: '🛡️ 宣稱大使 Ambassador', value: 'Ambassador', cls: 'shield' },
+          { label: '不阻擋', value: '__no__', cls: '' }
+        ]);
+        if (v === '__no__') return { block: false };
+        return { block: true, character: v };
+      }
+
+      if (action.type === 'assassinate') {
+        const v = await this.prompt(
+          `⚠️ ${actor.name} 要暗殺你！要用【夫人 Contessa】阻擋嗎？` +
+          `<br><small>若你沒有夫人被拆穿，將一次失去兩張影響力</small>`, [
+          { label: '🛡️ 宣稱夫人阻擋', value: true, cls: 'shield' },
+          { label: '不阻擋', value: false, cls: '' }
+        ]);
+        return { block: v, character: 'Contessa' };
+      }
+      return { block: false };
+    },
+
+    chooseCardToLose(game, playerId) {
+      const me = game.players[playerId];
+      const buttons = me.cards.map((c, i) => ({
+        label: `攤開 ${ZH[c]} ${c}`, value: i, cls: c
+      }));
+      return this.prompt('你失去一張影響力，選擇要攤開哪一張：', buttons);
+    },
+
+    chooseExchange(game, playerId, drawn) {
+      return new Promise(resolve => {
+        const me = game.players[playerId];
+        const pool = me.cards.slice(); // 引擎已把抽到的牌併入
+        const keep = me.originalInfluence;
+        const sel = new Set();
+        const el = this.els.prompt;
+        const redraw = () => {
+          el.innerHTML =
+            `<div class="prompt-title">大使交換：選擇保留 ${keep} 張（已選 ${sel.size}）</div>` +
+            `<div class="exchange">` + pool.map((c, i) => {
+              const a = ARCANA[c];
+              return `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
+                `<div class="card-corner tl">${a.roman}</div>` +
+                `<div class="card-sym">${a.sym}</div>` +
+                `<div class="card-name">${a.zh}</div>` +
+                `<div class="card-en">${a.en}</div>` +
+                `<div class="card-arcana">${a.arcana}</div></button>`;
+            }).join('') + `</div>` +
+            `<div class="prompt-btns"><button class="pbtn act confirm" ${sel.size === keep ? '' : 'disabled'}>確定保留</button></div>`;
+          el.querySelectorAll('.card').forEach(b => {
+            b.onclick = () => {
+              const i = +b.dataset.i;
+              if (sel.has(i)) sel.delete(i);
+              else { if (sel.size >= keep) return; sel.add(i); }
+              redraw();
+            };
+          });
+          const cf = el.querySelector('.confirm');
+          if (cf) cf.onclick = () => {
+            if (sel.size !== keep) return;
+            el.innerHTML = '';
+            resolve([...sel].map(i => pool[i]));
+          };
+        };
+        redraw();
+      });
+    }
+  };
+
+  Coup.UI = UI;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+  <script>
+/* 初始化與開新局串接 */
+(function (root) {
+  'use strict';
+  const Main = root.CoupMain = {
+    start() {
+      const n = parseInt(document.getElementById('numPlayers').value, 10);
+      const diff = document.getElementById('difficulty').value;
+      const speedMap = { fast: 350, normal: 800, slow: 1400 };
+      const speed = speedMap[document.getElementById('speed').value] || 800;
+      root.Coup.UI.newGame(n, diff, speed);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    root.Coup.UI.init();
+    document.getElementById('newGame').onclick = () => Main.start();
+    Main.start(); // 一進場就開一局
+  });
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+</body>
+</html>
