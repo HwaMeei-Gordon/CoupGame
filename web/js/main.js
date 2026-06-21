@@ -5,7 +5,7 @@
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
       const diff = document.getElementById('difficulty').value;
-      const speedMap = { fast: 350, normal: 800, slow: 1400 };
+      const speedMap = { fast: 260, normal: 620, slow: 1100 };
       const speed = speedMap[document.getElementById('speed').value] || 800;
       root.Coup.UI.newGame(n, diff, speed);
     }
