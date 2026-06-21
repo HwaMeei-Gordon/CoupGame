@@ -35,7 +35,13 @@ node test/dead-card.js     # 驗證「攤開的死牌」永不能滿足宣稱 + 
 node test/browser-e2e.js   # Playwright + Chromium 真實瀏覽器端對端測試
 ```
 
-![遊戲畫面](docs/screenshot.png)
+### 📱 手機優先介面 Mobile-first UI
+
+單欄直式流(對手列 → 牌桌動態 → 你的手牌 → **拇指區行動列**)、**橫向自動變牌桌**、音效＋觸覺回饋、內建玩法教學、依事件上色的日誌。提供**兩種可切換風格**(⚙ → 風格):
+
+| 簡約 Minimal | 塔羅 Tarot |
+|:---:|:---:|
+| ![簡約風](docs/screenshot-minimal.png) | ![塔羅風](docs/screenshot.png) |
 
 ## 🗂️ 專案結構 Structure
 
