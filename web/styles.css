@@ -310,6 +310,35 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-5px); }
 .exchange .card-sym { font-size: 32px; } .exchange .card-name { font-size: 15px; }
 
+/* ---------- 全螢幕電影級特效層 ---------- */
+#fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+#fx > div { position: absolute; inset: 0; }
+/* 暗殺：血色斬擊 + 壓暗 */
+.fx-slash::before {
+  content: ""; position: absolute; top: -25%; left: -40%; width: 180%; height: 150%; z-index: 1;
+  background: linear-gradient(122deg, transparent 44%, rgba(255,70,80,.7) 47%, rgba(255,180,180,1) 49.5%, #fff 50%, rgba(255,180,180,1) 50.5%, rgba(220,40,50,.7) 53%, transparent 56%);
+  filter: drop-shadow(0 0 14px rgba(255,40,55,.95)) brightness(1.2);
+  transform: translateX(-30%) rotate(2deg); animation: fxSlash .55s ease-out forwards;
+}
+.fx-slash::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, rgba(40,0,8,.15), rgba(20,0,4,.5)); animation: fxFade .62s ease-out forwards; }
+@keyframes fxSlash { 0% { opacity: 0; transform: translateX(-45%) rotate(2deg); } 25% { opacity: 1; } 100% { opacity: 0; transform: translateX(45%) rotate(2deg); } }
+/* 課稅/外援：金光脈動 */
+.fx-gold { background: radial-gradient(circle at 50% 50%, rgba(232,207,114,.4), rgba(232,207,114,0) 55%); animation: fxPulse .8s ease-out forwards; }
+@keyframes fxPulse { 0% { opacity: 0; transform: scale(.5); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(1.35); } }
+/* 反制：金色聖盾擴散 */
+.fx-shield::before {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 90px; height: 90px; margin: -45px 0 0 -45px;
+  border-radius: 50%; border: 3px solid rgba(232,207,114,.95); box-shadow: 0 0 36px rgba(232,207,114,.7), inset 0 0 24px rgba(232,207,114,.5);
+  animation: fxShield .72s ease-out forwards;
+}
+@keyframes fxShield { 0% { opacity: 0; transform: scale(.25); } 25% { opacity: 1; } 100% { opacity: 0; transform: scale(3.2); } }
+/* 質疑：水晶碎裂閃光 */
+.fx-crack { background: radial-gradient(circle at 50% 44%, rgba(255,255,255,.5), rgba(255,255,255,0) 32%); animation: fxFlash .45s ease-out forwards; }
+@keyframes fxFlash { 0% { opacity: 0; } 18% { opacity: 1; } 100% { opacity: 0; } }
+/* 出局：暗角壓暗 */
+.fx-dark { box-shadow: inset 0 0 220px rgba(0,0,0,.9); animation: fxFade .8s ease-out forwards; }
+@keyframes fxFade { 0% { opacity: .7; } 100% { opacity: 0; } }
+
 /* ---------- 勝負遮罩 ---------- */
 #overlay {
   position: fixed; inset: 0; background: rgba(8,6,14,.84);

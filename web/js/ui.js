@@ -105,9 +105,32 @@
       death()     { this.tone(150, 0.28, 'sawtooth', 0.06); this.buzz([25, 35, 55]); },
       win()  { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'sine', 0.06), i * 110)); this.buzz([20, 40, 20, 40, 90]); },
       lose() { [392, 294, 196].forEach((f, i) => setTimeout(() => this.tone(f, 0.26, 'sine', 0.05), i * 150)); this.buzz(140); },
+      slash()     { this.tone(180, 0.08, 'sawtooth', 0.05); setTimeout(() => this.tone(90, 0.18, 'sawtooth', 0.05), 70); this.buzz([15, 30, 15]); },
       fromLog(m) {
-        if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) this.death();
+        if (m.indexOf('🗡️') >= 0) this.slash();
+        else if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) this.death();
         else if (m.indexOf('❓') >= 0 || m.indexOf('🛡️') >= 0) this.challenge();
+      }
+    },
+
+    // 全螢幕電影級特效層（依事件觸發,不阻擋互動）
+    fx: {
+      el: null,
+      ensure() { if (!this.el && typeof document !== 'undefined') this.el = document.getElementById('fx'); return this.el; },
+      spawn(cls, ms) {
+        const root = this.ensure(); if (!root || typeof document === 'undefined') return;
+        const node = document.createElement('div');
+        if (!node || !node.classList || typeof node.classList.add !== 'function') return;
+        node.className = cls;
+        root.appendChild(node);
+        setTimeout(() => { try { node.remove(); } catch (e) {} }, ms || 900);
+      },
+      fromLog(m) {
+        if (m.indexOf('🗡️') >= 0) this.spawn('fx-slash', 700);
+        else if (m.indexOf('🛡️') >= 0) this.spawn('fx-shield', 750);
+        else if (m.indexOf('課得賦稅') >= 0 || m.indexOf('援助悄然入袋') >= 0) this.spawn('fx-gold', 800);
+        else if (m.indexOf('❓') >= 0) this.spawn('fx-crack', 500);
+        else if (m.indexOf('☠️') >= 0) this.spawn('fx-dark', 800);
       }
     },
 
@@ -157,6 +180,7 @@
       this.els.log.appendChild(div);
       this.els.log.scrollTop = this.els.log.scrollHeight;
       this.fb.fromLog(msg);
+      this.fx.fromLog(msg);
     },
 
     // 依事件類型為日誌上色，方便快速掃讀
