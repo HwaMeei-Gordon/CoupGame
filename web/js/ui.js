@@ -189,6 +189,7 @@
         </svg>
         <div class="card-corner tl">${a.roman}</div>
         <div class="card-banner">${a.zh}<small>${a.en}</small></div>
+        ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
 

@@ -233,7 +233,26 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(214,232,247,.2), transparent 64%), linear-gradient(165deg, #0c2a40, var(--captain)); }
 .card.Ambassador { background: radial-gradient(circle at 50% 38%, rgba(214,247,226,.2), transparent 64%), linear-gradient(165deg, #0e3322, var(--ambassador)); }
 .card.Contessa   { background: radial-gradient(circle at 50% 36%, rgba(255,242,232,.34), transparent 62%), linear-gradient(165deg, #7a3a52, var(--contessa)); }
-.card.lost { opacity: .5; filter: grayscale(.55); transform: rotate(-3deg); }
+/* 死牌：黑白灰燼 + 逆位插畫 + DECEASED 印記 */
+.card.lost { filter: grayscale(1) brightness(.62) contrast(1.05); transform: rotate(-3deg); }
+.card.lost .card-art { transform: scaleY(-1); opacity: .42; }
+.card.lost .card-banner { opacity: .55; }
+.card-deceased {
+  position: absolute; z-index: 3; top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(-13deg);
+  font-family: "Cinzel", serif; font-weight: 700; letter-spacing: 2px;
+  font-size: 11px; color: #e7e0d2; text-align: center; line-height: 1.05; white-space: nowrap;
+  border: 1.5px solid rgba(231,224,210,.85); padding: 2px 7px;
+  background: rgba(8,6,12,.4); box-shadow: 0 0 0 1px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.5);
+}
+.card-deceased span { display: block; font-size: 7.5px; letter-spacing: 1px; opacity: .8; }
+
+/* 生牌：微弱魂火光暈（你的手牌） */
+@keyframes soulfire {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 0 8px rgba(232,207,114,.12), 0 6px 16px rgba(0,0,0,.5); }
+  50%      { box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 0 20px rgba(232,207,114,.35), 0 6px 16px rgba(0,0,0,.5); }
+}
+.me-cards .card:not(.lost) { animation: soulfire 3.4s ease-in-out infinite; }
 .card.back {
   background: repeating-radial-gradient(circle at 50% 50%, transparent 0 7px, rgba(201,162,39,.10) 7px 8px), radial-gradient(circle at 50% 35%, #2b2350, #130f2b);
 }
