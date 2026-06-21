@@ -16,6 +16,15 @@
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
   };
 
+  // 每角色一枚手繪風 inline-SVG 徽記（無需外部圖檔，currentColor = 羊皮紙金）
+  const SVG = {
+    Duke: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8.6l3.3 3.6L12 5l4.7 7.2L20 8.6 18.2 18H5.8z"/><path d="M5.8 18h12.4"/><circle cx="4" cy="8.6" r="1"/><circle cx="20" cy="8.6" r="1"/><circle cx="12" cy="4.7" r="1"/></svg>`,
+    Assassin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l1.9 10.5h-3.8z"/><path d="M7.4 13h9.2"/><path d="M12 13v5.6"/><path d="M9.7 18.6h4.6l-1 3h-2.6z"/></svg>`,
+    Captain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.1"/><path d="M12 6.6V20.6"/><path d="M7.1 11h9.8"/><path d="M3.9 14.4A8 8 0 0 0 12 20.6 8 8 0 0 0 20.1 14.4"/></svg>`,
+    Ambassador: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.7 3.1A8.5 8.5 0 1 0 20.9 16 6.8 6.8 0 0 1 15.7 3.1z"/><path d="M6.6 5.3l.7 1.8 1.9.2-1.4 1.3.4 1.9-1.6-1-1.7 1 .5-1.9-1.4-1.3 1.9-.2z"/></svg>`,
+    Contessa: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="8.4" r="4.4"/><path d="M9.6 8.4a2.4 2.4 0 0 1 4.8 0"/><path d="M12 6.2v4.4"/><path d="M12 12.8V21"/><path d="M12 15.4c-2.1 0-3.7-1.2-4.2-2.9M12 15.4c2.1 0 3.7-1.2 4.2-2.9"/></svg>`
+  };
+
   const UI = {
     game: null,
     speed: 800,
@@ -117,7 +126,7 @@
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
         <div class="card-corner tl">${a.roman}</div>
         <div class="card-corner br">${a.roman}</div>
-        <div class="card-sym">${a.sym}</div>
+        <div class="card-sym">${SVG[ch] || a.sym}</div>
         <div class="card-name">${a.zh}</div>
         <div class="card-en">${a.en}</div>
         <div class="card-arcana">${a.arcana}</div>
@@ -328,7 +337,7 @@
               const a = ARCANA[c];
               return `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
                 `<div class="card-corner tl">${a.roman}</div>` +
-                `<div class="card-sym">${a.sym}</div>` +
+                `<div class="card-sym">${SVG[c] || a.sym}</div>` +
                 `<div class="card-name">${a.zh}</div>` +
                 `<div class="card-en">${a.en}</div>` +
                 `<div class="card-arcana">${a.arcana}</div></button>`;
