@@ -237,38 +237,18 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .me-inf { color: var(--muted); font-size: 11.5px; margin-left: auto; }
 .me-cards { display: flex; gap: 8px; justify-content: center; }
 
-/* ---------- 塔羅卡牌（整張插畫 + 名牌） ---------- */
+/* ---------- 角色卡（手繪美術圖） ---------- */
 .card {
-  width: 80px; height: 120px; border-radius: 10px;
-  position: relative; overflow: hidden; flex: 0 0 auto; color: var(--parch);
+  width: 80px; height: 120px; border-radius: 8px;
+  position: relative; overflow: hidden; flex: 0 0 auto;
   border: 2px solid var(--gold);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 5px 13px rgba(0,0,0,.5);
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
-  background: #333; user-select: none;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 5px 13px rgba(0,0,0,.5);
+  background: #efe6cf; user-select: none; padding: 0;
 }
-.card-art {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  color: rgba(244,235,208,.94);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
-}
-.card-banner {
-  position: relative; z-index: 1; width: 100%; text-align: center;
-  font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 13px; letter-spacing: .5px;
-  padding: 2px 0 3px; line-height: 1.1;
-  background: linear-gradient(180deg, rgba(10,7,18,0), rgba(10,7,18,.62) 40%, rgba(10,7,18,.78));
-}
-.card-banner small { display: block; font-family: serif; font-size: 7px; font-weight: 400; letter-spacing: 1.4px; opacity: .72; }
-.card-corner { position: absolute; z-index: 1; font-family: "Cinzel", serif; font-size: 9px; color: rgba(244,235,208,.9); letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
-.card-corner.tl { top: 4px; left: 7px; }
-.card.Duke       { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.2), transparent 64%), linear-gradient(165deg, #25103a, var(--duke)); }
-.card.Assassin   { background: radial-gradient(circle at 50% 42%, rgba(176,30,42,.32), transparent 60%), linear-gradient(165deg, #0a0a0d, var(--assassin)); }
-.card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(214,232,247,.2), transparent 64%), linear-gradient(165deg, #0c2a40, var(--captain)); }
-.card.Ambassador { background: radial-gradient(circle at 50% 38%, rgba(214,247,226,.2), transparent 64%), linear-gradient(165deg, #0e3322, var(--ambassador)); }
-.card.Contessa   { background: radial-gradient(circle at 50% 36%, rgba(255,242,232,.34), transparent 62%), linear-gradient(165deg, #7a3a52, var(--contessa)); }
-/* 死牌：黑白灰燼 + 逆位插畫 + DECEASED 印記 */
-.card.lost { filter: grayscale(1) brightness(.62) contrast(1.05); transform: rotate(-3deg); }
-.card.lost .card-art { transform: scaleY(-1); opacity: .42; }
-.card.lost .card-banner { opacity: .55; }
+.card-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+/* 死牌：黑白灰燼 + DECEASED 印記 */
+.card.lost { filter: grayscale(1) brightness(.7) contrast(1.04); transform: rotate(-3deg); }
+.card.lost .card-img { opacity: .9; }
 .card-deceased {
   position: absolute; z-index: 3; top: 50%; left: 50%;
   transform: translate(-50%, -50%) rotate(-13deg);
