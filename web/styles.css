@@ -53,7 +53,7 @@ header {
 }
 header h1 {
   margin: 0; font-family: "Cinzel", "Noto Serif TC", serif; font-weight: 700;
-  font-size: clamp(20px, 5.5vw, 28px); letter-spacing: 3px; color: var(--gold-lt);
+  font-size: clamp(17px, 4.6vw, 23px); letter-spacing: 2px; color: var(--gold-lt);
   text-shadow: 0 2px 0 #3a2a12, 0 0 18px rgba(201,162,39,.35);
 }
 header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margin-left: 6px; }
@@ -98,14 +98,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 /* ---------- 對手列 ---------- */
 #opponents {
   flex: 0 0 auto;
-  display: flex; gap: 6px; padding: 4px 2px 8px;
+  display: flex; gap: 5px; padding: 3px 2px 6px;
   overflow-x: auto; scrollbar-width: none;
 }
 #opponents::-webkit-scrollbar { display: none; }
 .opp {
-  flex: 1 1 0; min-width: 84px;
-  background: var(--panel2); border: 1px solid var(--line); border-radius: 12px;
-  padding: 7px 6px 6px; text-align: center;
+  flex: 1 1 0; min-width: 72px;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+  padding: 5px 5px 5px; text-align: center;
   transition: box-shadow .2s, border-color .2s, transform .2s;
 }
 .opp.current {
@@ -113,14 +113,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   animation: turnPulse 1.9s ease-in-out infinite;
 }
 .opp.dead { opacity: .42; filter: grayscale(.7); }
-.opp-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
-.opp-name { font-weight: 700; font-size: 12.5px; letter-spacing: .5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.opp-coin { color: var(--gold-lt); font-size: 12px; white-space: nowrap; }
-.opp-cards { display: flex; gap: 4px; justify-content: center; min-height: 36px; align-items: center; }
-.opp-inf { color: var(--muted); font-size: 10.5px; margin-top: 4px; }
+.opp-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 4px; }
+.opp-name { font-weight: 700; font-size: 11px; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opp-coin { color: var(--gold-lt); font-size: 10.5px; white-space: nowrap; }
+.opp-cards { display: flex; gap: 3px; justify-content: center; min-height: 29px; align-items: center; }
+.opp-inf { color: var(--muted); font-size: 9.5px; margin-top: 3px; }
 
 /* 對手小卡 */
-.mini { width: 24px; height: 34px; border-radius: 5px; flex: 0 0 auto; }
+.mini { width: 20px; height: 29px; border-radius: 4px; flex: 0 0 auto; }
 .mini.back {
   position: relative;
   background: radial-gradient(circle at 50% 36%, #322a58, #16102e 82%);
@@ -130,11 +130,11 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .mini.back::after {
   content: "✦"; position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
-  font-size: 11px; color: rgba(232,207,114,.55);
+  font-size: 10px; color: rgba(232,207,114,.55);
 }
 .mini.lost {
   display: flex; align-items: center; justify-content: center;
-  font-size: 15px; color: var(--parch); border: 1px solid rgba(201,162,39,.5);
+  font-size: 12px; color: var(--parch); border: 1px solid rgba(201,162,39,.5);
   opacity: .65; filter: grayscale(.4); transform: rotate(-4deg);
 }
 .mini.lost.Duke { background: var(--duke); } .mini.lost.Assassin { background: var(--assassin); }
@@ -200,14 +200,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 #statusbar {
   flex: 0 0 auto;
   display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 14px; border-bottom: 1px solid rgba(201,162,39,.18);
-  font-family: "Cinzel", "Noto Serif TC", serif; font-size: 13px;
+  padding: 6px 12px; border-bottom: 1px solid rgba(201,162,39,.18);
+  font-family: "Cinzel", "Noto Serif TC", serif; font-size: 11.5px;
 }
 .sb-deck { color: var(--muted); }
 .sb-turn { color: var(--gold-lt); font-weight: 700; }
 #log {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
-  padding: 8px 14px; font-size: 13px; line-height: 1.6;
+  padding: 6px 12px; font-size: 11.5px; line-height: 1.5;
   background: linear-gradient(180deg, rgba(60,46,24,0), rgba(60,46,24,.07));
 }
 .log-line {
@@ -219,30 +219,30 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .log-line.l-block { color: #7fd0b0; }      /* 反制 */
 .log-line.l-good { color: #9fd08c; }       /* 亮牌證明成功 */
 .log-line.l-meta { color: var(--gold-lt); font-style: italic; }
-.log-line:last-child { filter: brightness(1.18); font-weight: 700; font-size: 13.5px; }
+.log-line:last-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
 @keyframes logIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */
-#me { flex: 0 0 auto; padding: 8px 2px 6px; }
+#me { flex: 0 0 auto; padding: 5px 2px 4px; }
 .me-inner {
   background: linear-gradient(180deg, rgba(40,28,66,.5), rgba(28,20,48,.5));
-  border: 1px solid var(--gold); border-radius: 14px; padding: 8px 12px 12px;
+  border: 1px solid var(--gold); border-radius: 12px; padding: 6px 10px 9px;
   transition: box-shadow .2s, border-color .2s;
 }
 .me-inner.current { animation: turnPulse 2.1s ease-in-out infinite; }
 .me-inner.dead { opacity: .5; filter: grayscale(.6); }
-.me-foot { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
-.me-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 16px; color: var(--gold-lt); letter-spacing: 1px; }
-.me-coin { color: var(--gold-lt); font-size: 15px; } .me-coin b { font-size: 17px; }
-.me-inf { color: var(--muted); font-size: 13px; margin-left: auto; }
-.me-cards { display: flex; gap: 10px; justify-content: center; }
+.me-foot { display: flex; align-items: center; gap: 12px; margin-bottom: 5px; }
+.me-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 14px; color: var(--gold-lt); letter-spacing: .5px; }
+.me-coin { color: var(--gold-lt); font-size: 13px; } .me-coin b { font-size: 15px; }
+.me-inf { color: var(--muted); font-size: 11.5px; margin-left: auto; }
+.me-cards { display: flex; gap: 8px; justify-content: center; }
 
 /* ---------- 塔羅卡牌（整張插畫 + 名牌） ---------- */
 .card {
-  width: 96px; height: 144px; border-radius: 11px;
+  width: 80px; height: 120px; border-radius: 10px;
   position: relative; overflow: hidden; flex: 0 0 auto; color: var(--parch);
   border: 2px solid var(--gold);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 6px 16px rgba(0,0,0,.5);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 5px 13px rgba(0,0,0,.5);
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   background: #333; user-select: none;
 }
@@ -253,13 +253,13 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 }
 .card-banner {
   position: relative; z-index: 1; width: 100%; text-align: center;
-  font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 15px; letter-spacing: 1px;
-  padding: 3px 0 4px; line-height: 1.1;
+  font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 13px; letter-spacing: .5px;
+  padding: 2px 0 3px; line-height: 1.1;
   background: linear-gradient(180deg, rgba(10,7,18,0), rgba(10,7,18,.62) 40%, rgba(10,7,18,.78));
 }
-.card-banner small { display: block; font-family: serif; font-size: 8px; font-weight: 400; letter-spacing: 1.6px; opacity: .75; }
-.card-corner { position: absolute; z-index: 1; font-family: "Cinzel", serif; font-size: 10px; color: rgba(244,235,208,.9); letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
-.card-corner.tl { top: 5px; left: 8px; }
+.card-banner small { display: block; font-family: serif; font-size: 7px; font-weight: 400; letter-spacing: 1.4px; opacity: .72; }
+.card-corner { position: absolute; z-index: 1; font-family: "Cinzel", serif; font-size: 9px; color: rgba(244,235,208,.9); letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.card-corner.tl { top: 4px; left: 7px; }
 .card.Duke       { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.2), transparent 64%), linear-gradient(165deg, #25103a, var(--duke)); }
 .card.Assassin   { background: radial-gradient(circle at 50% 42%, rgba(176,30,42,.32), transparent 60%), linear-gradient(165deg, #0a0a0d, var(--assassin)); }
 .card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(214,232,247,.2), transparent 64%), linear-gradient(165deg, #0c2a40, var(--captain)); }
@@ -292,28 +292,28 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 
 /* ---------- 底部行動列 ---------- */
 #prompt {
-  flex: 0 0 auto; margin: 6px 2px 8px;
+  flex: 0 0 auto; margin: 5px 2px 6px;
   background: linear-gradient(180deg, var(--panel2), rgba(28,20,48,.92));
-  border: 1px solid var(--gold); border-radius: 14px; padding: 12px;
-  box-shadow: 0 -4px 20px rgba(0,0,0,.4); max-height: 48dvh; overflow-y: auto;
+  border: 1px solid var(--gold); border-radius: 12px; padding: 10px;
+  box-shadow: 0 -4px 20px rgba(0,0,0,.4); max-height: 46dvh; overflow-y: auto;
 }
 #prompt:empty { display: none; }
 #prompt:not(:empty) { animation: promptIn .26s ease; }
 @keyframes promptIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 .prompt-title { animation: none; }
-.prompt-title { font-size: 15px; margin-bottom: 11px; line-height: 1.5; letter-spacing: .3px; }
+.prompt-title { font-size: 13.5px; margin-bottom: 9px; line-height: 1.5; letter-spacing: .3px; }
 .prompt-title small { color: var(--muted); }
 /* 命運天秤（質疑窗口） */
 .scales { text-align: center; margin-bottom: 6px; }
 .scales-svg { width: 56px; height: 38px; color: var(--gold-lt); filter: drop-shadow(0 0 6px rgba(201,162,39,.4)); }
 .scales-svg .beam { transform-origin: 30px 9px; animation: sway 1.5s ease-in-out infinite; }
 @keyframes sway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
-.prompt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prompt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .pbtn {
   background: linear-gradient(180deg, #241a3e, #1a1330);
   color: var(--ink); border: 1px solid var(--line);
-  border-radius: 10px; padding: 12px 10px; font-size: 14px; cursor: pointer; font-weight: 700;
-  font-family: inherit; letter-spacing: .3px; min-height: 48px;
+  border-radius: 9px; padding: 10px 9px; font-size: 13px; cursor: pointer; font-weight: 700;
+  font-family: inherit; letter-spacing: .3px; min-height: 44px;
   display: flex; align-items: center; justify-content: center; text-align: center;
 }
 .pbtn:active:not(:disabled) { transform: scale(.97); }
@@ -334,14 +334,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 
 /* 行動按鈕：圖示 + 名稱 + 子標，左側以角色色標示「宣稱哪個角色」 */
 .pbtn.actbtn {
-  flex-direction: row; justify-content: flex-start; gap: 9px; text-align: left;
-  padding: 9px 11px; background: linear-gradient(180deg, #251b41, #191230);
+  flex-direction: row; justify-content: flex-start; gap: 8px; text-align: left;
+  padding: 7px 10px; background: linear-gradient(180deg, #251b41, #191230);
   border: 1px solid var(--line); border-left: 3px solid var(--gold-lt);
 }
-.pbtn.actbtn .b-ic { font-size: 19px; width: 22px; text-align: center; color: var(--gold-lt); flex: 0 0 auto; }
+.pbtn.actbtn .b-ic { font-size: 17px; width: 20px; text-align: center; color: var(--gold-lt); flex: 0 0 auto; }
 .pbtn.actbtn .b-tx { display: flex; flex-direction: column; line-height: 1.15; }
-.pbtn.actbtn .b-tx b { font-size: 14px; font-weight: 700; }
-.pbtn.actbtn .b-tx small { font-size: 11px; color: var(--muted); font-weight: 400; }
+.pbtn.actbtn .b-tx b { font-size: 13px; font-weight: 700; }
+.pbtn.actbtn .b-tx small { font-size: 10px; color: var(--muted); font-weight: 400; }
 .pbtn.actbtn.r-Duke { border-left-color: #b266d4; }
 .pbtn.actbtn.r-Captain { border-left-color: #5aa8e0; }
 .pbtn.actbtn.r-Ambassador { border-left-color: #5fc06f; }
@@ -406,22 +406,21 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
 @media (min-width: 600px) and (min-height: 720px) {
-  .card { width: 100px; height: 150px; }
-  #log { font-size: 14px; }
+  .card { width: 86px; height: 129px; }
+  #log { font-size: 12.5px; }
 }
 
 /* ---------- 極小螢幕 ---------- */
 @media (max-height: 680px) {
-  .card { width: 80px; height: 120px; }
-  .card-sym { font-size: 34px; } .card-name { font-size: 16px; }
-  .card-arcana { display: none; }
-  .opp-cards { min-height: 30px; }
-  .mini { width: 21px; height: 30px; }
+  .card { width: 70px; height: 105px; }
+  .card-banner { font-size: 12px; }
+  .opp-cards { min-height: 26px; }
+  .mini { width: 18px; height: 26px; }
 }
 @media (max-width: 360px) {
-  .opp { min-width: 76px; }
-  .card { width: 74px; height: 112px; }
-  .me-cards { gap: 7px; }
+  .opp { min-width: 66px; }
+  .card { width: 66px; height: 99px; }
+  .me-cards { gap: 6px; }
 }
 
 /* ---------- 無障礙：尊重「減少動態」偏好 ---------- */
