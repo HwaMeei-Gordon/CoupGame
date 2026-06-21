@@ -29,6 +29,16 @@
       Main.start();
       setup.classList.remove('open'); // 開新局後收起設定抽屜
     };
+    // 視覺風格：塔羅（預設）/ 簡約，可記憶
+    const themeSel = document.getElementById('theme');
+    const applyTheme = v => document.body.classList.toggle('minimal', v === 'minimal');
+    let saved = null; try { saved = localStorage.getItem('coupTheme'); } catch (e) {}
+    if (saved) { themeSel.value = saved; applyTheme(saved); }
+    themeSel.onchange = () => {
+      applyTheme(themeSel.value);
+      try { localStorage.setItem('coupTheme', themeSel.value); } catch (e) {}
+    };
+
     Main.start(); // 一進場就開一局
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

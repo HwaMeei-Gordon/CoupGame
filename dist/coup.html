@@ -349,6 +349,48 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
 
+/* ============================================================
+   簡約 / 現代主題（body.minimal）：靛藍 + 板岩,扁平、無襯線
+   只覆寫變數與少量結構,其餘樣式沿用
+   ============================================================ */
+body.minimal {
+  --bg0: #0c0e13; --bg1: #141823;
+  --ink: #e8ecf3; --muted: #8a93a6;
+  --gold: #5b8cff; --gold-lt: #86a9ff;     /* 強調色 → 靛藍 */
+  --line: #2a3242;
+  --panel: rgba(28, 34, 46, 0.82); --panel2: rgba(36, 44, 60, 0.92);
+  --parch: #f1f4fa;
+  --duke: #7b6be0; --assassin: #3a4154; --captain: #2f86d6; --ambassador: #2faa70; --contessa: #d65b80;
+  font-family: system-ui, -apple-system, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: radial-gradient(900px 600px at 50% -10%, #1b2233 0%, rgba(12,14,19,0) 60%), linear-gradient(160deg, #141823, #0c0e13);
+  background-attachment: fixed;
+}
+body.minimal h1,
+body.minimal .card-name, body.minimal .me-name,
+body.minimal #statusbar, body.minimal #logPanel h3, body.minimal #newGame,
+body.minimal .legend h4, body.minimal .win-title {
+  font-family: system-ui, -apple-system, "Noto Sans TC", "PingFang TC", sans-serif;
+  letter-spacing: .5px;
+}
+body.minimal header h1 { text-shadow: none; font-weight: 800; }
+body.minimal #stage::before { content: none; }       /* 拿掉塔羅水印 */
+body.minimal .card { border-width: 1px; border-color: rgba(255,255,255,.18); border-radius: 12px; box-shadow: 0 6px 16px rgba(0,0,0,.45); }
+body.minimal .card-corner, body.minimal .card-arcana, body.minimal .card-en { display: none; }
+body.minimal .card-sym { margin-bottom: 8px; }
+body.minimal .card-name { font-weight: 700; }
+/* 扁平的角色色卡面（去掉羊皮紙光暈漸層） */
+body.minimal .card.Duke { background: linear-gradient(160deg, #4a3f8f, var(--duke)); }
+body.minimal .card.Assassin { background: linear-gradient(160deg, #20242f, var(--assassin)); }
+body.minimal .card.Captain { background: linear-gradient(160deg, #1c4a73, var(--captain)); }
+body.minimal .card.Ambassador { background: linear-gradient(160deg, #1c5a3d, var(--ambassador)); }
+body.minimal .card.Contessa { background: linear-gradient(160deg, #6e2740, var(--contessa)); }
+body.minimal .mini.back { background: linear-gradient(160deg, #2a3142, #1a1f2b); border-color: rgba(255,255,255,.16); }
+body.minimal .mini.back::after { color: rgba(134,169,255,.5); }
+body.minimal .pbtn.act, body.minimal #newGame { color: #0c1020; }
+body.minimal .icon-btn, body.minimal .opp, body.minimal .me-inner, body.minimal #prompt,
+body.minimal #stage, body.minimal #setup { border-radius: 12px; }
+body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
+
 /* ---------- 橫向（手機旋轉）：用寬度當牌桌,左日誌 / 右手牌,行動列在下 ---------- */
 @media (orientation: landscape) and (max-height: 600px) {
   #app {
@@ -410,6 +452,12 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
             <option value="fast">快</option>
             <option value="normal" selected>普通</option>
             <option value="slow">慢</option>
+          </select>
+        </label>
+        <label>風格
+          <select id="theme">
+            <option value="tarot" selected>塔羅</option>
+            <option value="minimal">簡約</option>
           </select>
         </label>
       </div>
@@ -1521,6 +1569,16 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
       Main.start();
       setup.classList.remove('open'); // 開新局後收起設定抽屜
     };
+    // 視覺風格：塔羅（預設）/ 簡約，可記憶
+    const themeSel = document.getElementById('theme');
+    const applyTheme = v => document.body.classList.toggle('minimal', v === 'minimal');
+    let saved = null; try { saved = localStorage.getItem('coupTheme'); } catch (e) {}
+    if (saved) { themeSel.value = saved; applyTheme(saved); }
+    themeSel.onchange = () => {
+      applyTheme(themeSel.value);
+      try { localStorage.setItem('coupTheme', themeSel.value); } catch (e) {}
+    };
+
     Main.start(); // 一進場就開一局
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
