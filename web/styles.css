@@ -286,6 +286,11 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .prompt-title { animation: none; }
 .prompt-title { font-size: 15px; margin-bottom: 11px; line-height: 1.5; letter-spacing: .3px; }
 .prompt-title small { color: var(--muted); }
+/* 命運天秤（質疑窗口） */
+.scales { text-align: center; margin-bottom: 6px; }
+.scales-svg { width: 56px; height: 38px; color: var(--gold-lt); filter: drop-shadow(0 0 6px rgba(201,162,39,.4)); }
+.scales-svg .beam { transform-origin: 30px 9px; animation: sway 1.5s ease-in-out infinite; }
+@keyframes sway { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
 .prompt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pbtn {
   background: linear-gradient(180deg, #241a3e, #1a1330);
