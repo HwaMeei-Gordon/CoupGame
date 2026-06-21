@@ -19,46 +19,52 @@
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
   const CARDART = {
-    Duke: `<circle cx="50" cy="48" r="26" opacity=".16" stroke-width="1"/>
-<g opacity=".32" stroke-width=".6"><path d="M50 16V8"/><path d="M34 20l-4-7"/><path d="M66 20l4-7"/><path d="M24 30l-7-4"/><path d="M76 30l7-4"/></g>
-<path d="M22 62V120M78 62V120"/><path d="M22 62q6-6 12 0M78 62q-6-6-12 0"/>
-<g stroke-width="1"><circle cx="22" cy="58" r="5"/><circle cx="78" cy="58" r="5"/><path d="M19 56l-4-3M81 56l4-3"/></g>
-<path d="M38 44l5 7 7-9 7 9 5-7-2 15H40z"/><circle cx="50" cy="40" r="1.4" fill="currentColor" stroke="none"/>
-<circle cx="50" cy="66" r="7"/><path d="M47 66h6" opacity=".5"/>
-<path d="M37 116Q40 84 50 80 60 84 63 116Z"/><path d="M50 80V114M44 90V114M56 90V114" opacity=".33"/>
-<path d="M67 74V108"/><circle cx="67" cy="71" r="3"/>
-<path d="M18 120H82M30 120v6M50 120v6M70 120v6" opacity=".45"/>`,
-    Assassin: `<path d="M70 24a12 12 0 1 0 5 17 9 9 0 0 1-5-17z" opacity=".38"/>
-<g fill="currentColor" stroke="none" opacity=".5"><circle cx="26" cy="26" r="1"/><circle cx="40" cy="20" r=".8"/><circle cx="80" cy="60" r="1"/></g>
-<path d="M30 26V122"/><path d="M30 32q30-3 35 18-22-14-35-6"/>
-<circle cx="52" cy="82" r="14"/><path d="M52 88l-2.5 5h5z"/>
-<circle cx="46.5" cy="80" r="3" fill="currentColor" stroke="none"/><circle cx="57.5" cy="80" r="3" fill="currentColor" stroke="none"/>
-<path d="M45 95h14M47 95v6M50 95v6M54 95v6M57 95v6" opacity=".85"/>
-<path d="M40 96q-3 3-3 8M64 96q3 3 3 8" opacity=".45"/>
-<path d="M34 122h36" opacity=".5"/><path d="M24 118v8M22 121h4" opacity=".55"/><path d="M78 119v7M76 122h4" opacity=".55"/>`,
-    Captain: `<path d="M30 40a20 20 0 0 1 40 0" opacity=".18"/>
-<g opacity=".3" stroke-width=".6"><path d="M50 14V8"/><path d="M34 18l-3-6"/><path d="M66 18l3-6"/></g>
-<g opacity=".55"><path d="M14 114q9-7 18 0t18 0 18 0 18 0"/><path d="M14 121q9-7 18 0t18 0 18 0 18 0" opacity=".7"/><path d="M14 128q9-6 18 0t18 0 18 0 18 0" opacity=".45"/></g>
-<path d="M28 100h44l-8 12H36z"/><path d="M32 106h36" opacity=".4"/>
-<path d="M50 100V34"/><path d="M40 48h20" opacity=".7"/>
-<path d="M50 42q20 8 17 34l-17-8z"/><path d="M50 42q-20 8-17 34l17-8z"/><path d="M50 50v24" opacity=".3"/>
-<path d="M50 34h12l-3 4 3 4H50" fill="currentColor" stroke="none" opacity=".85"/>`,
-    Ambassador: `<g fill="currentColor" stroke="none" opacity=".16"><circle cx="38" cy="30" r="1.4"/><circle cx="62" cy="30" r="1.4"/><circle cx="50" cy="24" r="1.4"/><circle cx="44" cy="40" r="1.4"/><circle cx="56" cy="40" r="1.4"/></g>
-<path d="M22 52V118M78 52V118"/><rect x="16.5" y="47" width="11" height="6"/><rect x="72.5" y="47" width="11" height="6"/><path d="M19 118h6M75 118h6"/>
-<path d="M44 40a6 6 0 0 0 12 0" opacity=".55"/><circle cx="50" cy="37" r="2.4"/>
-<circle cx="50" cy="58" r="6"/><path d="M38 118Q40 70 50 62 60 70 62 118Z"/>
-<path d="M41 80q9 4 18 0" opacity=".5"/><path d="M44 96q6 3 12 0" opacity=".4"/>
-<path d="M45 90h10v3h-10zM47 93v8h6v-8" opacity=".75"/>
-<path d="M44 116a6 6 0 0 0 12 0" opacity=".5"/>`,
-    Contessa: `<g fill="currentColor" stroke="none" opacity=".4"><circle cx="50" cy="22" r="1.2"/><circle cx="40" cy="26" r="1"/><circle cx="60" cy="26" r="1"/><circle cx="33" cy="34" r=".9"/><circle cx="67" cy="34" r=".9"/></g>
-<path d="M38 38l4 5 8-7 8 7 4-5-2 11H40z"/>
-<circle cx="50" cy="56" r="7"/><path d="M44 54q6 4 12 0" opacity=".4"/>
-<path d="M33 118Q39 76 50 70 61 76 67 118Z"/><path d="M50 70V116M42 88V116M58 88V116" opacity=".28"/>
-<path d="M50 86c-4-5-11-1-11 4 0 5 11 10 11 10s11-5 11-10c0-5-7-9-11-4z"/>
-<circle cx="50" cy="92" r="2.4"/><path d="M50 94.4v4M48.4 97h3.2" opacity=".7"/>
-<path d="M26 118q3-10 0-18M26 104l-3-3M26 104l3-3M26 110l-3-3M26 110l3-3" opacity=".55"/>
-<path d="M74 118q-3-10 0-18M74 104l3-3M74 104l-3-3M74 110l3-3M74 110l-3-3" opacity=".55"/>
-<path d="M22 118h56" opacity=".45"/>`
+    // 公爵／皇帝：鐵座領主、兜帽陰影、稅印、絲線連金幣堆、哥德城堡、天秤與∞
+    Duke: `<g opacity=".22"><path d="M12 58V32h9v26M12 32l4.5-5 4.5 5M21 36h7v22M28 36l3-3 3 3v22"/><path d="M88 58V32h-9v26M88 32l-4.5-5-4.5 5M79 36h-7v22M72 36l-3-3-3 3v22"/></g>
+<path d="M26 62V118M74 62V118"/><circle cx="26" cy="58" r="4"/><circle cx="74" cy="58" r="4"/>
+<path d="M39 42l5 7 6-9 6 9 5-7-2 14H41z"/><circle cx="50" cy="38" r="1.3" fill="currentColor" stroke="none"/>
+<path d="M43 56a7 7 0 0 1 14 0v5a7 7 0 0 1-14 0z"/><path d="M45.5 61h3.5M51 61h3.5" opacity=".7"/>
+<path d="M38 116Q41 82 50 78 59 82 62 116Z"/><path d="M50 78V114M44 92V114M56 92V114" opacity=".3"/>
+<path d="M46 64c0-3 4-3 4 0s4 3 4 0-4-3-4 0-4 3-4 0z" opacity=".55"/>
+<g opacity=".7"><ellipse cx="37" cy="120" rx="5" ry="2"/><ellipse cx="50" cy="122" rx="5" ry="2"/><ellipse cx="63" cy="120" rx="5" ry="2"/></g>
+<g opacity=".5"><path d="M44 112l-5 6M56 112l5 6"/></g>
+<path d="M66 84v3M62 87h8M64 87l-2 4h4zM68 87l2 4h-4z" opacity=".7"/>`,
+    // 刺客／死神：黑袍骷髏、滴血匕首、崩塌高塔、沙漏、破碎皇冠、枯萎玫瑰
+    Assassin: `<g opacity=".28"><path d="M74 30l10 2-2 26-9-2zM74 30l-1 24 9 2M74 30l3-4 7 1M70 40l8-3M76 50l8-2"/><path d="M80 24l3 1-1 5-3-1z" opacity=".7"/></g>
+<g fill="currentColor" stroke="none" opacity=".5"><circle cx="24" cy="24" r="1"/><circle cx="34" cy="18" r=".8"/></g>
+<path d="M40 56l12-3 12 3-3 60H43z" opacity=".5"/>
+<circle cx="52" cy="74" r="11"/><path d="M52 79l-2 4h4z"/>
+<circle cx="47.5" cy="72" r="2.5" fill="currentColor" stroke="none"/><circle cx="56.5" cy="72" r="2.5" fill="currentColor" stroke="none"/>
+<path d="M47 85h10M48 88h8" opacity=".85"/>
+<path d="M30 40l4 50M30 40l-2-6h6zM30 90l-2 4h4z"/>
+<path d="M28 56l4 1" opacity=".5"/>
+<path d="M20 108l4 6 4-6-2 8h-4z" opacity=".6"/>
+<path d="M74 110a4 4 0 1 1 6 0c2 2 1 6-3 6s-5-4-3-6z" opacity=".55"/>`,
+    // 隊長／戰車：鋼鎧執法者、帶刺鎖鏈纏金元寶、獅紋巨盾、雷雨港
+    Captain: `<g opacity=".25"><path d="M14 36q8-4 14 0M70 32q9-4 16 0"/><path d="M30 30l-3 8 5-2-2 7"/></g>
+<path d="M40 40q10-6 20 0v8q-10 5-20 0z"/><path d="M40 44h20" opacity=".5"/><path d="M50 32v8" opacity=".6"/>
+<path d="M44 56h12l-2 40H46z"/><path d="M44 62h12" opacity=".5"/>
+<path d="M62 58h16v22H62z"/><circle cx="70" cy="67" r="5"/><path d="M66 64l-3-3M74 64l3-3M67 71q3 3 6 0" opacity=".7"/><path d="M70 72v5M67 75h6" opacity=".6"/>
+<g opacity=".8"><circle cx="26" cy="92" r="4"/><circle cx="34" cy="98" r="4"/><path d="M30 70q-8 6-4 18M30 70l3 4M30 70l-3 4" stroke-dasharray="1.5 2.5"/></g>`,
+    // 外交官／魔術師：一手指天一手指地、權杖、無限符號、銜尾蛇、漂浮雙牌
+    Ambassador: `<path d="M46 40c0-2.6 4-2.6 4 0s4 2.6 4 0-4-2.6-4 0-4 2.6-4 0z" opacity=".6"/>
+<circle cx="50" cy="50" r="5"/>
+<path d="M43 100Q44 62 50 58 56 62 57 100Z"/>
+<path d="M52 64l11-13M63 51v-9"/><circle cx="63" cy="40" r="1.6" fill="currentColor" stroke="none"/>
+<path d="M48 66l-11 15"/>
+<rect x="25" y="66" width="11" height="15" rx="1.5" transform="rotate(-16 30 73)" opacity=".65"/>
+<rect x="64" y="70" width="11" height="15" rx="1.5" transform="rotate(15 69 77)" opacity=".65"/>
+<g fill="currentColor" stroke="none" opacity=".5"><circle cx="30" cy="50" r="1.2"/><circle cx="70" cy="50" r="1.2"/></g>
+<path d="M37 112a13 9 0 1 0 26 0 13 9 0 0 1-24 2" opacity=".5"/><path d="M39 114l-3-2 1 4z" fill="currentColor" stroke="none" opacity=".5"/>`,
+    // 貴婦／女皇：玫瑰禮服、舉聖鏡反射黑匕首、荊棘玫瑰、花園
+    Contessa: `<g opacity=".25"><path d="M16 116q4-10 0-20M16 100l-4-3M16 100l4-3M84 116q-4-10 0-20M84 100l4-3M84 100l-4-3"/></g>
+<path d="M38 36l4 6 8-7 8 7 4-6-2 13H40z"/>
+<circle cx="50" cy="56" r="7"/><path d="M44 55q6 4 12 0" opacity=".4"/>
+<path d="M33 118Q39 76 50 70 61 76 67 118Z"/><path d="M50 70V116M42 90V116M58 90V116" opacity=".28"/>
+<circle cx="66" cy="50" r="8"/><path d="M66 50m-8 0a8 8 0 0 1 16 0" opacity=".5"/><path d="M66 58v6" opacity=".6"/>
+<path d="M58 50l-12-8M46 42l3-1-1 3zM46 42l-2 8" opacity=".75"/>
+<g opacity=".7"><circle cx="30" cy="112" r="3.2"/><path d="M30 112a3.2 3.2 0 0 1 0-3M28 116l-3 4M32 116l3 4"/></g>
+<path d="M22 118h56" opacity=".4"/>`
   };
 
   const UI = {
@@ -172,9 +178,13 @@
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
         <svg class="card-art" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice"
              fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="4" y="4" width="92" height="142" rx="6" stroke-width="1.6" opacity=".8"/>
-          <rect x="7.5" y="7.5" width="85" height="135" rx="4" stroke-width=".7" opacity=".4"/>
-          <g fill="currentColor" stroke="none" opacity=".7"><circle cx="9" cy="9" r="1.5"/><circle cx="91" cy="9" r="1.5"/><circle cx="9" cy="141" r="1.5"/><circle cx="91" cy="141" r="1.5"/></g>
+          <rect x="3.5" y="3.5" width="93" height="143" rx="7" stroke-width="1.5" opacity=".85"/>
+          <rect x="6.5" y="6.5" width="87" height="137" rx="5" stroke-width=".6" opacity=".4"/>
+          <g opacity=".7" stroke-width="1">
+            <path d="M12 6.5q-5.5 0-5.5 5.5M88 6.5q5.5 0 5.5 5.5M12 143.5q-5.5 0-5.5-5.5M88 143.5q5.5 0 5.5-5.5"/>
+            <path d="M42 6.5q8 5 16 0M42 143.5q8-5 16 0" opacity=".75"/>
+          </g>
+          <g fill="currentColor" stroke="none" opacity=".75"><circle cx="50" cy="6.5" r="1.4"/><circle cx="50" cy="143.5" r="1.4"/><circle cx="6.5" cy="50" r="1.1"/><circle cx="93.5" cy="50" r="1.1"/></g>
           ${CARDART[ch] || ''}
         </svg>
         <div class="card-corner tl">${a.roman}</div>
