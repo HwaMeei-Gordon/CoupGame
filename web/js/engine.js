@@ -127,7 +127,7 @@
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
-      this.log(`💥 ${player.name} 失去影響力，攤開【${ZH[card]} ${card}】`);
+      this.log(`💥 ${player.name} 失去影響力，攤開【${ZH[card]} ${card}】（永久死牌，不可再使用）`);
       if (player.cards.length === 0) {
         player.alive = false;
         this.log(`☠️ ${player.name} 出局！`);
@@ -171,9 +171,10 @@
 
         const truthful = claimant.cards.includes(character);
         if (truthful) {
-          this.log(`✅ ${claimant.name} 亮出【${ZH[character]} ${character}】，質疑失敗！`);
+          this.log(`✅ ${claimant.name} 亮出手牌中的【${ZH[character]} ${character}】證明持有，質疑失敗！`);
           await this.loseInfluence(p);
           this.swapCard(claimant, character); // 換新牌，身分重新隱藏
+          this.log(`🔀 ${claimant.name} 把亮出的【${ZH[character]} ${character}】洗回牌庫、改抽一張新牌（此牌並未死亡）`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {

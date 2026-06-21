@@ -31,6 +31,7 @@ python3 -m http.server 8000
 node test/sim.js 600       # AI-vs-AI 跑 600 局，驗證規則引擎正確、不崩、卡牌守恆
 node test/ui-smoke.js      # 無頭 DOM mock，驗證 UI 渲染與人類 Agent 路徑
 node test/ai-model.js      # 驗證 AI 對手建模（多重宣稱的吹牛者更易被質疑）
+node test/dead-card.js     # 驗證「攤開的死牌」永不能滿足宣稱 + 每角色守恆
 node test/browser-e2e.js   # Playwright + Chromium 真實瀏覽器端對端測試
 ```
 
