@@ -176,7 +176,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .sb-turn { color: var(--gold-lt); font-weight: 700; }
 #log {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
-  padding: 8px 14px; font-size: 13px; line-height: 1.55;
+  padding: 8px 14px; font-size: 13px; line-height: 1.6;
+  background: linear-gradient(180deg, rgba(60,46,24,0), rgba(60,46,24,.07));
 }
 .log-line {
   padding: 3px 0; border-bottom: 1px solid rgba(201,162,39,.06);

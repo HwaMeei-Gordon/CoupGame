@@ -127,10 +127,10 @@
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
-      this.log(`💥 ${player.name} 失去影響力，攤開【${ZH[card]} ${card}】（永久死牌，不可再使用）`);
+      this.log(`💥 ${player.name} 的一名隨從墮入深淵，攤開【${ZH[card]} ${card}】（永久消逝，不可再用）`);
       if (player.cards.length === 0) {
         player.alive = false;
-        this.log(`☠️ ${player.name} 出局！`);
+        this.log(`☠️ ${player.name} 的最後一絲影響力殞落，黯然退場！`);
       }
       this.hooks.onState();
     }
@@ -165,20 +165,20 @@
         const wants = await this.agents[pid].decideChallenge(this, claimantId, character);
         if (!wants) continue;
 
-        this.log(`❓ ${p.name} 質疑 ${claimant.name} 的【${ZH[character]} ${character}】`);
+        this.log(`❓ ${p.name} 洞悉疑雲，質疑 ${claimant.name} 的【${ZH[character]} ${character}】`);
         this.hooks.onState();
         await this.hooks.pause();
 
         const truthful = claimant.cards.includes(character);
         if (truthful) {
-          this.log(`✅ ${claimant.name} 亮出手牌中的【${ZH[character]} ${character}】證明持有，質疑失敗！`);
+          this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
           this.swapCard(claimant, character); // 換新牌，身分重新隱藏
-          this.log(`🔀 ${claimant.name} 把亮出的【${ZH[character]} ${character}】洗回牌庫、改抽一張新牌（此牌並未死亡）`);
+          this.log(`🔀 ${claimant.name} 將此牌洗回命運之輪，另抽一張隱於暗處（並未死亡）`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
-          this.log(`❌ ${claimant.name} 並沒有【${ZH[character]} ${character}】，質疑成功！`);
+          this.log(`❌ ${claimant.name} 的牌中並無【${ZH[character]} ${character}】——騙局被揭穿！`);
           await this.loseInfluence(claimant);
           return { challenged: true, success: true, challenger: pid };
         }
@@ -210,14 +210,14 @@
         if (!dec || !dec.block) continue;
         const ch = dec.character;
 
-        this.log(`🛡️ ${b.name} 宣稱【${ZH[ch]} ${ch}】反制`);
+        this.log(`🛡️ ${b.name} 以【${ZH[ch]} ${ch}】之名，舉盾擋下這一擊`);
         this.hooks.onState();
         await this.hooks.pause();
 
         // 反制本身可被質疑（任何人，含原行動者）
         const res = await this.runChallenge(bid, ch);
         if (res.challenged && res.success) {
-          this.log('➡️ 反制被拆穿，原行動繼續生效');
+          this.log('➡️ 反制的假面被撕下，原行動繼續降臨');
           return false; // 反制者吹牛被抓 → 反制失敗 → 行動續行
         }
         return true; // 反制成立 → 行動被擋
@@ -252,14 +252,14 @@
     async doExchange(actor) {
       const keepCount = actor.cards.length;
       const drawn = [this.deck.pop(), this.deck.pop()].filter(Boolean);
-      this.log(`🔄 ${actor.name} 從牌庫抽 ${drawn.length} 張交換`);
+      this.log(`🔄 ${actor.name} 自命運之輪抽出 ${drawn.length} 張,審視更迭`);
       actor.originalInfluence = keepCount;
       actor.cards = actor.cards.concat(drawn); // 暫時併入牌池
       let kept = await this.agents[actor.id].chooseExchange(this, actor.id, drawn);
       if (!Array.isArray(kept)) kept = actor.cards.slice(0, keepCount);
       this.applyExchange(actor, kept);
       delete actor.originalInfluence;
-      this.log(`🔄 ${actor.name} 完成交換（保留 ${actor.cards.length} 張）`);
+      this.log(`🔄 ${actor.name} 換上新的面孔（保留 ${actor.cards.length} 張）`);
       this.hooks.onState();
     }
 
@@ -296,14 +296,14 @@
 
       if (action.type === 'income') {
         actor.coins += 1;
-        this.log(`💰 ${actor.name} 收入 +1（共 ${actor.coins}）`);
+        this.log(`💰 ${actor.name} 取一份微薄稅收 +1（共 ${actor.coins}）`);
         this.hooks.onState();
         return;
       }
 
       if (action.type === 'coup') {
         actor.coins -= 7;
-        this.log(`🎯 ${actor.name} 對 ${target.name} 發動政變（付 7）`);
+        this.log(`🎯 ${actor.name} 傾盡 7 金幣，對 ${target.name} 發動政變`);
         this.hooks.onState();
         await this.hooks.pause();
         await this.loseInfluence(target);
@@ -311,15 +311,15 @@
       }
 
       if (action.type === 'foreign_aid') {
-        this.log(`🤝 ${actor.name} 宣告外援（+2）`);
+        this.log(`🤝 ${actor.name} 向外邦尋求援助（+2）`);
         this.hooks.onState();
         await this.hooks.pause();
         const blocked = await this.runBlock(action);
         if (!blocked) {
           actor.coins += 2;
-          this.log(`💰 ${actor.name} 取得外援 +2（共 ${actor.coins}）`);
+          this.log(`💰 援助悄然入袋 +2（共 ${actor.coins}）`);
         } else {
-          this.log(`🚫 ${actor.name} 的外援被阻擋`);
+          this.log(`🚫 ${actor.name} 的外援被公爵之手截斷`);
         }
         this.hooks.onState();
         return;
@@ -328,12 +328,12 @@
       // === 角色行動：tax / steal / assassinate / exchange ===
       if (action.type === 'assassinate') actor.coins -= 3; // 先付費
       const claimZh = `【${ZH[meta.character]} ${meta.character}】`;
-      const label =
-        action.type === 'tax' ? '課稅 +3' :
-        action.type === 'steal' ? `偷竊 ${target.name}` :
-        action.type === 'assassinate' ? `暗殺 ${target.name}` :
-        '交換手牌';
-      this.log(`🗣️ ${actor.name} 宣稱${claimZh} 執行「${label}」`);
+      const deed =
+        action.type === 'tax' ? '向國庫索取賦稅（+3）' :
+        action.type === 'steal' ? `伸手攫取 ${target.name} 的錢袋` :
+        action.type === 'assassinate' ? `對 ${target.name} 拔出匕首` :
+        '向命運之輪乞求新的牌';
+      this.log(`🗣️ ${actor.name} 披上${claimZh}的面紗，${deed}`);
       this.hooks.onState();
       await this.hooks.pause();
 
@@ -341,7 +341,7 @@
       if (cres.challenged && cres.success) {
         if (action.type === 'assassinate') {
           actor.coins += 3; // 行動作廢 → 退費
-          this.log(`↩️ 暗殺作廢，退回 3 金幣`);
+          this.log(`↩️ 暗殺隨謊言作廢，退回 3 金幣`);
         }
         this.hooks.onState();
         return;
@@ -352,7 +352,7 @@
       if (action.type === 'assassinate' || action.type === 'steal') {
         const blocked = await this.runBlock(action);
         if (blocked) {
-          this.log(`🚫 ${actor.name} 的「${label}」被阻擋`);
+          this.log(`🚫 ${actor.name} 的圖謀被擋了下來`);
           this.hooks.onState();
           return; // 暗殺費已付且不退
         }
@@ -362,17 +362,17 @@
       switch (action.type) {
         case 'tax':
           actor.coins += 3;
-          this.log(`💰 ${actor.name} 課稅 +3（共 ${actor.coins}）`);
+          this.log(`💰 ${actor.name} 課得賦稅 +3（共 ${actor.coins}）`);
           break;
         case 'steal': {
           const amt = Math.min(2, target.coins);
           target.coins -= amt;
           actor.coins += amt;
-          this.log(`💰 ${actor.name} 從 ${target.name} 偷走 ${amt} 金幣`);
+          this.log(`💰 ${actor.name} 自 ${target.name} 攫走 ${amt} 金幣`);
           break;
         }
         case 'assassinate':
-          this.log(`🗡️ ${actor.name} 暗殺命中 ${target.name}`);
+          this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
           await this.loseInfluence(target);
           break;
         case 'exchange':
@@ -401,7 +401,7 @@
 
     // 主回合循環
     async play() {
-      this.log('🎬 遊戲開始！');
+      this.log('🎬 命運之輪開始轉動，宮廷陰謀就此展開……');
       this.hooks.onState();
       let safety = 0;
       while (!this.over && !this.cancelled) {
@@ -429,7 +429,7 @@
         if (this.checkGameOver()) break;
         this.advance();
       }
-      this.log(`🏁 遊戲結束，勝者：${this.winner ? this.winner.name : '無'}`);
+      this.log(`🏁 塵埃落定，唯一存活者登上權力之巔：${this.winner ? this.winner.name : '無'}`);
       this.hooks.onState();
       this.hooks.onGameOver(this.winner);
       return this.winner;
