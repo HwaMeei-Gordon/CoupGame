@@ -110,11 +110,21 @@
 
     log(msg) {
       const div = document.createElement('div');
-      div.className = 'log-line';
+      div.className = 'log-line' + this.logClass(msg);
       div.textContent = msg;
       this.els.log.appendChild(div);
       this.els.log.scrollTop = this.els.log.scrollHeight;
       this.fb.fromLog(msg);
+    },
+
+    // 依事件類型為日誌上色，方便快速掃讀
+    logClass(m) {
+      if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) return ' l-bad';
+      if (m.indexOf('❓') >= 0) return ' l-challenge';
+      if (m.indexOf('🛡️') >= 0) return ' l-block';
+      if (m.indexOf('✅') >= 0) return ' l-good';
+      if (m.indexOf('🎬') >= 0 || m.indexOf('🏁') >= 0) return ' l-meta';
+      return '';
     },
 
     // ---------- 渲染 ----------

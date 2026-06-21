@@ -182,7 +182,12 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   padding: 3px 0; border-bottom: 1px solid rgba(201,162,39,.06);
   color: var(--muted); animation: logIn .25s ease;
 }
-.log-line:last-child { color: var(--ink); font-size: 13.5px; }
+.log-line.l-bad { color: #e98ba0; }        /* 失去影響力 / 出局 */
+.log-line.l-challenge { color: #e8cf72; }  /* 質疑 */
+.log-line.l-block { color: #7fd0b0; }      /* 反制 */
+.log-line.l-good { color: #9fd08c; }       /* 亮牌證明成功 */
+.log-line.l-meta { color: var(--gold-lt); font-style: italic; }
+.log-line:last-child { filter: brightness(1.18); font-weight: 700; font-size: 13.5px; }
 @keyframes logIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */
@@ -316,6 +321,11 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   .opp { min-width: 76px; }
   .card { width: 74px; height: 112px; }
   .me-cards { gap: 7px; }
+}
+
+/* ---------- 無障礙：尊重「減少動態」偏好 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
 
 /* ---------- 橫向（手機旋轉）：用寬度當牌桌,左日誌 / 右手牌,行動列在下 ---------- */
