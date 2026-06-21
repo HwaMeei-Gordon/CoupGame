@@ -13,7 +13,12 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     root.Coup.UI.init();
-    document.getElementById('newGame').onclick = () => Main.start();
+    const setup = document.getElementById('setup');
+    document.getElementById('settingsToggle').onclick = () => setup.classList.toggle('open');
+    document.getElementById('newGame').onclick = () => {
+      Main.start();
+      setup.classList.remove('open'); // 開新局後收起設定抽屜
+    };
     Main.start(); // 一進場就開一局
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

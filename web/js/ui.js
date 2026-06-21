@@ -24,8 +24,8 @@
     init() {
       this.els = {
         opponents: document.getElementById('opponents'),
-        human: document.getElementById('human'),
-        center: document.getElementById('center'),
+        me: document.getElementById('me'),
+        statusbar: document.getElementById('statusbar'),
         prompt: document.getElementById('prompt'),
         log: document.getElementById('log'),
         overlay: document.getElementById('overlay')
@@ -84,54 +84,56 @@
       </div>`;
     },
 
-    playerEl(p) {
-      const isMe = p.isHuman;
-      const cls = ['player'];
-      if (isMe) cls.push('me');
+    // 對手小卡（牌背 / 已攤開的死牌）
+    miniCard(ch, lost) {
+      if (!lost) return '<div class="mini back"></div>';
+      const a = ARCANA[ch];
+      return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
+    },
+
+    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）
+    oppEl(p) {
+      const cls = ['opp'];
       if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
-
-      const hidden = p.cards.map(c => this.cardEl(c, isMe, false)).join('');
-      const lost = p.lost.map(c => this.cardEl(c, true, true)).join('');
-      const coinPips = '●'.repeat(Math.min(p.coins, 12)) + (p.coins > 12 ? '…' : '');
+      const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
+                    p.lost.map(c => this.miniCard(c, true)).join('');
       return `<div class="${cls.join(' ')}">
-        <div class="phead">
-          <span class="pname">${p.name}</span>
-          <span class="pcoins" title="金幣"><b>${p.coins}</b><i class="coin">⊚</i></span>
-        </div>
-        <div class="pcards">${hidden}${lost}</div>
-        <div class="pinfo"><span class="pips">${coinPips || '○'}</span>
-          <span class="inf">影響力 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span></div>
+        <div class="opp-head"><span class="opp-name">${p.name}</span>
+          <span class="opp-coin">🪙 ${p.coins}</span></div>
+        <div class="opp-cards">${minis}</div>
+        <div class="opp-inf">${p.alive ? '影響 ' + p.cards.length : '出局'}</div>
       </div>`;
     },
 
-    // 把對手座位沿牌桌上緣弧形排開（玩家在桌前、對手環繞）
-    seatPos(k, m) {
-      let ang;                                  // 角度（度）：270=正上方
-      if (m <= 1) ang = 270;
-      else ang = 210 + k * (120 / (m - 1));     // 210°→330°，跨桌面上緣
-      const r = ang * Math.PI / 180;
-      return { x: 50 + 42 * Math.cos(r), y: 50 + 34 * Math.sin(r) };
+    // 人類手牌區（大牌 + 資訊）
+    meEl(p) {
+      const cls = ['me-inner'];
+      if (this.currentTurn === 0 && p.alive) cls.push('current');
+      if (!p.alive) cls.push('dead');
+      const hand = p.cards.map(c => this.cardEl(c, true, false)).join('') +
+                   p.lost.map(c => this.cardEl(c, true, true)).join('');
+      return `<div class="${cls.join(' ')}">
+        <div class="me-foot">
+          <span class="me-name">你</span>
+          <span class="me-coin">🪙 <b>${p.coins}</b></span>
+          <span class="me-inf">影響 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span>
+        </div>
+        <div class="me-cards">${hand}</div>
+      </div>`;
     },
 
     render() {
       if (!this.game) return;
       const g = this.game;
-      const opps = g.players.filter(p => !p.isHuman);
-      const m = opps.length;
-      this.els.opponents.innerHTML = opps.map((p, k) => {
-        const pos = this.seatPos(k, m);
-        return `<div class="seat" style="left:${pos.x}%;top:${pos.y}%">${this.playerEl(p)}</div>`;
-      }).join('');
-      this.els.human.innerHTML = g.players
-        .filter(p => p.isHuman).map(p => this.playerEl(p)).join('');
+      this.els.opponents.innerHTML = g.players
+        .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
+      this.els.me.innerHTML = g.players
+        .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
-      this.els.center.innerHTML =
-        `<div class="medallion">
-          <div class="m-sym">❖</div>
-          <div class="deck-info">牌庫 <b>${g.deck.length}</b></div>
-          <div class="turn-info">${g.over ? '遊戲結束' : (cur ? cur.name + ' 的回合' : '')}</div>
-        </div>`;
+      this.els.statusbar.innerHTML =
+        `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
+        `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
     },
 
     showWinner(w) {

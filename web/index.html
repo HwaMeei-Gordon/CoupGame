@@ -24,7 +24,11 @@
   <div id="app">
     <header>
       <h1>Coup <span>政變</span></h1>
-      <div id="setup">
+      <button id="settingsToggle" class="icon-btn" aria-label="設定 / 新局">⚙</button>
+    </header>
+
+    <div id="setup">
+      <div class="setup-row">
         <label>人數
           <select id="numPlayers">
             <option value="2">2 人</option>
@@ -34,7 +38,7 @@
             <option value="6">6 人</option>
           </select>
         </label>
-        <label>AI 難度
+        <label>難度
           <select id="difficulty">
             <option value="easy">簡單</option>
             <option value="normal" selected>普通</option>
@@ -48,37 +52,30 @@
             <option value="slow">慢</option>
           </select>
         </label>
-        <button id="newGame">開新局</button>
       </div>
-    </header>
-
-    <div class="divider">✦ ❖ ✦ ❖ ✦</div>
-
-    <main>
-      <div id="board">
-        <section id="table">
-          <div id="opponents"></div>
-          <div id="center"></div>
-          <div id="human"></div>
-        </section>
-        <div id="prompt"></div>
+      <button id="newGame">開新局</button>
+      <div class="legend">
+        <h4>角色速查</h4>
+        <ul>
+          <li><b class="r-Duke">公爵 Duke</b>：課稅 +3 / 擋外援</li>
+          <li><b class="r-Assassin">刺客 Assassin</b>：付 3 暗殺</li>
+          <li><b class="r-Ambassador">大使 Ambassador</b>：換牌 / 擋偷</li>
+          <li><b class="r-Captain">隊長 Captain</b>：偷 2 / 擋偷</li>
+          <li><b class="r-Contessa">夫人 Contessa</b>：擋暗殺</li>
+        </ul>
       </div>
+    </div>
 
-      <aside id="logPanel">
-        <h3>行動日誌</h3>
-        <div id="log"></div>
-        <div class="legend">
-          <h4>角色速查</h4>
-          <ul>
-            <li><b style="color:#e0498f">公爵 Duke</b>：課稅+3 / 擋外援</li>
-            <li><b style="color:#bbb">刺客 Assassin</b>：付3 暗殺</li>
-            <li><b style="color:#d4d63a">大使 Ambassador</b>：換牌 / 擋偷</li>
-            <li><b style="color:#4a90d9">隊長 Captain</b>：偷2 / 擋偷</li>
-            <li><b style="color:#e0544a">夫人 Contessa</b>：擋暗殺</li>
-          </ul>
-        </div>
-      </aside>
-    </main>
+    <div id="opponents"></div>
+
+    <div id="stage">
+      <div id="statusbar"></div>
+      <div id="log"></div>
+    </div>
+
+    <div id="me"></div>
+
+    <div id="prompt"></div>
 
     <div id="overlay"></div>
   </div>
