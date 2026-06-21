@@ -307,7 +307,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .win-title { font-size: clamp(22px, 7vw, 30px); font-weight: 700; font-family: "Cinzel","Noto Serif TC",serif; margin-bottom: 8px; color: var(--gold-lt); }
 .win-box.lose .win-title { color: #e7889a; }
 .win-sub { color: var(--muted); margin-bottom: 10px; }
-.win-hand { color: var(--gold-lt); font-size: 14px; margin-bottom: 22px; letter-spacing: .5px; }
+.win-cards { display: flex; gap: 10px; justify-content: center; margin: 6px 0 22px; }
+.win-cards .card { width: 84px; height: 126px; }
 .win-box .pbtn { width: 100%; }
 
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
