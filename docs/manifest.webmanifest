@@ -1,0 +1,16 @@
+{
+  "name": "Coup · 政變 — 塔羅人機對戰",
+  "short_name": "Coup 政變",
+  "description": "古典塔羅牌風格的 Coup 政變,手機可玩,人類 vs AI 對戰。",
+  "lang": "zh-Hant",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0712",
+  "theme_color": "#0a0712",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
