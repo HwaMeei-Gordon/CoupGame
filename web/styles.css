@@ -210,6 +210,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   background: #333; user-select: none;
 }
 .card-sym { font-size: 40px; line-height: 1; margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.card-sym svg { width: 1.05em; height: 1.05em; display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
 .card-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; }
 .card-en { font-size: 9.5px; letter-spacing: 1.5px; opacity: .8; margin-top: 1px; }
 .card-arcana { font-size: 10px; color: rgba(243,233,200,.78); margin-top: 5px; text-align: center; padding: 0 4px; }
