@@ -231,19 +231,7 @@
       }
       const a = ARCANA[ch];
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
-        <svg class="card-art" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice"
-             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3.5" y="3.5" width="93" height="143" rx="7" stroke-width="1.5" opacity=".85"/>
-          <rect x="6.5" y="6.5" width="87" height="137" rx="5" stroke-width=".6" opacity=".4"/>
-          <g opacity=".7" stroke-width="1">
-            <path d="M12 6.5q-5.5 0-5.5 5.5M88 6.5q5.5 0 5.5 5.5M12 143.5q-5.5 0-5.5-5.5M88 143.5q5.5 0 5.5-5.5"/>
-            <path d="M42 6.5q8 5 16 0M42 143.5q8-5 16 0" opacity=".75"/>
-          </g>
-          <g fill="currentColor" stroke="none" opacity=".75"><circle cx="50" cy="6.5" r="1.4"/><circle cx="50" cy="143.5" r="1.4"/><circle cx="6.5" cy="50" r="1.1"/><circle cx="93.5" cy="50" r="1.1"/></g>
-          ${CARDART[ch] || ''}
-        </svg>
-        <div class="card-corner tl">${a.roman}</div>
-        <div class="card-banner">${a.zh}<small>${a.en}</small></div>
+        <img class="card-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
         ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
@@ -319,11 +307,11 @@
     },
 
     // ---------- 提示工具 ----------
-    prompt(title, buttons) {
+    prompt(title, buttons, btnsClass) {
       return new Promise(resolve => {
         const el = this.els.prompt;
         el.innerHTML = `<div class="prompt-title">${title}</div>` +
-          `<div class="prompt-btns">` +
+          `<div class="prompt-btns ${btnsClass || ''}">` +
           buttons.map((b, i) =>
             `<button class="pbtn ${b.cls || ''}" data-i="${i}" ${b.disabled ? 'disabled' : ''}>${b.label}</button>`
           ).join('') + `</div>`;
@@ -359,7 +347,7 @@
         value: d.type, disabled: !d.ok, cls: 'actbtn' + (d.role ? ' r-' + d.role : '')
       }));
       const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
-      const type = await this.prompt(title, buttons);
+      const type = await this.prompt(title, buttons, 'grid4');
 
       if (Coup.ACTIONS[type].targeted) {
         const tbtns = opps.map(o => ({
@@ -455,10 +443,7 @@
             `<div class="exchange">` + pool.map((c, i) => {
               const a = ARCANA[c];
               return `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
-                `<svg class="card-art" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
-                `<rect x="4" y="4" width="92" height="142" rx="6" stroke-width="1.6" opacity=".8"/>${CARDART[c] || ''}</svg>` +
-                `<div class="card-corner tl">${a.roman}</div>` +
-                `<div class="card-banner">${a.zh}<small>${a.en}</small></div></button>`;
+                `<img class="card-img" src="cards/${c}.webp" alt="${a.zh} ${a.en}" draggable="false" /></button>`;
             }).join('') + `</div>` +
             `<div class="prompt-btns"><button class="pbtn act confirm" ${sel.size === keep ? '' : 'disabled'}>確定保留</button></div>`;
           el.querySelectorAll('.card').forEach(b => {
