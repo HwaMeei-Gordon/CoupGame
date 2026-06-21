@@ -309,6 +309,13 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .pbtn.danger { background: linear-gradient(180deg, #c0455a, #8d2236); color: #fff; border: none; }
 .pbtn.shield { background: linear-gradient(180deg, #3a9b7b, #237055); color: #fff; border: none; }
 .pbtn.target { background: linear-gradient(180deg, #2f2550, #221a3e); }
+/* 質疑＝碎裂占卜水晶球；默許＝煙霧消散 */
+.pbtn.crystal {
+  background: radial-gradient(circle at 50% 32%, rgba(255,255,255,.4), rgba(192,69,90,0) 55%), linear-gradient(180deg, #c0455a, #7d1f30);
+  border: 1px solid rgba(255,255,255,.45); color: #fff;
+  box-shadow: 0 0 16px rgba(192,69,90,.55), inset 0 0 14px rgba(255,255,255,.22);
+}
+.pbtn.smoke { background: linear-gradient(180deg, rgba(64,56,86,.45), rgba(40,32,60,.35)); color: var(--muted); border-color: rgba(130,120,160,.3); }
 .pbtn.wide, .pbtn.cancel { grid-column: 1 / -1; }
 .pbtn.cancel { background: transparent; color: var(--muted); border-color: transparent; min-height: 40px; }
 
@@ -1571,8 +1578,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const title = `${claimant.name} 宣稱【${ZH[character]} ${character}】。是否質疑？` +
         `<br><small>檯面已公開 ${visible} 張此角色（共 3 張）</small>`;
       return this.prompt(title, [
-        { label: '❓ 質疑！', value: true, cls: 'danger' },
-        { label: '放過', value: false, cls: '' }
+        { label: '🔮 質疑！', value: true, cls: 'danger crystal' },
+        { label: '🌫 默許', value: false, cls: 'smoke' }
       ]);
     },
 

@@ -351,8 +351,8 @@
       const title = `${claimant.name} 宣稱【${ZH[character]} ${character}】。是否質疑？` +
         `<br><small>檯面已公開 ${visible} 張此角色（共 3 張）</small>`;
       return this.prompt(title, [
-        { label: '❓ 質疑！', value: true, cls: 'danger' },
-        { label: '放過', value: false, cls: '' }
+        { label: '🔮 質疑！', value: true, cls: 'danger crystal' },
+        { label: '🌫 默許', value: false, cls: 'smoke' }
       ]);
     },
 
