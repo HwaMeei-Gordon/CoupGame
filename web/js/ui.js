@@ -398,9 +398,12 @@
 
       if (action.type === 'foreign_aid') {
         const hasDuke = me.cards.includes('Duke');
+        const threat = actor.coins + 2 >= 7; // 拿了外援就湊得出政變的 7 金幣
+        // 低風險(沒公爵且對方不構成威脅)直接放行,減少打擾、讓流程更順
+        if (!hasDuke && !threat) return { block: false };
         const title = hasDuke
           ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
-          : `${actor.name} 想拿外援。你沒有公爵——要<b>詐唬</b>宣稱【公爵 Duke】阻擋嗎？` +
+          : `⚠️ ${actor.name} 拿外援後將湊滿政變金幣。要<b>詐唬</b>宣稱【公爵 Duke】阻擋嗎？` +
             `<br><small>若被質疑拆穿，你將失去一張影響力</small>`;
         const v = await this.prompt(title, [
           { label: hasDuke ? '🛡️ 用公爵阻擋' : '🎭 詐唬公爵阻擋', value: true, cls: 'shield' },
