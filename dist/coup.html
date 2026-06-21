@@ -1189,39 +1189,46 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
   const CARDART = {
-    Duke: `<g opacity=".4" stroke-width=".7"><path d="M50 30V18"/><path d="M50 30L38 20"/><path d="M50 30L62 20"/><path d="M50 30L30 26"/><path d="M50 30L70 26"/></g>
-<path d="M24 64V118M76 64V118"/><circle cx="24" cy="60" r="4.5"/><circle cx="76" cy="60" r="4.5"/>
-<path d="M37 44l5 7 8-9 8 9 5-7-2 16H39z"/>
-<circle cx="50" cy="66" r="7"/>
-<path d="M37 116Q40 84 50 80 60 84 63 116Z"/><path d="M50 80V112" opacity=".35"/>
-<path d="M66 76V106"/><circle cx="66" cy="72.5" r="3"/>
-<path d="M20 118H80"/>`,
-    Assassin: `<path d="M68 26a13 13 0 1 0 5 18 10 10 0 0 1-5-18z" opacity=".35"/>
-<path d="M32 28V120"/><path d="M32 34q28-3 33 17-20-13-33-5"/>
-<circle cx="54" cy="84" r="14"/>
-<circle cx="49" cy="82" r="2.3" fill="currentColor" stroke="none"/><circle cx="59" cy="82" r="2.3" fill="currentColor" stroke="none"/>
-<path d="M52 88l2 4 2-4"/>
-<path d="M47 95h14M48 99h12M49 102v3M54 102v3M59 102v3" opacity=".8"/>
-<path d="M40 120h32" opacity=".5"/>`,
-    Captain: `<g opacity=".5"><path d="M16 116q9-7 18 0t18 0 18 0 18 0"/><path d="M16 123q9-7 18 0t18 0 18 0 18 0" opacity=".6"/></g>
-<path d="M30 102h40l-7 13H37z"/>
-<path d="M50 102V36"/>
-<path d="M50 44q20 7 17 33l-17-7z"/><path d="M50 44q-20 7-17 33l17-7z"/>
-<path d="M50 36h13l-3.5 4 3.5 4h-13" fill="currentColor" stroke="none" opacity=".85"/>`,
-    Ambassador: `<path d="M24 50V120M76 50V120"/>
-<rect x="18.5" y="45" width="11" height="6"/><rect x="70.5" y="45" width="11" height="6"/>
-<path d="M44 40a6 6 0 0 0 12 0" opacity=".5"/><circle cx="50" cy="38" r="2.6"/>
-<circle cx="50" cy="58" r="6"/>
-<path d="M38 118Q40 70 50 62 60 70 62 118Z"/><path d="M40 84h20" opacity=".5"/>
-<path d="M46 92h8v12h-8z" opacity=".8"/>
-<g fill="currentColor" stroke="none" opacity=".5"><circle cx="33" cy="34" r="1"/><circle cx="67" cy="34" r="1"/></g>`,
-    Contessa: `<g opacity=".4" stroke-width=".7"><path d="M50 26V16"/><path d="M40 28L36 19"/><path d="M60 28L64 19"/></g>
-<path d="M38 36l4 5 8-7 8 7 4-5-2 12H40z"/>
-<circle cx="50" cy="56" r="7"/>
-<path d="M34 118Q39 76 50 70 61 76 66 118Z"/>
-<path d="M50 88c-4-5-11-1-11 4 0 5 11 10 11 10s11-5 11-10c0-5-7-9-11-4z" opacity=".85"/>
-<path d="M28 116q3-8 0-14M28 116q-3-8 0-14" opacity=".7"/><path d="M72 116q3-8 0-14M72 116q-3-8 0-14" opacity=".7"/>
-<path d="M22 118h56"/>`
+    Duke: `<circle cx="50" cy="48" r="26" opacity=".16" stroke-width="1"/>
+<g opacity=".32" stroke-width=".6"><path d="M50 16V8"/><path d="M34 20l-4-7"/><path d="M66 20l4-7"/><path d="M24 30l-7-4"/><path d="M76 30l7-4"/></g>
+<path d="M22 62V120M78 62V120"/><path d="M22 62q6-6 12 0M78 62q-6-6-12 0"/>
+<g stroke-width="1"><circle cx="22" cy="58" r="5"/><circle cx="78" cy="58" r="5"/><path d="M19 56l-4-3M81 56l4-3"/></g>
+<path d="M38 44l5 7 7-9 7 9 5-7-2 15H40z"/><circle cx="50" cy="40" r="1.4" fill="currentColor" stroke="none"/>
+<circle cx="50" cy="66" r="7"/><path d="M47 66h6" opacity=".5"/>
+<path d="M37 116Q40 84 50 80 60 84 63 116Z"/><path d="M50 80V114M44 90V114M56 90V114" opacity=".33"/>
+<path d="M67 74V108"/><circle cx="67" cy="71" r="3"/>
+<path d="M18 120H82M30 120v6M50 120v6M70 120v6" opacity=".45"/>`,
+    Assassin: `<path d="M70 24a12 12 0 1 0 5 17 9 9 0 0 1-5-17z" opacity=".38"/>
+<g fill="currentColor" stroke="none" opacity=".5"><circle cx="26" cy="26" r="1"/><circle cx="40" cy="20" r=".8"/><circle cx="80" cy="60" r="1"/></g>
+<path d="M30 26V122"/><path d="M30 32q30-3 35 18-22-14-35-6"/>
+<circle cx="52" cy="82" r="14"/><path d="M52 88l-2.5 5h5z"/>
+<circle cx="46.5" cy="80" r="3" fill="currentColor" stroke="none"/><circle cx="57.5" cy="80" r="3" fill="currentColor" stroke="none"/>
+<path d="M45 95h14M47 95v6M50 95v6M54 95v6M57 95v6" opacity=".85"/>
+<path d="M40 96q-3 3-3 8M64 96q3 3 3 8" opacity=".45"/>
+<path d="M34 122h36" opacity=".5"/><path d="M24 118v8M22 121h4" opacity=".55"/><path d="M78 119v7M76 122h4" opacity=".55"/>`,
+    Captain: `<path d="M30 40a20 20 0 0 1 40 0" opacity=".18"/>
+<g opacity=".3" stroke-width=".6"><path d="M50 14V8"/><path d="M34 18l-3-6"/><path d="M66 18l3-6"/></g>
+<g opacity=".55"><path d="M14 114q9-7 18 0t18 0 18 0 18 0"/><path d="M14 121q9-7 18 0t18 0 18 0 18 0" opacity=".7"/><path d="M14 128q9-6 18 0t18 0 18 0 18 0" opacity=".45"/></g>
+<path d="M28 100h44l-8 12H36z"/><path d="M32 106h36" opacity=".4"/>
+<path d="M50 100V34"/><path d="M40 48h20" opacity=".7"/>
+<path d="M50 42q20 8 17 34l-17-8z"/><path d="M50 42q-20 8-17 34l17-8z"/><path d="M50 50v24" opacity=".3"/>
+<path d="M50 34h12l-3 4 3 4H50" fill="currentColor" stroke="none" opacity=".85"/>`,
+    Ambassador: `<g fill="currentColor" stroke="none" opacity=".16"><circle cx="38" cy="30" r="1.4"/><circle cx="62" cy="30" r="1.4"/><circle cx="50" cy="24" r="1.4"/><circle cx="44" cy="40" r="1.4"/><circle cx="56" cy="40" r="1.4"/></g>
+<path d="M22 52V118M78 52V118"/><rect x="16.5" y="47" width="11" height="6"/><rect x="72.5" y="47" width="11" height="6"/><path d="M19 118h6M75 118h6"/>
+<path d="M44 40a6 6 0 0 0 12 0" opacity=".55"/><circle cx="50" cy="37" r="2.4"/>
+<circle cx="50" cy="58" r="6"/><path d="M38 118Q40 70 50 62 60 70 62 118Z"/>
+<path d="M41 80q9 4 18 0" opacity=".5"/><path d="M44 96q6 3 12 0" opacity=".4"/>
+<path d="M45 90h10v3h-10zM47 93v8h6v-8" opacity=".75"/>
+<path d="M44 116a6 6 0 0 0 12 0" opacity=".5"/>`,
+    Contessa: `<g fill="currentColor" stroke="none" opacity=".4"><circle cx="50" cy="22" r="1.2"/><circle cx="40" cy="26" r="1"/><circle cx="60" cy="26" r="1"/><circle cx="33" cy="34" r=".9"/><circle cx="67" cy="34" r=".9"/></g>
+<path d="M38 38l4 5 8-7 8 7 4-5-2 11H40z"/>
+<circle cx="50" cy="56" r="7"/><path d="M44 54q6 4 12 0" opacity=".4"/>
+<path d="M33 118Q39 76 50 70 61 76 67 118Z"/><path d="M50 70V116M42 88V116M58 88V116" opacity=".28"/>
+<path d="M50 86c-4-5-11-1-11 4 0 5 11 10 11 10s11-5 11-10c0-5-7-9-11-4z"/>
+<circle cx="50" cy="92" r="2.4"/><path d="M50 94.4v4M48.4 97h3.2" opacity=".7"/>
+<path d="M26 118q3-10 0-18M26 104l-3-3M26 104l3-3M26 110l-3-3M26 110l3-3" opacity=".55"/>
+<path d="M74 118q-3-10 0-18M74 104l3-3M74 104l-3-3M74 110l3-3M74 110l-3-3" opacity=".55"/>
+<path d="M22 118h56" opacity=".45"/>`
   };
 
   const UI = {
