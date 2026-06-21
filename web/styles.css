@@ -14,11 +14,11 @@
   --panel2: rgba(40, 28, 66, 0.9);
   --parch: #efe2bf;
 
-  --duke: #6d2f86;
-  --assassin: #3a3a44;
-  --captain: #1f5f8b;
-  --ambassador: #3a7d44;
-  --contessa: #a83246;
+  --duke: #6a2f9a;        /* 皇家紫 */
+  --assassin: #7a1f2b;    /* 曜石黑 + 鮮血紅 */
+  --captain: #2f6f9e;     /* 鋼鐵藍 */
+  --ambassador: #1f8a5c;  /* 翡翠綠 */
+  --contessa: #b65a72;    /* 玫瑰 */
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -228,11 +228,11 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .card-banner small { display: block; font-family: serif; font-size: 8px; font-weight: 400; letter-spacing: 1.6px; opacity: .75; }
 .card-corner { position: absolute; z-index: 1; font-family: "Cinzel", serif; font-size: 10px; color: rgba(244,235,208,.9); letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
 .card-corner.tl { top: 5px; left: 8px; }
-.card.Duke       { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #2a1233, var(--duke)); }
-.card.Assassin   { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.16), transparent 64%), linear-gradient(165deg, #0e0e12, var(--assassin)); }
-.card.Captain    { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #0c2438, var(--captain)); }
-.card.Ambassador { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #11301a, var(--ambassador)); }
-.card.Contessa   { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #3a0e18, var(--contessa)); }
+.card.Duke       { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.2), transparent 64%), linear-gradient(165deg, #25103a, var(--duke)); }
+.card.Assassin   { background: radial-gradient(circle at 50% 42%, rgba(176,30,42,.32), transparent 60%), linear-gradient(165deg, #0a0a0d, var(--assassin)); }
+.card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(214,232,247,.2), transparent 64%), linear-gradient(165deg, #0c2a40, var(--captain)); }
+.card.Ambassador { background: radial-gradient(circle at 50% 38%, rgba(214,247,226,.2), transparent 64%), linear-gradient(165deg, #0e3322, var(--ambassador)); }
+.card.Contessa   { background: radial-gradient(circle at 50% 36%, rgba(255,242,232,.34), transparent 62%), linear-gradient(165deg, #7a3a52, var(--contessa)); }
 .card.lost { opacity: .5; filter: grayscale(.55); transform: rotate(-3deg); }
 .card.back {
   background: repeating-radial-gradient(circle at 50% 50%, transparent 0 7px, rgba(201,162,39,.10) 7px 8px), radial-gradient(circle at 50% 35%, #2b2350, #130f2b);
