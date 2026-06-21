@@ -168,6 +168,23 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   animation: phantomIn 1.7s ease-out forwards;
 }
 .phantom .card { width: 108px; height: 162px; }
+/* 命運的翻牌：3D 翻轉開牌 + 專屬色爆發 */
+.reveal { position: absolute; top: 50%; left: 50%; z-index: 3; pointer-events: none; transform: translate(-50%, -50%); perspective: 700px; }
+.reveal .card { width: 116px; height: 174px; transform-origin: center; animation: revealFlip 1.9s ease-out forwards; box-shadow: 0 0 26px rgba(232,207,114,.5), 0 8px 22px rgba(0,0,0,.6); }
+@keyframes revealFlip {
+  0%   { opacity: 0; transform: rotateY(92deg) scale(.82); }
+  20%  { opacity: 1; transform: rotateY(0deg) scale(1.1); }
+  34%  { transform: rotateY(0deg) scale(1); }
+  78%  { opacity: 1; }
+  100% { opacity: 0; transform: rotateY(0deg) scale(1.05); }
+}
+.reveal-burst { position: absolute; top: 50%; left: 50%; width: 210px; height: 210px; margin: -105px 0 0 -105px; border-radius: 50%; animation: revealBurst 1.25s ease-out forwards; }
+@keyframes revealBurst { 0% { opacity: 0; transform: scale(.3); } 25% { opacity: .9; } 100% { opacity: 0; transform: scale(1.7); } }
+.reveal.Duke .reveal-burst       { background: radial-gradient(circle, rgba(176,110,232,.6), transparent 62%); }
+.reveal.Assassin .reveal-burst   { background: radial-gradient(circle, rgba(224,60,72,.6), transparent 62%); }
+.reveal.Captain .reveal-burst    { background: radial-gradient(circle, rgba(90,170,232,.6), transparent 62%); }
+.reveal.Ambassador .reveal-burst { background: radial-gradient(circle, rgba(80,202,132,.6), transparent 62%); }
+.reveal.Contessa .reveal-burst   { background: radial-gradient(circle, rgba(232,124,152,.6), transparent 62%); }
 @keyframes phantomIn {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(.7) rotateY(45deg); }
   18%  { opacity: .96; transform: translate(-50%, -50%) scale(1) rotateY(0deg); }

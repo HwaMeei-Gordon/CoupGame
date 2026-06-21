@@ -182,6 +182,21 @@
       this.fb.fromLog(msg);
       this.fx.fromLog(msg);
       this.showPhantom(msg);
+      this.showReveal(msg);
+    },
+
+    // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
+    showReveal(msg) {
+      if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
+      const m = msg.match(/(Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const stage = document.getElementById('stage');
+      if (!m || !stage || typeof stage.appendChild !== 'function') return;
+      const wrap = document.createElement('div');
+      if (!wrap || !('className' in wrap)) return;
+      wrap.className = 'reveal ' + m[1];
+      wrap.innerHTML = '<div class="reveal-burst"></div>' + this.cardEl(m[1], true, false);
+      stage.appendChild(wrap);
+      setTimeout(() => { try { wrap.remove(); } catch (e) {} }, 1900);
     },
 
     // 宣告/反制時,中央桌面浮現該角色的塔羅牌幻影
