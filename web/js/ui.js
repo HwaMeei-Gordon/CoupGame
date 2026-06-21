@@ -296,14 +296,30 @@
         : '';
       this.els.overlay.innerHTML =
         `<div class="win-box ${isMe ? 'win' : 'lose'}">
+          <button class="win-close" aria-label="關閉以回看過程">✕</button>
           <div class="win-title">${isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了'}</div>
           <div class="win-sub">勝者：${w ? w.name : '無'}</div>
           ${hand}
           <button id="againBtn" class="pbtn act">再來一局</button>
+          <button class="win-review" aria-label="回看過程">🔍 回看這局過程</button>
         </div>`;
       this.els.overlay.classList.add('show');
+      const start = () => root.CoupMain.start();
       const btn = document.getElementById('againBtn');
-      if (btn) btn.onclick = () => root.CoupMain.start();
+      if (btn) btn.onclick = start;
+      // 關閉遮罩以回看牌局/日誌;底部留一顆持久的「再來一局」
+      const dismiss = () => {
+        this.els.overlay.classList.remove('show');
+        this.els.overlay.innerHTML = '';
+        this.els.prompt.innerHTML =
+          `<div class="prompt-btns"><button class="pbtn act wide" id="restartBtn">🔄 再來一局</button></div>`;
+        const r = document.getElementById('restartBtn');
+        if (r) r.onclick = start;
+      };
+      const closeBtn = this.els.overlay.querySelector('.win-close');
+      const reviewBtn = this.els.overlay.querySelector('.win-review');
+      if (closeBtn) closeBtn.onclick = dismiss;
+      if (reviewBtn) reviewBtn.onclick = dismiss;
     },
 
     // ---------- 提示工具 ----------
