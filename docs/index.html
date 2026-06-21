@@ -371,10 +371,11 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .pbtn.actbtn.r-Assassin { border-left-color: #cfcfd6; }
 .pbtn.actbtn:disabled .b-ic, .pbtn.actbtn:disabled .b-tx small { color: inherit; }
 
-.exchange { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
-.exchange .card { cursor: pointer; padding: 0; width: 78px; height: 116px; }
-.exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-5px); }
-.exchange .card-sym { font-size: 32px; } .exchange .card-name { font-size: 15px; }
+.exchange { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; perspective: 800px; }
+.exchange .card { cursor: pointer; padding: 0; width: 84px; height: 126px; transition: transform .16s ease, box-shadow .16s ease; }
+.exchange .card:hover { transform: translateY(-7px) rotateX(6deg); box-shadow: 0 0 22px rgba(232,207,114,.5), 0 10px 20px rgba(0,0,0,.55); }
+.exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-9px) scale(1.04); box-shadow: 0 0 26px rgba(232,207,114,.7); }
+.exchange .card-banner { font-size: 13px; }
 
 /* ---------- 全螢幕電影級特效層 ---------- */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
