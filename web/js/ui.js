@@ -231,7 +231,7 @@
       const isMe = w && w.isHuman;
       this.fb[isMe ? 'win' : 'lose']();
       const hand = (w && w.cards && w.cards.length)
-        ? `<div class="win-hand">勝者手牌：${w.cards.map(c => `【${ZH[c]} ${c}】`).join(' ')}</div>`
+        ? `<div class="win-sub">勝者手牌</div><div class="win-cards">${w.cards.map(c => this.cardEl(c, true, false)).join('')}</div>`
         : '';
       this.els.overlay.innerHTML =
         `<div class="win-box ${isMe ? 'win' : 'lose'}">
