@@ -57,6 +57,7 @@ header h1 {
   text-shadow: 0 2px 0 #3a2a12, 0 0 18px rgba(201,162,39,.35);
 }
 header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margin-left: 6px; }
+.hbtns { display: flex; gap: 8px; align-items: center; }
 .icon-btn {
   background: var(--panel2); color: var(--gold-lt);
   border: 1px solid var(--line); border-radius: 10px;
