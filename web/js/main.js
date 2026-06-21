@@ -15,6 +15,16 @@
     root.Coup.UI.init();
     const setup = document.getElementById('setup');
     document.getElementById('settingsToggle').onclick = () => setup.classList.toggle('open');
+
+    // 音效 / 觸覺：首次互動時解鎖 AudioContext;標題列可一鍵靜音
+    const fb = root.Coup.UI.fb;
+    document.addEventListener('pointerdown', () => fb.ensure(), { once: true });
+    const mute = document.getElementById('muteToggle');
+    mute.onclick = () => {
+      fb.muted = !fb.muted;
+      mute.textContent = fb.muted ? '🔇' : '🔊';
+      if (!fb.muted) { fb.ensure(); fb.tone(660, 0.1, 'sine', 0.05); }
+    };
     document.getElementById('newGame').onclick = () => {
       Main.start();
       setup.classList.remove('open'); // 開新局後收起設定抽屜

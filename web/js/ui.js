@@ -21,6 +21,45 @@
     speed: 800,
     currentTurn: -1,
 
+    // 回饋層：Web Audio 合成音效（無需音檔）+ 手機觸覺震動
+    fb: {
+      ctx: null, muted: false,
+      ensure() {
+        if (typeof window === 'undefined') return null;
+        try {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          if (!this.ctx) this.ctx = new AC();
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+        } catch (e) { return null; }
+        return this.ctx;
+      },
+      tone(freq, dur, type, gain) {
+        if (this.muted) return;
+        const c = this.ensure(); if (!c) return;
+        try {
+          const o = c.createOscillator(), g = c.createGain();
+          o.type = type || 'sine'; o.frequency.value = freq;
+          o.connect(g); g.connect(c.destination);
+          const t = c.currentTime;
+          g.gain.setValueAtTime(0.0001, t);
+          g.gain.exponentialRampToValueAtTime(gain || 0.05, t + 0.012);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + (dur || 0.15));
+          o.start(t); o.stop(t + (dur || 0.15) + 0.03);
+        } catch (e) { /* 音效失敗不影響遊戲 */ }
+      },
+      buzz(p) { try { if (typeof navigator !== 'undefined' && navigator.vibrate && !this.muted) navigator.vibrate(p); } catch (e) {} },
+      turn()      { this.tone(660, 0.12, 'sine', 0.05); this.buzz(25); },
+      challenge() { this.tone(247, 0.16, 'sawtooth', 0.05); this.buzz(35); },
+      death()     { this.tone(150, 0.28, 'sawtooth', 0.06); this.buzz([25, 35, 55]); },
+      win()  { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'sine', 0.06), i * 110)); this.buzz([20, 40, 20, 40, 90]); },
+      lose() { [392, 294, 196].forEach((f, i) => setTimeout(() => this.tone(f, 0.26, 'sine', 0.05), i * 150)); this.buzz(140); },
+      fromLog(m) {
+        if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) this.death();
+        else if (m.indexOf('❓') >= 0 || m.indexOf('🛡️') >= 0) this.challenge();
+      }
+    },
+
     init() {
       this.els = {
         opponents: document.getElementById('opponents'),
@@ -66,6 +105,7 @@
       div.textContent = msg;
       this.els.log.appendChild(div);
       this.els.log.scrollTop = this.els.log.scrollHeight;
+      this.fb.fromLog(msg);
     },
 
     // ---------- 渲染 ----------
@@ -138,6 +178,7 @@
 
     showWinner(w) {
       const isMe = w && w.isHuman;
+      this.fb[isMe ? 'win' : 'lose']();
       const hand = (w && w.cards && w.cards.length)
         ? `<div class="win-hand">勝者手牌：${w.cards.map(c => `【${ZH[c]} ${c}】`).join(' ')}</div>`
         : '';
@@ -176,6 +217,7 @@
     // ========== Agent 介面（人類 = players[0]）==========
 
     async chooseAction(game) {
+      this.fb.turn(); // 輪到你：提示音 + 震動
       const me = game.players[0];
       const opps = game.players.filter(p => p.alive && p.id !== 0);
       const forced = me.coins >= 10;
