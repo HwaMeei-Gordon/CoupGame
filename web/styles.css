@@ -152,7 +152,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 /* ---------- 牌桌動態（狀態 + 日誌動態） ---------- */
 #stage {
   position: relative;
-  flex: 1 1 auto; min-height: 40dvh;   /* 歷程區更大且穩定 */
+  flex: 1 1 auto; min-height: 16dvh;   /* 平時佔滿剩餘空間;選行動時讓位給選單,避免被切 */
   display: flex; flex-direction: column;
   background:
     radial-gradient(80% 60% at 50% 0%, rgba(166,132,31,.1), rgba(166,132,31,0) 70%),
@@ -395,9 +395,21 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 }
 #overlay.show { display: flex; }
 .win-box {
+  position: relative;
   background: linear-gradient(180deg, var(--panel2), var(--panel));
   border: 1px solid var(--gold); border-radius: 18px;
   padding: 30px 28px; text-align: center; max-width: 92vw; width: 320px;
+}
+.win-close {
+  position: absolute; top: 8px; right: 10px;
+  background: transparent; border: none; color: var(--muted);
+  font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px;
+}
+.win-close:active { transform: scale(.9); }
+.win-review {
+  display: block; width: 100%; margin-top: 10px;
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 10px; padding: 9px; font-size: 13px; font-family: inherit; cursor: pointer;
 }
 .win-box.win { box-shadow: 0 0 40px rgba(201,162,39,.4); }
 .win-box.lose { border-color: var(--contessa); }
