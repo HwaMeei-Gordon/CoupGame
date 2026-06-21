@@ -24,6 +24,8 @@
       this.bluff = p.bluff;
       this.aggr = p.challenge;
       this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
+      // 吹牛人設：固定偏好一個假身分,讓謊言前後一致、較不易被識破
+      this.persona = Math.random() < 0.5 ? 'Duke' : 'Captain';
     }
 
     // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
@@ -145,13 +147,26 @@
       return scored.slice(0, keepCount).map(s => s.c);
     }
 
+    // 選擇攻擊目標：威脅加權 + 隨機,對「所有人」都有敵意(會打其他 AI,而非只盯玩家)
     pickTarget(game) {
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
       if (opps.length === 0) return null;
-      const weak = opps.filter(o => o.cards.length === 1);
-      const pool = weak.length ? weak : opps;
-      return pool.slice().sort((a, b) =>
-        (b.coins + b.cards.length * 3) - (a.coins + a.cards.length * 3))[0];
+      const scored = opps.map(o => {
+        let w = o.coins * 0.5 + o.cards.length * 3 + 1;
+        if (o.cards.length === 1) w += 7;        // 趁機收人頭
+        w += Math.random() * 6;                  // 分散火力,讓 AI 互相攻擊
+        return { o, w };
+      });
+      scored.sort((a, b) => b.w - a.w);
+      return scored[0].o;
+    }
+
+    // 偷竊目標：有錢者優先,但帶隨機(不會每次都偷同一人/玩家)
+    stealTarget(opps) {
+      const rich = opps.filter(o => o.coins >= 1);
+      if (!rich.length) return null;
+      return rich.map(o => ({ o, w: o.coins + Math.random() * 4 }))
+        .sort((a, b) => b.w - a.w)[0].o;
     }
 
     chooseAction(game) {
@@ -160,9 +175,11 @@
       const target = this.pickTarget(game);
       if (!target) return { type: 'income' };
 
-      // 強制 / 划算政變
+      // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
-      if (me.coins >= 7) return { type: 'coup', targetId: target.id };
+      // 划算政變:能收殘血、金幣充裕、或多半時候都發動(積極搶第一)
+      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < 0.85))
+        return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
       if (me.cards.includes('Assassin') && me.coins >= 3) {
@@ -170,8 +187,8 @@
       }
       // 真 Captain 偷竊
       if (me.cards.includes('Captain')) {
-        const rich = opps.filter(o => o.coins >= 2).sort((a, b) => b.coins - a.coins)[0];
-        if (rich && Math.random() < 0.85) return { type: 'steal', targetId: rich.id };
+        const t = this.stealTarget(opps);
+        if (t && Math.random() < 0.85) return { type: 'steal', targetId: t.id };
       }
       // 真 Duke 課稅
       if (me.cards.includes('Duke')) return { type: 'tax' };
@@ -181,18 +198,20 @@
         if (weakHand && Math.random() < 0.45) return { type: 'exchange' };
       }
 
-      // === 吹牛 / 累積 ===
+      // === 吹牛 / 累積（依 persona 維持一致,謊言較不易被識破） ===
       const r = Math.random();
       // 吹牛暗殺（有錢、夠兇）
-      if (me.coins >= 3 && r < 0.12 * this.bluff) {
+      if (me.coins >= 3 && r < 0.10 * this.bluff) {
         return { type: 'assassinate', targetId: target.id };
       }
+      const dukeBias = this.persona === 'Duke' ? 0.20 : 0;
+      const capBias = this.persona === 'Captain' ? 0.20 : 0;
       // 吹牛課稅（宣稱 Duke）
-      if (r < 0.30 + 0.25 * this.bluff) return { type: 'tax' };
+      if (r < 0.28 + dukeBias + 0.22 * this.bluff) return { type: 'tax' };
       // 吹牛偷竊（宣稱 Captain）
-      if (r < 0.45 + 0.25 * this.bluff) {
-        const rich = opps.filter(o => o.coins >= 2).sort((a, b) => b.coins - a.coins)[0];
-        if (rich) return { type: 'steal', targetId: rich.id };
+      if (r < 0.42 + capBias + 0.22 * this.bluff) {
+        const t = this.stealTarget(opps);
+        if (t) return { type: 'steal', targetId: t.id };
       }
       // 保守：外援 / 收入
       if (Math.random() < 0.5) return { type: 'foreign_aid' };

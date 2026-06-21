@@ -138,10 +138,11 @@
     // 誠實者被質疑後：攤示真牌 → 洗回牌庫 → 抽新牌替換
     swapCard(player, character) {
       const i = player.cards.indexOf(character);
-      if (i < 0) return;
+      if (i < 0) return null;
       this.deck.push(player.cards[i]);
       shuffle(this.deck);
       player.cards[i] = this.deck.pop();
+      return player.cards[i];
     }
 
     // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
@@ -173,8 +174,9 @@
         if (truthful) {
           this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
-          this.swapCard(claimant, character); // 換新牌，身分重新隱藏
-          this.log(`🔀 ${claimant.name} 將此牌洗回命運之輪，另抽一張隱於暗處（並未死亡）`);
+          const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
+          this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
+          if (claimant.isHuman && fresh) this.log(`🎴 你抽到的新身分牌是【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
