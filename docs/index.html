@@ -129,9 +129,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   transition: box-shadow .2s, border-color .2s, transform .2s;
 }
 .opp.current {
-  border-color: var(--gold-lt);
-  box-shadow: 0 0 0 2px rgba(232,207,114,.4), 0 0 16px rgba(201,162,39,.35);
-  transform: translateY(-2px);
+  border-color: var(--gold-lt); transform: translateY(-2px);
+  animation: turnPulse 1.9s ease-in-out infinite;
 }
 .opp.dead { opacity: .42; filter: grayscale(.7); }
 .opp-head { display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
@@ -164,6 +163,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 
 /* ---------- 牌桌動態（狀態 + 日誌動態） ---------- */
 #stage {
+  position: relative;
   flex: 1 1 auto; min-height: 0;
   display: flex; flex-direction: column;
   background:
@@ -172,6 +172,19 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   border: 1px solid var(--line); border-radius: 14px;
   box-shadow: inset 0 0 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(201,162,39,.14);
   margin: 0 2px; overflow: hidden;
+}
+/* 牌桌中心徽記水印 */
+#stage::before {
+  content: "❖"; position: absolute; inset: 0; z-index: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 128px; color: rgba(201,162,39,.055); pointer-events: none;
+}
+#statusbar, #log { position: relative; z-index: 1; }
+
+/* 目前回合：呼吸光暈 */
+@keyframes turnPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(232,207,114,.32), 0 0 12px rgba(201,162,39,.22); }
+  50%      { box-shadow: 0 0 0 2px rgba(232,207,114,.6),  0 0 24px rgba(201,162,39,.5); }
 }
 #statusbar {
   flex: 0 0 auto;
@@ -199,7 +212,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   border: 1px solid var(--gold); border-radius: 14px; padding: 8px 12px 12px;
   transition: box-shadow .2s, border-color .2s;
 }
-.me-inner.current { box-shadow: 0 0 0 2px rgba(232,207,114,.5), 0 0 22px rgba(201,162,39,.4); }
+.me-inner.current { animation: turnPulse 2.1s ease-in-out infinite; }
 .me-inner.dead { opacity: .5; filter: grayscale(.6); }
 .me-foot { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
 .me-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 16px; color: var(--gold-lt); letter-spacing: 1px; }
