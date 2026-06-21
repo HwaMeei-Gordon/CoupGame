@@ -181,6 +181,22 @@
       this.els.log.scrollTop = this.els.log.scrollHeight;
       this.fb.fromLog(msg);
       this.fx.fromLog(msg);
+      this.showPhantom(msg);
+    },
+
+    // 宣告/反制時,中央桌面浮現該角色的塔羅牌幻影
+    showPhantom(msg) {
+      if (typeof document === 'undefined') return;
+      if (msg.indexOf('披上') < 0 && msg.indexOf('之名') < 0) return;
+      const m = msg.match(/(Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const stage = document.getElementById('stage');
+      if (!m || !stage || typeof stage.appendChild !== 'function') return;
+      const wrap = document.createElement('div');
+      if (!wrap || !('className' in wrap)) return;
+      wrap.className = 'phantom';
+      wrap.innerHTML = this.cardEl(m[1], true, false);
+      stage.appendChild(wrap);
+      setTimeout(() => { try { wrap.remove(); } catch (e) {} }, 1700);
     },
 
     // 依事件類型為日誌上色，方便快速掃讀
