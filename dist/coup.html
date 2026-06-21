@@ -254,6 +254,9 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   box-shadow: 0 -4px 20px rgba(0,0,0,.4); max-height: 48dvh; overflow-y: auto;
 }
 #prompt:empty { display: none; }
+#prompt:not(:empty) { animation: promptIn .26s ease; }
+@keyframes promptIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.prompt-title { animation: none; }
 .prompt-title { font-size: 15px; margin-bottom: 11px; line-height: 1.5; letter-spacing: .3px; }
 .prompt-title small { color: var(--muted); }
 .prompt-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
