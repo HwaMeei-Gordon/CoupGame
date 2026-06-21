@@ -16,13 +16,42 @@
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
   };
 
-  // 每角色一枚手繪風 inline-SVG 徽記（無需外部圖檔，currentColor = 羊皮紙金）
-  const SVG = {
-    Duke: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><path d="M4 8.6l3.3 3.6L12 5l4.7 7.2L20 8.6 18.2 18H5.8z"/><path d="M5.8 18h12.4"/><circle cx="4" cy="8.6" r="1"/><circle cx="20" cy="8.6" r="1"/><circle cx="12" cy="4.7" r="1"/></svg>`,
-    Assassin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l1.9 10.5h-3.8z"/><path d="M7.4 13h9.2"/><path d="M12 13v5.6"/><path d="M9.7 18.6h4.6l-1 3h-2.6z"/></svg>`,
-    Captain: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.1"/><path d="M12 6.6V20.6"/><path d="M7.1 11h9.8"/><path d="M3.9 14.4A8 8 0 0 0 12 20.6 8 8 0 0 0 20.1 14.4"/></svg>`,
-    Ambassador: `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.7 3.1A8.5 8.5 0 1 0 20.9 16 6.8 6.8 0 0 1 15.7 3.1z"/><path d="M6.6 5.3l.7 1.8 1.9.2-1.4 1.3.4 1.9-1.6-1-1.7 1 .5-1.9-1.4-1.3 1.9-.2z"/></svg>`,
-    Contessa: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"><circle cx="12" cy="8.4" r="4.4"/><path d="M9.6 8.4a2.4 2.4 0 0 1 4.8 0"/><path d="M12 6.2v4.4"/><path d="M12 12.8V21"/><path d="M12 15.4c-2.1 0-3.7-1.2-4.2-2.9M12 15.4c2.1 0 3.7-1.2 4.2-2.9"/></svg>`
+  // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
+  // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
+  const CARDART = {
+    Duke: `<g opacity=".4" stroke-width=".7"><path d="M50 30V18"/><path d="M50 30L38 20"/><path d="M50 30L62 20"/><path d="M50 30L30 26"/><path d="M50 30L70 26"/></g>
+<path d="M24 64V118M76 64V118"/><circle cx="24" cy="60" r="4.5"/><circle cx="76" cy="60" r="4.5"/>
+<path d="M37 44l5 7 8-9 8 9 5-7-2 16H39z"/>
+<circle cx="50" cy="66" r="7"/>
+<path d="M37 116Q40 84 50 80 60 84 63 116Z"/><path d="M50 80V112" opacity=".35"/>
+<path d="M66 76V106"/><circle cx="66" cy="72.5" r="3"/>
+<path d="M20 118H80"/>`,
+    Assassin: `<path d="M68 26a13 13 0 1 0 5 18 10 10 0 0 1-5-18z" opacity=".35"/>
+<path d="M32 28V120"/><path d="M32 34q28-3 33 17-20-13-33-5"/>
+<circle cx="54" cy="84" r="14"/>
+<circle cx="49" cy="82" r="2.3" fill="currentColor" stroke="none"/><circle cx="59" cy="82" r="2.3" fill="currentColor" stroke="none"/>
+<path d="M52 88l2 4 2-4"/>
+<path d="M47 95h14M48 99h12M49 102v3M54 102v3M59 102v3" opacity=".8"/>
+<path d="M40 120h32" opacity=".5"/>`,
+    Captain: `<g opacity=".5"><path d="M16 116q9-7 18 0t18 0 18 0 18 0"/><path d="M16 123q9-7 18 0t18 0 18 0 18 0" opacity=".6"/></g>
+<path d="M30 102h40l-7 13H37z"/>
+<path d="M50 102V36"/>
+<path d="M50 44q20 7 17 33l-17-7z"/><path d="M50 44q-20 7-17 33l17-7z"/>
+<path d="M50 36h13l-3.5 4 3.5 4h-13" fill="currentColor" stroke="none" opacity=".85"/>`,
+    Ambassador: `<path d="M24 50V120M76 50V120"/>
+<rect x="18.5" y="45" width="11" height="6"/><rect x="70.5" y="45" width="11" height="6"/>
+<path d="M44 40a6 6 0 0 0 12 0" opacity=".5"/><circle cx="50" cy="38" r="2.6"/>
+<circle cx="50" cy="58" r="6"/>
+<path d="M38 118Q40 70 50 62 60 70 62 118Z"/><path d="M40 84h20" opacity=".5"/>
+<path d="M46 92h8v12h-8z" opacity=".8"/>
+<g fill="currentColor" stroke="none" opacity=".5"><circle cx="33" cy="34" r="1"/><circle cx="67" cy="34" r="1"/></g>`,
+    Contessa: `<g opacity=".4" stroke-width=".7"><path d="M50 26V16"/><path d="M40 28L36 19"/><path d="M60 28L64 19"/></g>
+<path d="M38 36l4 5 8-7 8 7 4-5-2 12H40z"/>
+<circle cx="50" cy="56" r="7"/>
+<path d="M34 118Q39 76 50 70 61 76 66 118Z"/>
+<path d="M50 88c-4-5-11-1-11 4 0 5 11 10 11 10s11-5 11-10c0-5-7-9-11-4z" opacity=".85"/>
+<path d="M28 116q3-8 0-14M28 116q-3-8 0-14" opacity=".7"/><path d="M72 116q3-8 0-14M72 116q-3-8 0-14" opacity=".7"/>
+<path d="M22 118h56"/>`
   };
 
   const UI = {
@@ -134,12 +163,15 @@
       }
       const a = ARCANA[ch];
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
+        <svg class="card-art" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice"
+             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="92" height="142" rx="6" stroke-width="1.6" opacity=".8"/>
+          <rect x="7.5" y="7.5" width="85" height="135" rx="4" stroke-width=".7" opacity=".4"/>
+          <g fill="currentColor" stroke="none" opacity=".7"><circle cx="9" cy="9" r="1.5"/><circle cx="91" cy="9" r="1.5"/><circle cx="9" cy="141" r="1.5"/><circle cx="91" cy="141" r="1.5"/></g>
+          ${CARDART[ch] || ''}
+        </svg>
         <div class="card-corner tl">${a.roman}</div>
-        <div class="card-corner br">${a.roman}</div>
-        <div class="card-sym">${SVG[ch] || a.sym}</div>
-        <div class="card-name">${a.zh}</div>
-        <div class="card-en">${a.en}</div>
-        <div class="card-arcana">${a.arcana}</div>
+        <div class="card-banner">${a.zh}<small>${a.en}</small></div>
       </div>`;
     },
 
@@ -346,11 +378,10 @@
             `<div class="exchange">` + pool.map((c, i) => {
               const a = ARCANA[c];
               return `<button class="card ${c} ${sel.has(i) ? 'picked' : ''}" data-i="${i}">` +
+                `<svg class="card-art" viewBox="0 0 100 150" preserveAspectRatio="xMidYMid slice" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">` +
+                `<rect x="4" y="4" width="92" height="142" rx="6" stroke-width="1.6" opacity=".8"/>${CARDART[c] || ''}</svg>` +
                 `<div class="card-corner tl">${a.roman}</div>` +
-                `<div class="card-sym">${SVG[c] || a.sym}</div>` +
-                `<div class="card-name">${a.zh}</div>` +
-                `<div class="card-en">${a.en}</div>` +
-                `<div class="card-arcana">${a.arcana}</div></button>`;
+                `<div class="card-banner">${a.zh}<small>${a.en}</small></div></button>`;
             }).join('') + `</div>` +
             `<div class="prompt-btns"><button class="pbtn act confirm" ${sel.size === keep ? '' : 'disabled'}>確定保留</button></div>`;
           el.querySelectorAll('.card').forEach(b => {
