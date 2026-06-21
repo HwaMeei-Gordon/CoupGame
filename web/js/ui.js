@@ -180,16 +180,17 @@
       const opps = game.players.filter(p => p.alive && p.id !== 0);
       const forced = me.coins >= 10;
       const defs = [
-        { type: 'income',      label: '收入 +1',            ok: !forced },
-        { type: 'foreign_aid', label: '外援 +2',            ok: !forced },
-        { type: 'tax',         label: '課稅 (公爵) +3',     ok: !forced },
-        { type: 'steal',       label: '偷竊 (隊長)',        ok: !forced && opps.length > 0 },
-        { type: 'exchange',    label: '交換 (大使)',        ok: !forced },
-        { type: 'assassinate', label: '暗殺 (刺客) 付3',    ok: !forced && me.coins >= 3 && opps.length > 0 },
-        { type: 'coup',        label: '政變 付7',           ok: me.coins >= 7 && opps.length > 0 }
+        { type: 'income',      ic: '＋', name: '收入', sub: '+1 金幣',   ok: !forced, role: '' },
+        { type: 'foreign_aid', ic: '🤝', name: '外援', sub: '+2 金幣',   ok: !forced, role: '' },
+        { type: 'tax',         ic: '♔', name: '課稅', sub: '公爵 · +3',  ok: !forced, role: 'Duke' },
+        { type: 'steal',       ic: '⚓', name: '偷竊', sub: '隊長 · 偷2', ok: !forced && opps.length > 0, role: 'Captain' },
+        { type: 'exchange',    ic: '☽', name: '換牌', sub: '大使',       ok: !forced, role: 'Ambassador' },
+        { type: 'assassinate', ic: '⚔', name: '暗殺', sub: '刺客 · 付3', ok: !forced && me.coins >= 3 && opps.length > 0, role: 'Assassin' },
+        { type: 'coup',        ic: '🎯', name: '政變', sub: '付7',        ok: me.coins >= 7 && opps.length > 0, role: '' }
       ];
       const buttons = defs.map(d => ({
-        label: d.label, value: d.type, disabled: !d.ok, cls: 'act'
+        label: `<span class="b-ic">${d.ic}</span><span class="b-tx"><b>${d.name}</b><small>${d.sub}</small></span>`,
+        value: d.type, disabled: !d.ok, cls: 'actbtn' + (d.role ? ' r-' + d.role : '')
       }));
       const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
       const type = await this.prompt(title, buttons);

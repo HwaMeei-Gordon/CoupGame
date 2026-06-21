@@ -66,12 +66,13 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 
 /* ---------- 設定抽屜 ---------- */
 #setup {
-  flex: 0 0 auto; overflow: hidden;
-  max-height: 0; opacity: 0; transition: max-height .28s ease, opacity .2s, margin .2s;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
-  margin: 0 2px; padding: 0 12px;
+  position: absolute; top: 52px; left: 10px; right: 10px; z-index: 40;
+  overflow: hidden; max-height: 0; opacity: 0; pointer-events: none;
+  transition: max-height .28s ease, opacity .2s;
+  background: rgba(20,13,36,.98); border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.6); padding: 0 12px;
 }
-#setup.open { max-height: 70dvh; overflow-y: auto; opacity: 1; margin: 0 2px 8px; padding: 12px; }
+#setup.open { max-height: 80dvh; overflow-y: auto; opacity: 1; pointer-events: auto; padding: 12px; }
 .setup-row { display: flex; gap: 8px; flex-wrap: wrap; }
 #setup label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; flex: 1 1 30%; }
 #setup select {
@@ -238,6 +239,22 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .pbtn.wide, .pbtn.cancel { grid-column: 1 / -1; }
 .pbtn.cancel { background: transparent; color: var(--muted); border-color: transparent; min-height: 40px; }
 
+/* 行動按鈕：圖示 + 名稱 + 子標，左側以角色色標示「宣稱哪個角色」 */
+.pbtn.actbtn {
+  flex-direction: row; justify-content: flex-start; gap: 9px; text-align: left;
+  padding: 9px 11px; background: linear-gradient(180deg, #251b41, #191230);
+  border: 1px solid var(--line); border-left: 3px solid var(--gold-lt);
+}
+.pbtn.actbtn .b-ic { font-size: 19px; width: 22px; text-align: center; color: var(--gold-lt); flex: 0 0 auto; }
+.pbtn.actbtn .b-tx { display: flex; flex-direction: column; line-height: 1.15; }
+.pbtn.actbtn .b-tx b { font-size: 14px; font-weight: 700; }
+.pbtn.actbtn .b-tx small { font-size: 11px; color: var(--muted); font-weight: 400; }
+.pbtn.actbtn.r-Duke { border-left-color: #b266d4; }
+.pbtn.actbtn.r-Captain { border-left-color: #5aa8e0; }
+.pbtn.actbtn.r-Ambassador { border-left-color: #5fc06f; }
+.pbtn.actbtn.r-Assassin { border-left-color: #cfcfd6; }
+.pbtn.actbtn:disabled .b-ic, .pbtn.actbtn:disabled .b-tx small { color: inherit; }
+
 .exchange { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
 .exchange .card { cursor: pointer; padding: 0; width: 78px; height: 116px; }
 .exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-5px); }
@@ -281,4 +298,30 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   .opp { min-width: 76px; }
   .card { width: 74px; height: 112px; }
   .me-cards { gap: 7px; }
+}
+
+/* ---------- 橫向（手機旋轉）：用寬度當牌桌,左日誌 / 右手牌,行動列在下 ---------- */
+@media (orientation: landscape) and (max-height: 600px) {
+  #app {
+    max-width: 100%; height: 100dvh;
+    display: grid; column-gap: 10px;
+    grid-template-columns: 1fr 330px;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head  head"
+      "opp   opp"
+      "stage me"
+      "prompt prompt";
+    padding: 0 10px env(safe-area-inset-bottom, 6px);
+  }
+  header { grid-area: head; padding: 6px 4px 4px; }
+  #opponents { grid-area: opp; }
+  #stage { grid-area: stage; margin: 0; }
+  #me { grid-area: me; padding: 6px 0; align-self: start; }
+  #prompt { grid-area: prompt; margin: 4px 0 6px; max-height: 38dvh; }
+  .me-cards .card { width: 80px; height: 120px; }
+  .card-arcana { display: none; }
+  .opp-cards { min-height: 30px; }
+  .mini { width: 21px; height: 30px; }
+  .prompt-btns { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 }
