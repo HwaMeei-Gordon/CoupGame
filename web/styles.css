@@ -205,27 +205,34 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .me-inf { color: var(--muted); font-size: 13px; margin-left: auto; }
 .me-cards { display: flex; gap: 10px; justify-content: center; }
 
-/* ---------- 塔羅卡牌（你的手牌大牌） ---------- */
+/* ---------- 塔羅卡牌（整張插畫 + 名牌） ---------- */
 .card {
-  width: 92px; height: 138px; border-radius: 10px;
+  width: 96px; height: 144px; border-radius: 11px;
   position: relative; overflow: hidden; flex: 0 0 auto; color: var(--parch);
   border: 2px solid var(--gold);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), inset 0 0 26px rgba(0,0,0,.45), 0 5px 14px rgba(0,0,0,.5);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1), 0 6px 16px rgba(0,0,0,.5);
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
   background: #333; user-select: none;
 }
-.card-sym { font-size: 40px; line-height: 1; margin-bottom: 4px; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-.card-sym svg { width: 1.05em; height: 1.05em; display: block; filter: drop-shadow(0 1px 3px rgba(0,0,0,.55)); }
-.card-name { font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 18px; letter-spacing: 1px; }
-.card-en { font-size: 9.5px; letter-spacing: 1.5px; opacity: .8; margin-top: 1px; }
-.card-arcana { font-size: 10px; color: rgba(243,233,200,.78); margin-top: 5px; text-align: center; padding: 0 4px; }
-.card-corner { position: absolute; font-family: "Cinzel", serif; font-size: 10px; color: rgba(243,233,200,.85); letter-spacing: 1px; }
-.card-corner.tl { top: 5px; left: 7px; } .card-corner.br { bottom: 5px; right: 7px; transform: rotate(180deg); }
-.card.Duke       { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #2a1233, var(--duke)); }
-.card.Assassin   { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.20), transparent 62%), linear-gradient(165deg, #0e0e12, var(--assassin)); }
-.card.Captain    { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #0c2438, var(--captain)); }
-.card.Ambassador { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #11301a, var(--ambassador)); }
-.card.Contessa   { background: radial-gradient(circle at 50% 38%, rgba(239,226,191,.22), transparent 62%), linear-gradient(165deg, #3a0e18, var(--contessa)); }
+.card-art {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  color: rgba(244,235,208,.94);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.55));
+}
+.card-banner {
+  position: relative; z-index: 1; width: 100%; text-align: center;
+  font-family: "Cinzel","Noto Serif TC",serif; font-weight: 700; font-size: 15px; letter-spacing: 1px;
+  padding: 3px 0 4px; line-height: 1.1;
+  background: linear-gradient(180deg, rgba(10,7,18,0), rgba(10,7,18,.62) 40%, rgba(10,7,18,.78));
+}
+.card-banner small { display: block; font-family: serif; font-size: 8px; font-weight: 400; letter-spacing: 1.6px; opacity: .75; }
+.card-corner { position: absolute; z-index: 1; font-family: "Cinzel", serif; font-size: 10px; color: rgba(244,235,208,.9); letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+.card-corner.tl { top: 5px; left: 8px; }
+.card.Duke       { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #2a1233, var(--duke)); }
+.card.Assassin   { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.16), transparent 64%), linear-gradient(165deg, #0e0e12, var(--assassin)); }
+.card.Captain    { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #0c2438, var(--captain)); }
+.card.Ambassador { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #11301a, var(--ambassador)); }
+.card.Contessa   { background: radial-gradient(circle at 50% 40%, rgba(239,226,191,.18), transparent 64%), linear-gradient(165deg, #3a0e18, var(--contessa)); }
 .card.lost { opacity: .5; filter: grayscale(.55); transform: rotate(-3deg); }
 .card.back {
   background: repeating-radial-gradient(circle at 50% 50%, transparent 0 7px, rgba(201,162,39,.10) 7px 8px), radial-gradient(circle at 50% 35%, #2b2350, #130f2b);
