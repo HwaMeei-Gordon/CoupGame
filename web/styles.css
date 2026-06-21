@@ -78,27 +78,47 @@ header h1 span { color: var(--ink); font-size: .5em; letter-spacing: 6px; margin
 
 /* ---------- 主版面 ---------- */
 main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+#board { display: flex; flex-direction: column; }
 
+/* 牌桌：橢圓桌面 + 鍍金桌緣（poker/塔羅牌桌） */
 #table {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 16px; padding: clamp(12px, 2.4vw, 20px);
-  position: relative; min-height: 480px;
-  box-shadow: 0 0 0 1px rgba(201,162,39,.18) inset, 0 10px 40px rgba(0,0,0,.5);
+  position: relative;
+  aspect-ratio: 7 / 5; min-height: 470px;
+  border-radius: 50% / 38%;
+  background:
+    radial-gradient(58% 56% at 50% 42%, rgba(64,44,104,.55), rgba(20,13,36,0) 70%),
+    radial-gradient(120% 100% at 50% 50%, #241a40 0%, #1a1230 56%, #110b22 100%);
+  border: 2px solid var(--gold);
+  box-shadow:
+    0 0 0 9px rgba(18,11,32,.92),
+    0 0 0 11px rgba(201,162,39,.30),
+    inset 0 0 70px rgba(0,0,0,.6),
+    inset 0 0 0 2px rgba(201,162,39,.22),
+    0 18px 50px rgba(0,0,0,.6);
 }
 
-#opponents {
-  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
-}
-#center {
-  text-align: center; margin: 16px 0; color: var(--muted); font-size: 14px;
-  display: flex; gap: 22px; justify-content: center; flex-wrap: wrap;
-  font-family: "Cinzel", "Noto Serif TC", serif;
-}
-#center .turn-info { color: var(--gold-lt); }
-#center .deck-info::before { content: "❖ "; color: var(--gold); }
+/* 對手座位層：絕對定位環繞桌面上緣 */
+#opponents { position: absolute; inset: 0; pointer-events: none; }
+#opponents .seat { position: absolute; transform: translate(-50%, -50%); pointer-events: auto; }
+#opponents .player { min-width: 132px; }
 
-#human { display: flex; justify-content: center; margin-top: 6px; }
+/* 桌心徽記：牌庫 + 回合 */
+#center { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.medallion {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  width: 116px; height: 116px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, rgba(201,162,39,.20), rgba(0,0,0,.22) 72%);
+  border: 1px dashed rgba(201,162,39,.5);
+  box-shadow: inset 0 0 22px rgba(0,0,0,.5);
+  font-family: "Cinzel", "Noto Serif TC", serif; text-align: center;
+}
+.medallion .m-sym { font-size: 24px; color: var(--gold-lt); text-shadow: 0 0 16px rgba(201,162,39,.6); }
+.medallion .deck-info { color: var(--muted); font-size: 12px; }
+.medallion .deck-info b { color: var(--gold-lt); font-size: 15px; }
+.medallion .turn-info { color: var(--gold-lt); font-size: 12px; max-width: 104px; line-height: 1.3; }
+
+/* 人類座位：固定桌面下緣中央 */
+#human { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; justify-content: center; }
 
 /* ---------- 玩家面板 ---------- */
 .player {
@@ -246,24 +266,33 @@ main { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: 
    ============================================================ */
 @media (max-width: 820px) {
   main { grid-template-columns: 1fr; }
-  #opponents { gap: 9px; }
-  .player { min-width: 0; flex: 1 1 calc(50% - 9px); padding: 9px 10px; }
-  .player.me { width: 100%; flex-basis: 100%; }
-  .card { width: 58px; height: 86px; }
-  .me .card { width: 76px; height: 114px; }
-  .card-sym { font-size: 24px; }
-  .card-name { font-size: 13px; }
+  /* 直立橢圓桌,給座位足夠縱向空間 */
+  #table { aspect-ratio: 5 / 6; min-height: 540px; border-radius: 46% / 30%; }
+  .player { min-width: 0; padding: 7px 8px; }
+  .player.me { min-width: 0; }
+  .card { width: 50px; height: 74px; }
+  .me .card { width: 66px; height: 98px; }
+  .card-sym { font-size: 21px; }
+  .me .card-sym { font-size: 28px; }
+  .card-name { font-size: 12px; }
   .card-arcana { display: none; }
   .me .card-arcana { display: block; font-size: 9px; }
+  .pname { font-size: 13px; }
   #logPanel { order: 3; }
   #log { max-height: 200px; }
   .pbtn { flex: 1 1 calc(50% - 10px); justify-content: center; display: flex; align-items: center; }
   .pbtn.act, .pbtn.danger, .pbtn.shield { flex-basis: 100%; }
-  #center { gap: 14px; font-size: 13px; }
+}
+
+/* 5~6 人時對手座位更密集,縮小避免重疊 */
+@media (max-width: 820px) {
+  #opponents .player { transform: scale(.92); }
 }
 
 @media (max-width: 420px) {
-  .player { flex-basis: 100%; }
+  #table { min-height: 500px; }
+  .card { width: 44px; height: 66px; }
+  .me .card { width: 60px; height: 90px; }
   header { justify-content: center; }
   #setup { justify-content: center; width: 100%; }
 }
