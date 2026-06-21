@@ -144,7 +144,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 /* ---------- 牌桌動態（狀態 + 日誌動態） ---------- */
 #stage {
   position: relative;
-  flex: 1 1 auto; min-height: 0;
+  flex: 1 1 auto; min-height: 40dvh;   /* 歷程區更大且穩定 */
   display: flex; flex-direction: column;
   background:
     radial-gradient(80% 60% at 50% 0%, rgba(64,44,104,.4), rgba(20,13,36,0) 70%),
@@ -328,6 +328,22 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .pbtn.actbtn.r-Assassin { border-left-color: #cfcfd6; }
 .pbtn.actbtn:disabled .b-ic, .pbtn.actbtn:disabled .b-tx small { color: inherit; }
 
+/* 行動選單：一排 4 + 一排 3，精簡直式按鈕 */
+.prompt-btns.grid4 { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.grid4 .pbtn.actbtn {
+  flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  gap: 1px; padding: 7px 2px; min-height: 52px;
+  border: 1px solid var(--line); border-top: 3px solid var(--gold-lt);
+}
+.grid4 .pbtn.actbtn .b-ic { width: auto; font-size: 18px; }
+.grid4 .pbtn.actbtn .b-tx { align-items: center; line-height: 1.05; }
+.grid4 .pbtn.actbtn .b-tx b { font-size: 12px; }
+.grid4 .pbtn.actbtn .b-tx small { font-size: 8.5px; }
+.grid4 .pbtn.actbtn.r-Duke { border-top-color: #b266d4; }
+.grid4 .pbtn.actbtn.r-Captain { border-top-color: #5aa8e0; }
+.grid4 .pbtn.actbtn.r-Ambassador { border-top-color: #5fc06f; }
+.grid4 .pbtn.actbtn.r-Assassin { border-top-color: #cfcfd6; }
+
 .exchange { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; perspective: 800px; }
 .exchange .card { cursor: pointer; padding: 0; width: 84px; height: 126px; transition: transform .16s ease, box-shadow .16s ease; }
 .exchange .card:hover { transform: translateY(-7px) rotateX(6deg); box-shadow: 0 0 22px rgba(232,207,114,.5), 0 10px 20px rgba(0,0,0,.55); }
@@ -466,12 +482,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   }
   header { grid-area: head; padding: 6px 4px 4px; }
   #opponents { grid-area: opp; }
-  #stage { grid-area: stage; margin: 0; }
+  #stage { grid-area: stage; margin: 0; min-height: 0; }
   #me { grid-area: me; padding: 6px 0; align-self: start; }
-  #prompt { grid-area: prompt; margin: 4px 0 6px; max-height: 38dvh; }
-  .me-cards .card { width: 80px; height: 120px; }
-  .card-arcana { display: none; }
-  .opp-cards { min-height: 30px; }
-  .mini { width: 21px; height: 30px; }
-  .prompt-btns { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  #prompt { grid-area: prompt; margin: 4px 0 6px; max-height: 40dvh; }
+  .me-cards .card { width: 72px; height: 108px; }
+  .opp-cards { min-height: 26px; }
+  .mini { width: 18px; height: 26px; }
+  .prompt-btns.grid4 { grid-template-columns: repeat(7, 1fr); }
 }

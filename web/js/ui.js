@@ -307,11 +307,11 @@
     },
 
     // ---------- 提示工具 ----------
-    prompt(title, buttons) {
+    prompt(title, buttons, btnsClass) {
       return new Promise(resolve => {
         const el = this.els.prompt;
         el.innerHTML = `<div class="prompt-title">${title}</div>` +
-          `<div class="prompt-btns">` +
+          `<div class="prompt-btns ${btnsClass || ''}">` +
           buttons.map((b, i) =>
             `<button class="pbtn ${b.cls || ''}" data-i="${i}" ${b.disabled ? 'disabled' : ''}>${b.label}</button>`
           ).join('') + `</div>`;
@@ -347,7 +347,7 @@
         value: d.type, disabled: !d.ok, cls: 'actbtn' + (d.role ? ' r-' + d.role : '')
       }));
       const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
-      const type = await this.prompt(title, buttons);
+      const type = await this.prompt(title, buttons, 'grid4');
 
       if (Coup.ACTIONS[type].targeted) {
         const tbtns = opps.map(o => ({
