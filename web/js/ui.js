@@ -105,17 +105,33 @@
       </div>`;
     },
 
+    // 把對手座位沿牌桌上緣弧形排開（玩家在桌前、對手環繞）
+    seatPos(k, m) {
+      let ang;                                  // 角度（度）：270=正上方
+      if (m <= 1) ang = 270;
+      else ang = 210 + k * (120 / (m - 1));     // 210°→330°，跨桌面上緣
+      const r = ang * Math.PI / 180;
+      return { x: 50 + 42 * Math.cos(r), y: 50 + 34 * Math.sin(r) };
+    },
+
     render() {
       if (!this.game) return;
       const g = this.game;
-      this.els.opponents.innerHTML = g.players
-        .filter(p => !p.isHuman).map(p => this.playerEl(p)).join('');
+      const opps = g.players.filter(p => !p.isHuman);
+      const m = opps.length;
+      this.els.opponents.innerHTML = opps.map((p, k) => {
+        const pos = this.seatPos(k, m);
+        return `<div class="seat" style="left:${pos.x}%;top:${pos.y}%">${this.playerEl(p)}</div>`;
+      }).join('');
       this.els.human.innerHTML = g.players
         .filter(p => p.isHuman).map(p => this.playerEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.center.innerHTML =
-        `<div class="deck-info">牌庫 Court Deck：${g.deck.length} 張</div>` +
-        `<div class="turn-info">${g.over ? '遊戲結束' : '目前回合：' + (cur ? cur.name : '')}</div>`;
+        `<div class="medallion">
+          <div class="m-sym">❖</div>
+          <div class="deck-info">牌庫 <b>${g.deck.length}</b></div>
+          <div class="turn-info">${g.over ? '遊戲結束' : (cur ? cur.name + ' 的回合' : '')}</div>
+        </div>`;
     },
 
     showWinner(w) {
