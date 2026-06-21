@@ -364,7 +364,8 @@
       const claimant = game.players[claimantId];
       let visible = 0;
       game.players.forEach(p => p.lost.forEach(c => { if (c === character) visible++; }));
-      const title = `${claimant.name} 宣稱【${ZH[character]} ${character}】。是否質疑？` +
+      const scales = `<div class="scales"><svg class="scales-svg" viewBox="0 0 60 40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M30 7V31M21 33h18"/><g class="beam"><path d="M11 9h38"/><path d="M11 9l-4.5 8a6.5 3 0 0 0 9 0z"/><path d="M49 9l-4.5 8a6.5 3 0 0 0 9 0z"/></g><circle cx="30" cy="9" r="1.6" fill="currentColor"/></svg></div>`;
+      const title = scales + `${claimant.name} 宣稱【${ZH[character]} ${character}】。命運的天秤正在搖晃——是否質疑？` +
         `<br><small>檯面已公開 ${visible} 張此角色（共 3 張）</small>`;
       return this.prompt(title, [
         { label: '🔮 質疑！', value: true, cls: 'danger crystal' },
