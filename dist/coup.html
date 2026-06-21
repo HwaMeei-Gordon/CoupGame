@@ -183,6 +183,20 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   font-size: 128px; color: rgba(201,162,39,.055); pointer-events: none;
 }
 #statusbar, #log { position: relative; z-index: 1; }
+/* 宣告幻影牌：中央浮現的半透明塔羅牌 */
+.phantom {
+  position: absolute; top: 50%; left: 50%; z-index: 2; pointer-events: none;
+  transform: translate(-50%, -50%); opacity: 0;
+  filter: drop-shadow(0 0 22px rgba(232,207,114,.55));
+  animation: phantomIn 1.7s ease-out forwards;
+}
+.phantom .card { width: 108px; height: 162px; }
+@keyframes phantomIn {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.7) rotateY(45deg); }
+  18%  { opacity: .96; transform: translate(-50%, -50%) scale(1) rotateY(0deg); }
+  72%  { opacity: .9; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); }
+}
 
 /* 目前回合：呼吸光暈 */
 @keyframes turnPulse {
@@ -1408,6 +1422,22 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.els.log.scrollTop = this.els.log.scrollHeight;
       this.fb.fromLog(msg);
       this.fx.fromLog(msg);
+      this.showPhantom(msg);
+    },
+
+    // 宣告/反制時,中央桌面浮現該角色的塔羅牌幻影
+    showPhantom(msg) {
+      if (typeof document === 'undefined') return;
+      if (msg.indexOf('披上') < 0 && msg.indexOf('之名') < 0) return;
+      const m = msg.match(/(Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const stage = document.getElementById('stage');
+      if (!m || !stage || typeof stage.appendChild !== 'function') return;
+      const wrap = document.createElement('div');
+      if (!wrap || !('className' in wrap)) return;
+      wrap.className = 'phantom';
+      wrap.innerHTML = this.cardEl(m[1], true, false);
+      stage.appendChild(wrap);
+      setTimeout(() => { try { wrap.remove(); } catch (e) {} }, 1700);
     },
 
     // 依事件類型為日誌上色，方便快速掃讀
