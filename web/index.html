@@ -58,6 +58,7 @@
         </label>
       </div>
       <button id="newGame">開新局</button>
+      <button id="onlineBtn" class="online-entry">🌐 連線對戰（和朋友）</button>
       <div class="legend">
         <h4>角色速查</h4>
         <ul>
@@ -96,9 +97,11 @@
     <div id="overlay"></div>
   </div>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/net.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

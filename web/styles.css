@@ -96,6 +96,40 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4);
 }
 #newGame:active { filter: brightness(1.08); }
+.online-entry {
+  width: 100%; margin-top: 8px; min-height: 42px;
+  background: linear-gradient(180deg, #3a5db0, #28407e); color: #eaf0ff; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); letter-spacing: 1px;
+  cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4);
+}
+.online-entry:active { filter: brightness(1.1); }
+
+/* ---------- 連線大廳 ---------- */
+.lobby-box {
+  position: relative; width: 320px; max-width: 92vw; max-height: 86dvh; overflow-y: auto;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 16px; padding: 20px 18px 16px;
+  display: flex; flex-direction: column; gap: 11px;
+}
+.lobby-title { font-family: var(--font); font-weight: 700; font-size: 19px; color: var(--gold-lt); text-align: center; }
+.lobby-sub { color: var(--muted); font-size: 12px; text-align: center; margin-top: -4px; }
+.lobby-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--ink); }
+.lobby-field input, .lobby-field select, .lobby-join input {
+  font: inherit; font-size: 15px; padding: 9px 11px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--field-bg); color: var(--ink);
+}
+.lobby-or { text-align: center; color: var(--muted); font-size: 12px; }
+.lobby-join { display: flex; gap: 8px; }
+.lobby-join input { flex: 1 1 auto; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
+.lobby-hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.lobby-msg { font-size: 12.5px; color: var(--gold-lt); min-height: 16px; text-align: center; }
+.lb-code { text-align: center; font-size: 15px; color: var(--ink); }
+.lb-code b { font-size: 26px; letter-spacing: 5px; color: var(--gold-lt); display: inline-block; margin: 0 6px; }
+.lb-roster-t { font-size: 12px; color: var(--muted); }
+.lb-roster { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-seat { font-size: 13px; padding: 4px 9px; border-radius: 20px; background: rgba(160,132,31,.12); border: 1px solid var(--line); }
+.lb-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+.pbtn.small { min-height: 30px; padding: 4px 12px; font-size: 13px; }
 .legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
 .legend h4 { margin: 0 0 6px; color: var(--gold-lt); font-size: 13px; letter-spacing: 1px; }
 .legend ul { margin: 0; padding-left: 16px; }

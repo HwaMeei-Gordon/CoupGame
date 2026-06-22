@@ -1,0 +1,299 @@
+/*
+ * Net：P2P 連線對戰（WebRTC / PeerJS），房主瀏覽器當「權威裁判」跑引擎。
+ *
+ * 設計重點（隱藏資訊安全）：
+ *  - 房主跑 GameController（完整狀態）；每位遠端玩家是一個 RemoteAgent。
+ *  - 引擎要某遠端玩家決策時，RemoteAgent 只送出「該玩家的私有視角」(serializeView)
+ *    ——別人的手牌一律以「蓋牌張數」呈現，看不到內容。
+ *  - 客人端不跑引擎，只用既有 UI：收到請求 → 跳既有提示 → 回傳決策；收到狀態 → 渲染。
+ *  - 斷線或逾時 → 由內建 AI 接手該座位，遊戲不中斷。
+ *
+ * 真正的 WebRTC 握手由 PeerJS 處理（window.Peer）。核心協定（序列化 / 代理 / 請求-回應）
+ * 與傳輸層解耦，可用記憶體通道在 Node 端單元測試。
+ */
+(function (root) {
+  'use strict';
+  const Coup = root.Coup = root.Coup || {};
+
+  // 把「完整遊戲狀態」轉成「某視角玩家」可見的快照：只露自己的牌，別人只給張數。
+  function serializeView(game, viewerId) {
+    return {
+      myId: viewerId,
+      current: game.current,
+      over: !!game.over,
+      winnerId: game.winner ? game.winner.id : null,
+      deck: new Array(game.deck ? game.deck.length : 0).fill(null), // 只洩漏牌庫張數
+      players: game.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        isHuman: p.id === viewerId,                 // 視角玩家 = 介面上的「你」
+        coins: p.coins,
+        alive: p.alive,
+        lost: (p.lost || []).slice(),
+        claimLog: (p.claimLog || []).slice(),
+        timeline: (p.timeline || []).map(e => ({ kind: e.kind, ch: e.ch })),
+        // 只露自己的真牌；別人以等量的 null 佔位（介面只用張數畫蓋牌）
+        cards: p.id === viewerId ? (p.cards || []).slice() : (p.cards || []).map(() => null),
+        originalInfluence: p.id === viewerId ? p.originalInfluence : undefined
+      }))
+    };
+  }
+
+  // RemoteAgent：房主端代表「某遠端真人」。實作 Agent 介面；決策走網路請求-回應，
+  // 斷線/逾時則由內建 AI（fallback）以房主的真實 game 代為決策。
+  class RemoteAgent {
+    constructor(seatId, conn, opts) {
+      opts = opts || {};
+      this.id = seatId;
+      this.conn = conn;
+      this.connected = !!conn;
+      this.timeoutMs = opts.timeoutMs || 60000;
+      this.fallback = opts.fallback || new Coup.AIAgent(seatId);
+      this.pending = {};
+      this.reqSeq = 0;
+    }
+
+    _decideRemote(method, args, game) {
+      return new Promise(resolve => {
+        const useFallback = () => resolve(this.fallback[method].apply(this.fallback, [game].concat(args)));
+        if (!this.connected || !this.conn) return useFallback();
+        const reqId = ++this.reqSeq;
+        let done = false;
+        const finish = v => { if (!done) { done = true; delete this.pending[reqId]; resolve(v); } };
+        const timer = setTimeout(() => { if (!done) { finish(this.fallback[method].apply(this.fallback, [game].concat(args))); } }, this.timeoutMs);
+        this.pending[reqId] = v => { clearTimeout(timer); finish(v); };
+        try {
+          this.conn.send({ t: 'request', reqId, method, args, view: serializeView(game, this.id) });
+        } catch (e) { clearTimeout(timer); useFallback(); }
+      });
+    }
+
+    // 客人回傳決策時呼叫
+    resolveResponse(reqId, value) {
+      const cb = this.pending[reqId];
+      if (cb) cb(value);
+    }
+    markDisconnected() { this.connected = false; }
+
+    // ---- Agent 介面 ----
+    chooseAction(game)                       { return this._decideRemote('chooseAction', [], game); }
+    decideChallenge(game, c, ch)             { return this._decideRemote('decideChallenge', [c, ch], game); }
+    decideChallengeBlock(game, b, ch)        { return this._decideRemote('decideChallengeBlock', [b, ch], game); }
+    decideBlock(game, action, blockChars)    { return this._decideRemote('decideBlock', [action, blockChars], game); }
+    chooseCardToLose(game, pid)              { return this._decideRemote('chooseCardToLose', [pid], game); }
+    chooseExchange(game, pid, drawn)         { return this._decideRemote('chooseExchange', [pid, drawn], game); }
+    // 觀察類通知：同步餵給 fallback AI，讓它隨時能無縫接手
+    observe(game, c, ch)        { try { this.fallback.observe(game, c, ch); } catch (e) {} }
+    onSwap(game, p, ch)         { try { this.fallback.onSwap(game, p, ch); } catch (e) {} }
+    observeOutcome(game, ev)    { try { this.fallback.observeOutcome(game, ev); } catch (e) {} }
+  }
+
+  const Net = {
+    role: null,          // 'host' | 'guest' | null
+    peer: null,
+    seats: [],           // host: [{conn, name, seat, agent}]
+    game: null,
+    speed: 800,
+    hooks: {},           // { onRoster, onCode, onError, onStart, onState, onLog, onOver, onLobbyJoined }
+
+    serializeView,
+    RemoteAgent,
+
+    _hasPeer() { return typeof root.Peer === 'function'; },
+
+    _genCode() {
+      const s = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉易混淆的 0/O/1/I
+      let c = ''; for (let i = 0; i < 5; i++) c += s[Math.floor(Math.random() * s.length)];
+      return c;
+    },
+    _peerId(code) { return 'coupgame-' + String(code).toUpperCase().replace(/[^A-Z0-9]/g, ''); },
+
+    // ====================== 房主 ======================
+    createRoom(hostName, hooks) {
+      this.role = 'host';
+      this.hooks = hooks || {};
+      this.seats = [];
+      this.hostName = hostName || '房主';
+      if (!this._hasPeer()) { this._err('連線元件未載入（需要網路連線以載入 PeerJS）'); return; }
+      this._tryCreate(0);
+    },
+
+    _tryCreate(attempt) {
+      const code = this._genCode();
+      this.roomCode = code;
+      this.peer = new root.Peer(this._peerId(code));
+      this.peer.on('open', () => { if (this.hooks.onCode) this.hooks.onCode(code); });
+      this.peer.on('connection', conn => this._onGuestConn(conn));
+      this.peer.on('error', e => {
+        const type = e && e.type ? e.type : '';
+        if (type === 'unavailable-id' && attempt < 5) { try { this.peer.destroy(); } catch (x) {} this._tryCreate(attempt + 1); }
+        else this._err('連線錯誤：' + (type || e));
+      });
+    },
+
+    _onGuestConn(conn) {
+      conn.on('data', msg => this._hostOnData(conn, msg));
+      conn.on('close', () => this._onGuestClose(conn));
+    },
+
+    _hostOnData(conn, msg) {
+      if (!msg) return;
+      if (msg.t === 'join') {
+        // 遊戲未開始才接受入座
+        if (this.game) { try { conn.send({ t: 'full' }); } catch (e) {} return; }
+        const seat = this.seats.length + 1; // 房主 = 0
+        this.seats.push({ conn, name: msg.name || ('玩家' + seat), seat, agent: null });
+        if (this.hooks.onRoster) this.hooks.onRoster(this._roster());
+        this._sendLobby();
+      } else if (msg.t === 'response') {
+        const s = this.seats.find(x => x.conn === conn);
+        if (s && s.agent) s.agent.resolveResponse(msg.reqId, msg.value);
+      }
+    },
+
+    _onGuestClose(conn) {
+      const s = this.seats.find(x => x.conn === conn);
+      if (!s) return;
+      s.connected = false;
+      if (s.agent) s.agent.markDisconnected(); // 之後由 AI 接手該座位
+      if (!this.game && this.hooks.onRoster) this.hooks.onRoster(this._roster());
+      this._sendLobby();
+    },
+
+    _roster() {
+      return [{ name: this.hostName, seat: 0, you: true }]
+        .concat(this.seats.map(s => ({ name: s.name, seat: s.seat })));
+    },
+    _sendLobby() {
+      const names = this._roster().map(r => r.name);
+      this.seats.forEach(s => { try { s.conn.send({ t: 'lobby', names }); } catch (e) {} });
+    },
+
+    // 房主開始遊戲：humanSeats = 已入座客人；可加 AI 補到 numPlayers
+    startGame(numPlayers, speed) {
+      const humans = this.seats.slice();
+      const total = Math.max(2, Math.min(6, numPlayers || (1 + humans.length)));
+      this.speed = speed || 800;
+
+      const configs = [{ name: this.hostName, isHuman: true }];
+      humans.forEach(s => configs.push({ name: s.name, isHuman: true }));
+      for (let i = configs.length; i < total; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+
+      const UI = Coup.UI;
+      if (UI.game) UI.game.cancel();
+      UI.myId = 0; // 房主座位
+      UI.els.log.innerHTML = ''; UI.els.prompt.innerHTML = '';
+      UI.els.overlay.classList.remove('show'); UI.els.overlay.innerHTML = '';
+
+      const self = this;
+      const game = new Coup.GameController(configs, {
+        onLog: m => { UI.log(m); self._broadcast({ t: 'log', msg: m }); },
+        onState: () => { UI.render(); self._broadcastState(game); },
+        onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
+        onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null }); },
+        pause: () => new Promise(r => setTimeout(r, self.speed))
+      });
+
+      game.agents[0] = UI; // 房主用本地 UI
+      // 已入座客人 → RemoteAgent（座位 1..n）；其餘 → AI
+      humans.forEach(s => {
+        const agent = new RemoteAgent(s.seat, s.conn, { fallback: new Coup.AIAgent(s.seat) });
+        s.agent = agent;
+        game.agents[s.seat] = agent;
+      });
+      for (let i = 0; i < total; i++) {
+        if (!game.agents[i]) game.agents[i] = new Coup.AIAgent(i);
+      }
+
+      this.game = game;
+      UI.game = game; UI.currentTurn = 0;
+      // 告知每位客人其座位與名單，並送初始狀態
+      const names = configs.map(c => c.name);
+      humans.forEach(s => { try { s.conn.send({ t: 'start', myId: s.seat, names, view: serializeView(game, s.seat) }); } catch (e) {} });
+      if (this.hooks.onStart) this.hooks.onStart();
+      UI.render();
+      game.play();
+    },
+
+    _broadcast(msg) { this.seats.forEach(s => { if (s.conn) { try { s.conn.send(msg); } catch (e) {} } }); },
+    _broadcastState(game) { this.seats.forEach(s => { if (s.conn) { try { s.conn.send({ t: 'state', view: serializeView(game, s.seat) }); } catch (e) {} } }); },
+
+    // ====================== 客人 ======================
+    joinRoom(code, name, hooks) {
+      this.role = 'guest';
+      this.hooks = hooks || {};
+      if (!this._hasPeer()) { this._err('連線元件未載入（需要網路連線以載入 PeerJS）'); return; }
+      this.peer = new root.Peer();
+      this.peer.on('error', e => this._err('連線錯誤：' + (e && e.type ? e.type : e)));
+      this.peer.on('open', () => {
+        const conn = this.peer.connect(this._peerId(code));
+        this.conn = conn;
+        conn.on('open', () => {
+          conn.send({ t: 'join', name: name || '玩家' });
+          if (this.hooks.onLobbyJoined) this.hooks.onLobbyJoined();
+        });
+        conn.on('data', msg => this._guestOnData(conn, msg));
+        conn.on('error', e => this._err('資料通道錯誤'));
+        conn.on('close', () => this._err('與房主的連線中斷'));
+      });
+    },
+
+    _guestOnData(conn, msg) {
+      if (!msg) return;
+      const UI = Coup.UI;
+      if (msg.t === 'lobby') {
+        if (this.hooks.onRoster) this.hooks.onRoster((msg.names || []).map((n, i) => ({ name: n, seat: i })));
+      } else if (msg.t === 'full') {
+        this._err('遊戲已開始或房間已滿');
+      } else if (msg.t === 'start') {
+        this._applyView(msg.view);
+        if (this.hooks.onStart) this.hooks.onStart();
+      } else if (msg.t === 'state') {
+        this._applyView(msg.view);
+      } else if (msg.t === 'log') {
+        UI.log(msg.msg);
+      } else if (msg.t === 'over') {
+        const w = (this.lastView && this.lastView.players) ? this.lastView.players[msg.winnerId] : null;
+        // 勝者若非自己,手牌在視角中為 null（不洩漏）→ 過濾掉,過場畫面就不顯示牌面
+        UI.showWinner(w ? { name: w.name, isHuman: w.id === UI.myId, cards: (w.cards || []).filter(c => c) } : null);
+      } else if (msg.t === 'request') {
+        this._guestHandleRequest(conn, msg);
+      }
+    },
+
+    _applyView(view) {
+      const UI = Coup.UI;
+      this.lastView = view;
+      UI.myId = view.myId;
+      UI.game = view;
+      UI.currentTurn = view.current;
+      UI.render();
+    },
+
+    _guestHandleRequest(conn, msg) {
+      const UI = Coup.UI;
+      this._applyView(msg.view);
+      let out;
+      try {
+        out = UI[msg.method].apply(UI, [msg.view].concat(msg.args || []));
+      } catch (e) { out = null; }
+      Promise.resolve(out).then(value => {
+        try { conn.send({ t: 'response', reqId: msg.reqId, value }); } catch (e) {}
+      });
+    },
+
+    // ====================== 共用 ======================
+    _err(text) { if (this.hooks && this.hooks.onError) this.hooks.onError(text); },
+    leave() {
+      try { if (this.conn) this.conn.close(); } catch (e) {}
+      try { if (this.peer) this.peer.destroy(); } catch (e) {}
+      this.peer = null; this.conn = null; this.role = null; this.seats = []; this.game = null;
+    }
+  };
+
+  Coup.Net = Net;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Coup;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);

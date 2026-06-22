@@ -119,6 +119,40 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4);
 }
 #newGame:active { filter: brightness(1.08); }
+.online-entry {
+  width: 100%; margin-top: 8px; min-height: 42px;
+  background: linear-gradient(180deg, #3a5db0, #28407e); color: #eaf0ff; border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); letter-spacing: 1px;
+  cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4);
+}
+.online-entry:active { filter: brightness(1.1); }
+
+/* ---------- 連線大廳 ---------- */
+.lobby-box {
+  position: relative; width: 320px; max-width: 92vw; max-height: 86dvh; overflow-y: auto;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 16px; padding: 20px 18px 16px;
+  display: flex; flex-direction: column; gap: 11px;
+}
+.lobby-title { font-family: var(--font); font-weight: 700; font-size: 19px; color: var(--gold-lt); text-align: center; }
+.lobby-sub { color: var(--muted); font-size: 12px; text-align: center; margin-top: -4px; }
+.lobby-field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--ink); }
+.lobby-field input, .lobby-field select, .lobby-join input {
+  font: inherit; font-size: 15px; padding: 9px 11px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--field-bg); color: var(--ink);
+}
+.lobby-or { text-align: center; color: var(--muted); font-size: 12px; }
+.lobby-join { display: flex; gap: 8px; }
+.lobby-join input { flex: 1 1 auto; text-transform: uppercase; letter-spacing: 3px; text-align: center; }
+.lobby-hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+.lobby-msg { font-size: 12.5px; color: var(--gold-lt); min-height: 16px; text-align: center; }
+.lb-code { text-align: center; font-size: 15px; color: var(--ink); }
+.lb-code b { font-size: 26px; letter-spacing: 5px; color: var(--gold-lt); display: inline-block; margin: 0 6px; }
+.lb-roster-t { font-size: 12px; color: var(--muted); }
+.lb-roster { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-seat { font-size: 13px; padding: 4px 9px; border-radius: 20px; background: rgba(160,132,31,.12); border: 1px solid var(--line); }
+.lb-close { position: absolute; top: 8px; right: 10px; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; line-height: 1; }
+.pbtn.small { min-height: 30px; padding: 4px 12px; font-size: 13px; }
 .legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
 .legend h4 { margin: 0 0 6px; color: var(--gold-lt); font-size: 13px; letter-spacing: 1px; }
 .legend ul { margin: 0; padding-left: 16px; }
@@ -632,6 +666,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         </label>
       </div>
       <button id="newGame">開新局</button>
+      <button id="onlineBtn" class="online-entry">🌐 連線對戰（和朋友）</button>
       <div class="legend">
         <h4>角色速查</h4>
         <ul>
@@ -670,6 +705,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     <div id="overlay"></div>
   </div>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
 /*
  * Coup 規則引擎 + 回合結算狀態機
@@ -1593,6 +1629,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     game: null,
     speed: 800,
     currentTurn: -1,
+    myId: 0, // 「我」在這場的座位 id（單機=0；連線時房主=0、客人=各自座位）
 
     // 回饋層：Web Audio 合成音效（無需音檔）+ 手機觸覺震動
     fb: {
@@ -1831,6 +1868,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // ---------- 開新局 ----------
     newGame(numPlayers, difficulty, speed) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
+      this.myId = 0; // 單機：你是 player 0
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
@@ -2081,8 +2119,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     async chooseAction(game) {
       this.fb.turn(); // 輪到你：提示音 + 震動
-      const me = game.players[0];
-      const opps = game.players.filter(p => p.alive && p.id !== 0);
+      const me = game.players[this.myId];
+      const opps = game.players.filter(p => p.alive && p.id !== this.myId);
       const forced = me.coins >= 10;
       const defs = [
         { type: 'income',      ic: '＋', name: '收入', sub: '+1 金幣',   ok: !forced, role: '' },
@@ -2114,7 +2152,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     },
 
     decideChallenge(game, claimantId, character) {
-      if (claimantId === 0) return false;
+      if (claimantId === this.myId) return false;
       const claimant = game.players[claimantId];
       let visible = 0;
       game.players.forEach(p => p.lost.forEach(c => { if (c === character) visible++; }));
@@ -2132,7 +2170,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     },
 
     async decideBlock(game, action, blockChars) {
-      const me = game.players[0];
+      const me = game.players[this.myId];
       const actor = game.players[action.actorId];
 
       if (action.type === 'foreign_aid') {
@@ -2224,7 +2262,309 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
 </script>
   <script>
-/* 初始化與開新局串接 */
+/*
+ * Net：P2P 連線對戰（WebRTC / PeerJS），房主瀏覽器當「權威裁判」跑引擎。
+ *
+ * 設計重點（隱藏資訊安全）：
+ *  - 房主跑 GameController（完整狀態）；每位遠端玩家是一個 RemoteAgent。
+ *  - 引擎要某遠端玩家決策時，RemoteAgent 只送出「該玩家的私有視角」(serializeView)
+ *    ——別人的手牌一律以「蓋牌張數」呈現，看不到內容。
+ *  - 客人端不跑引擎，只用既有 UI：收到請求 → 跳既有提示 → 回傳決策；收到狀態 → 渲染。
+ *  - 斷線或逾時 → 由內建 AI 接手該座位，遊戲不中斷。
+ *
+ * 真正的 WebRTC 握手由 PeerJS 處理（window.Peer）。核心協定（序列化 / 代理 / 請求-回應）
+ * 與傳輸層解耦，可用記憶體通道在 Node 端單元測試。
+ */
+(function (root) {
+  'use strict';
+  const Coup = root.Coup = root.Coup || {};
+
+  // 把「完整遊戲狀態」轉成「某視角玩家」可見的快照：只露自己的牌，別人只給張數。
+  function serializeView(game, viewerId) {
+    return {
+      myId: viewerId,
+      current: game.current,
+      over: !!game.over,
+      winnerId: game.winner ? game.winner.id : null,
+      deck: new Array(game.deck ? game.deck.length : 0).fill(null), // 只洩漏牌庫張數
+      players: game.players.map(p => ({
+        id: p.id,
+        name: p.name,
+        isHuman: p.id === viewerId,                 // 視角玩家 = 介面上的「你」
+        coins: p.coins,
+        alive: p.alive,
+        lost: (p.lost || []).slice(),
+        claimLog: (p.claimLog || []).slice(),
+        timeline: (p.timeline || []).map(e => ({ kind: e.kind, ch: e.ch })),
+        // 只露自己的真牌；別人以等量的 null 佔位（介面只用張數畫蓋牌）
+        cards: p.id === viewerId ? (p.cards || []).slice() : (p.cards || []).map(() => null),
+        originalInfluence: p.id === viewerId ? p.originalInfluence : undefined
+      }))
+    };
+  }
+
+  // RemoteAgent：房主端代表「某遠端真人」。實作 Agent 介面；決策走網路請求-回應，
+  // 斷線/逾時則由內建 AI（fallback）以房主的真實 game 代為決策。
+  class RemoteAgent {
+    constructor(seatId, conn, opts) {
+      opts = opts || {};
+      this.id = seatId;
+      this.conn = conn;
+      this.connected = !!conn;
+      this.timeoutMs = opts.timeoutMs || 60000;
+      this.fallback = opts.fallback || new Coup.AIAgent(seatId);
+      this.pending = {};
+      this.reqSeq = 0;
+    }
+
+    _decideRemote(method, args, game) {
+      return new Promise(resolve => {
+        const useFallback = () => resolve(this.fallback[method].apply(this.fallback, [game].concat(args)));
+        if (!this.connected || !this.conn) return useFallback();
+        const reqId = ++this.reqSeq;
+        let done = false;
+        const finish = v => { if (!done) { done = true; delete this.pending[reqId]; resolve(v); } };
+        const timer = setTimeout(() => { if (!done) { finish(this.fallback[method].apply(this.fallback, [game].concat(args))); } }, this.timeoutMs);
+        this.pending[reqId] = v => { clearTimeout(timer); finish(v); };
+        try {
+          this.conn.send({ t: 'request', reqId, method, args, view: serializeView(game, this.id) });
+        } catch (e) { clearTimeout(timer); useFallback(); }
+      });
+    }
+
+    // 客人回傳決策時呼叫
+    resolveResponse(reqId, value) {
+      const cb = this.pending[reqId];
+      if (cb) cb(value);
+    }
+    markDisconnected() { this.connected = false; }
+
+    // ---- Agent 介面 ----
+    chooseAction(game)                       { return this._decideRemote('chooseAction', [], game); }
+    decideChallenge(game, c, ch)             { return this._decideRemote('decideChallenge', [c, ch], game); }
+    decideChallengeBlock(game, b, ch)        { return this._decideRemote('decideChallengeBlock', [b, ch], game); }
+    decideBlock(game, action, blockChars)    { return this._decideRemote('decideBlock', [action, blockChars], game); }
+    chooseCardToLose(game, pid)              { return this._decideRemote('chooseCardToLose', [pid], game); }
+    chooseExchange(game, pid, drawn)         { return this._decideRemote('chooseExchange', [pid, drawn], game); }
+    // 觀察類通知：同步餵給 fallback AI，讓它隨時能無縫接手
+    observe(game, c, ch)        { try { this.fallback.observe(game, c, ch); } catch (e) {} }
+    onSwap(game, p, ch)         { try { this.fallback.onSwap(game, p, ch); } catch (e) {} }
+    observeOutcome(game, ev)    { try { this.fallback.observeOutcome(game, ev); } catch (e) {} }
+  }
+
+  const Net = {
+    role: null,          // 'host' | 'guest' | null
+    peer: null,
+    seats: [],           // host: [{conn, name, seat, agent}]
+    game: null,
+    speed: 800,
+    hooks: {},           // { onRoster, onCode, onError, onStart, onState, onLog, onOver, onLobbyJoined }
+
+    serializeView,
+    RemoteAgent,
+
+    _hasPeer() { return typeof root.Peer === 'function'; },
+
+    _genCode() {
+      const s = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 去掉易混淆的 0/O/1/I
+      let c = ''; for (let i = 0; i < 5; i++) c += s[Math.floor(Math.random() * s.length)];
+      return c;
+    },
+    _peerId(code) { return 'coupgame-' + String(code).toUpperCase().replace(/[^A-Z0-9]/g, ''); },
+
+    // ====================== 房主 ======================
+    createRoom(hostName, hooks) {
+      this.role = 'host';
+      this.hooks = hooks || {};
+      this.seats = [];
+      this.hostName = hostName || '房主';
+      if (!this._hasPeer()) { this._err('連線元件未載入（需要網路連線以載入 PeerJS）'); return; }
+      this._tryCreate(0);
+    },
+
+    _tryCreate(attempt) {
+      const code = this._genCode();
+      this.roomCode = code;
+      this.peer = new root.Peer(this._peerId(code));
+      this.peer.on('open', () => { if (this.hooks.onCode) this.hooks.onCode(code); });
+      this.peer.on('connection', conn => this._onGuestConn(conn));
+      this.peer.on('error', e => {
+        const type = e && e.type ? e.type : '';
+        if (type === 'unavailable-id' && attempt < 5) { try { this.peer.destroy(); } catch (x) {} this._tryCreate(attempt + 1); }
+        else this._err('連線錯誤：' + (type || e));
+      });
+    },
+
+    _onGuestConn(conn) {
+      conn.on('data', msg => this._hostOnData(conn, msg));
+      conn.on('close', () => this._onGuestClose(conn));
+    },
+
+    _hostOnData(conn, msg) {
+      if (!msg) return;
+      if (msg.t === 'join') {
+        // 遊戲未開始才接受入座
+        if (this.game) { try { conn.send({ t: 'full' }); } catch (e) {} return; }
+        const seat = this.seats.length + 1; // 房主 = 0
+        this.seats.push({ conn, name: msg.name || ('玩家' + seat), seat, agent: null });
+        if (this.hooks.onRoster) this.hooks.onRoster(this._roster());
+        this._sendLobby();
+      } else if (msg.t === 'response') {
+        const s = this.seats.find(x => x.conn === conn);
+        if (s && s.agent) s.agent.resolveResponse(msg.reqId, msg.value);
+      }
+    },
+
+    _onGuestClose(conn) {
+      const s = this.seats.find(x => x.conn === conn);
+      if (!s) return;
+      s.connected = false;
+      if (s.agent) s.agent.markDisconnected(); // 之後由 AI 接手該座位
+      if (!this.game && this.hooks.onRoster) this.hooks.onRoster(this._roster());
+      this._sendLobby();
+    },
+
+    _roster() {
+      return [{ name: this.hostName, seat: 0, you: true }]
+        .concat(this.seats.map(s => ({ name: s.name, seat: s.seat })));
+    },
+    _sendLobby() {
+      const names = this._roster().map(r => r.name);
+      this.seats.forEach(s => { try { s.conn.send({ t: 'lobby', names }); } catch (e) {} });
+    },
+
+    // 房主開始遊戲：humanSeats = 已入座客人；可加 AI 補到 numPlayers
+    startGame(numPlayers, speed) {
+      const humans = this.seats.slice();
+      const total = Math.max(2, Math.min(6, numPlayers || (1 + humans.length)));
+      this.speed = speed || 800;
+
+      const configs = [{ name: this.hostName, isHuman: true }];
+      humans.forEach(s => configs.push({ name: s.name, isHuman: true }));
+      for (let i = configs.length; i < total; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+
+      const UI = Coup.UI;
+      if (UI.game) UI.game.cancel();
+      UI.myId = 0; // 房主座位
+      UI.els.log.innerHTML = ''; UI.els.prompt.innerHTML = '';
+      UI.els.overlay.classList.remove('show'); UI.els.overlay.innerHTML = '';
+
+      const self = this;
+      const game = new Coup.GameController(configs, {
+        onLog: m => { UI.log(m); self._broadcast({ t: 'log', msg: m }); },
+        onState: () => { UI.render(); self._broadcastState(game); },
+        onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
+        onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null }); },
+        pause: () => new Promise(r => setTimeout(r, self.speed))
+      });
+
+      game.agents[0] = UI; // 房主用本地 UI
+      // 已入座客人 → RemoteAgent（座位 1..n）；其餘 → AI
+      humans.forEach(s => {
+        const agent = new RemoteAgent(s.seat, s.conn, { fallback: new Coup.AIAgent(s.seat) });
+        s.agent = agent;
+        game.agents[s.seat] = agent;
+      });
+      for (let i = 0; i < total; i++) {
+        if (!game.agents[i]) game.agents[i] = new Coup.AIAgent(i);
+      }
+
+      this.game = game;
+      UI.game = game; UI.currentTurn = 0;
+      // 告知每位客人其座位與名單，並送初始狀態
+      const names = configs.map(c => c.name);
+      humans.forEach(s => { try { s.conn.send({ t: 'start', myId: s.seat, names, view: serializeView(game, s.seat) }); } catch (e) {} });
+      if (this.hooks.onStart) this.hooks.onStart();
+      UI.render();
+      game.play();
+    },
+
+    _broadcast(msg) { this.seats.forEach(s => { if (s.conn) { try { s.conn.send(msg); } catch (e) {} } }); },
+    _broadcastState(game) { this.seats.forEach(s => { if (s.conn) { try { s.conn.send({ t: 'state', view: serializeView(game, s.seat) }); } catch (e) {} } }); },
+
+    // ====================== 客人 ======================
+    joinRoom(code, name, hooks) {
+      this.role = 'guest';
+      this.hooks = hooks || {};
+      if (!this._hasPeer()) { this._err('連線元件未載入（需要網路連線以載入 PeerJS）'); return; }
+      this.peer = new root.Peer();
+      this.peer.on('error', e => this._err('連線錯誤：' + (e && e.type ? e.type : e)));
+      this.peer.on('open', () => {
+        const conn = this.peer.connect(this._peerId(code));
+        this.conn = conn;
+        conn.on('open', () => {
+          conn.send({ t: 'join', name: name || '玩家' });
+          if (this.hooks.onLobbyJoined) this.hooks.onLobbyJoined();
+        });
+        conn.on('data', msg => this._guestOnData(conn, msg));
+        conn.on('error', e => this._err('資料通道錯誤'));
+        conn.on('close', () => this._err('與房主的連線中斷'));
+      });
+    },
+
+    _guestOnData(conn, msg) {
+      if (!msg) return;
+      const UI = Coup.UI;
+      if (msg.t === 'lobby') {
+        if (this.hooks.onRoster) this.hooks.onRoster((msg.names || []).map((n, i) => ({ name: n, seat: i })));
+      } else if (msg.t === 'full') {
+        this._err('遊戲已開始或房間已滿');
+      } else if (msg.t === 'start') {
+        this._applyView(msg.view);
+        if (this.hooks.onStart) this.hooks.onStart();
+      } else if (msg.t === 'state') {
+        this._applyView(msg.view);
+      } else if (msg.t === 'log') {
+        UI.log(msg.msg);
+      } else if (msg.t === 'over') {
+        const w = (this.lastView && this.lastView.players) ? this.lastView.players[msg.winnerId] : null;
+        // 勝者若非自己,手牌在視角中為 null（不洩漏）→ 過濾掉,過場畫面就不顯示牌面
+        UI.showWinner(w ? { name: w.name, isHuman: w.id === UI.myId, cards: (w.cards || []).filter(c => c) } : null);
+      } else if (msg.t === 'request') {
+        this._guestHandleRequest(conn, msg);
+      }
+    },
+
+    _applyView(view) {
+      const UI = Coup.UI;
+      this.lastView = view;
+      UI.myId = view.myId;
+      UI.game = view;
+      UI.currentTurn = view.current;
+      UI.render();
+    },
+
+    _guestHandleRequest(conn, msg) {
+      const UI = Coup.UI;
+      this._applyView(msg.view);
+      let out;
+      try {
+        out = UI[msg.method].apply(UI, [msg.view].concat(msg.args || []));
+      } catch (e) { out = null; }
+      Promise.resolve(out).then(value => {
+        try { conn.send({ t: 'response', reqId: msg.reqId, value }); } catch (e) {}
+      });
+    },
+
+    // ====================== 共用 ======================
+    _err(text) { if (this.hooks && this.hooks.onError) this.hooks.onError(text); },
+    leave() {
+      try { if (this.conn) this.conn.close(); } catch (e) {}
+      try { if (this.peer) this.peer.destroy(); } catch (e) {}
+      this.peer = null; this.conn = null; this.role = null; this.seats = []; this.game = null;
+    }
+  };
+
+  Coup.Net = Net;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Coup;
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+  <script>
+/* 初始化、開新局串接、連線對戰大廳 */
 (function (root) {
   'use strict';
   const Main = root.CoupMain = {
@@ -2236,6 +2576,91 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       root.Coup.UI.newGame(n, null, speed);
     }
   };
+
+  // ---------- 連線對戰大廳 ----------
+  function makeLobby() {
+    const UI = root.Coup.UI, Net = root.Coup.Net;
+    const ov = () => UI.els.overlay;
+    const speedVal = () => ({ fast: 260, normal: 620, slow: 1100 })[document.getElementById('speed').value] || 800;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+    function show(html) { const o = ov(); o.innerHTML = '<div class="lobby-box">' + html + '</div>'; o.classList.add('show'); wireClose(); }
+    function close() { const o = ov(); o.classList.remove('show'); o.innerHTML = ''; }
+    function wireClose() { const b = ov().querySelector('.lb-close'); if (b) b.onclick = () => { try { Net.leave(); } catch (e) {} close(); }; }
+    function msg(t) { const m = ov().querySelector('#lbMsg'); if (m) m.textContent = t || ''; }
+    function rosterHTML(list) {
+      return '<div class="lb-roster-t">座上玩家（' + list.length + '）</div><div class="lb-roster">' +
+        list.map(r => '<span class="lb-seat">👤 ' + esc(r.name) + (r.you ? '（你）' : '') + '</span>').join('') + '</div>';
+    }
+
+    function open() {
+      show(
+        '<button class="lb-close" aria-label="關閉">✕</button>' +
+        '<div class="lobby-title">🌐 連線對戰</div>' +
+        '<label class="lobby-field">你的暱稱<input id="lbName" maxlength="8" placeholder="例如：阿明" /></label>' +
+        '<button class="pbtn act wide" id="lbCreate">建立房間（當房主）</button>' +
+        '<div class="lobby-or">— 或 —</div>' +
+        '<div class="lobby-join"><input id="lbCode" maxlength="5" placeholder="輸入房號" autocapitalize="characters" />' +
+        '<button class="pbtn" id="lbJoin">加入</button></div>' +
+        '<div class="lobby-hint">建立房間後把房號給朋友；朋友輸入房號加入。不足的座位由電腦補。<br>※ 需要網路連線。</div>' +
+        '<div class="lobby-msg" id="lbMsg"></div>'
+      );
+      const nameEl = ov().querySelector('#lbName');
+      ov().querySelector('#lbCreate').onclick = () => hostFlow((nameEl.value || '房主').trim());
+      ov().querySelector('#lbJoin').onclick = () => {
+        const code = (ov().querySelector('#lbCode').value || '').trim();
+        if (!code) { msg('請輸入房號'); return; }
+        guestFlow(code, (nameEl.value || '玩家').trim());
+      };
+    }
+
+    function hostFlow(name) {
+      show(
+        '<button class="lb-close" aria-label="關閉">✕</button>' +
+        '<div class="lobby-title">建立房間中…</div><div class="lobby-msg" id="lbMsg">連線中，請稍候</div>'
+      );
+      Net.createRoom(name, {
+        onError: t => msg('⚠ ' + t),
+        onCode: code => renderHost(code, [{ name: name, you: true }]),
+        onRoster: list => { const r = ov().querySelector('#lbRoster'); if (r) r.outerHTML = '<div id="lbRoster">' + rosterHTML(list) + '</div>'; }
+      });
+    }
+
+    function renderHost(code, list) {
+      show(
+        '<button class="lb-close" aria-label="關閉">✕</button>' +
+        '<div class="lobby-title">房間已建立</div>' +
+        '<div class="lb-code">房號 <b>' + esc(code) + '</b> <button class="pbtn small" id="lbCopy">複製</button></div>' +
+        '<div class="lobby-sub">把房號給朋友，等他們加入後按開始</div>' +
+        '<div id="lbRoster">' + rosterHTML(list) + '</div>' +
+        '<label class="lobby-field">總人數<select id="lbTotal">' +
+          [2, 3, 4, 5, 6].map(n => '<option value="' + n + '"' + (n === 4 ? ' selected' : '') + '>' + n + ' 人</option>').join('') +
+        '</select>（不足由電腦補）</label>' +
+        '<button class="pbtn act wide" id="lbStart">開始遊戲</button>' +
+        '<div class="lobby-msg" id="lbMsg"></div>'
+      );
+      ov().querySelector('#lbCopy').onclick = () => {
+        try { navigator.clipboard.writeText(code); msg('已複製房號 ' + code); } catch (e) { msg('房號：' + code); }
+      };
+      ov().querySelector('#lbStart').onclick = () => { Net.startGame(parseInt(ov().querySelector('#lbTotal').value, 10), speedVal()); close(); };
+    }
+
+    function guestFlow(code, name) {
+      show(
+        '<button class="lb-close" aria-label="關閉">✕</button>' +
+        '<div class="lobby-title">加入房間 ' + esc(code.toUpperCase()) + '…</div>' +
+        '<div id="lbRoster"></div><div class="lobby-msg" id="lbMsg">連線中，請稍候</div>'
+      );
+      Net.joinRoom(code, name, {
+        onError: t => msg('⚠ ' + t),
+        onLobbyJoined: () => msg('已連上，等待房主開始…'),
+        onRoster: list => { const r = ov().querySelector('#lbRoster'); if (r) r.innerHTML = rosterHTML(list); },
+        onStart: () => close() // 房主開始 → 收起大廳，棋盤接管
+      });
+    }
+
+    return { open };
+  }
 
   document.addEventListener('DOMContentLoaded', () => {
     root.Coup.UI.init();
@@ -2264,6 +2689,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       Main.start();
       setup.classList.remove('open'); // 開新局後收起設定抽屜
     };
+    // 連線對戰
+    const lobby = makeLobby();
+    document.getElementById('onlineBtn').onclick = () => { lobby.open(); setup.classList.remove('open'); };
+
     // 視覺風格：塔羅（預設）/ 簡約，可記憶
     const themeSel = document.getElementById('theme');
     const applyTheme = v => document.body.classList.toggle('minimal', v === 'minimal');
@@ -2274,7 +2703,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       try { localStorage.setItem('coupTheme', themeSel.value); } catch (e) {}
     };
 
-    Main.start(); // 一進場就開一局
+    Main.start(); // 一進場就開一局（單機）
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
