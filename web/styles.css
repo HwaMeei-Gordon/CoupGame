@@ -227,8 +227,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .log-line.l-block { color: var(--c-blk); }      /* 反制 */
 .log-line.l-good { color: var(--c-good); }       /* 亮牌證明成功 */
 .log-line.l-meta { color: var(--gold-lt); font-style: italic; }
-.log-line:last-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
-@keyframes logIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.log-line:first-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
+@keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */
 #me { flex: 0 0 auto; padding: 5px 2px 4px; }

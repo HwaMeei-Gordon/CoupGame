@@ -177,8 +177,12 @@
       const div = document.createElement('div');
       div.className = 'log-line' + this.logClass(msg);
       div.textContent = msg;
-      this.els.log.appendChild(div);
-      this.els.log.scrollTop = this.els.log.scrollHeight;
+      const box = this.els.log;
+      // 最新訊息置頂(越上面越新)
+      if (typeof box.prepend === 'function') box.prepend(div);
+      else if (typeof box.insertBefore === 'function') box.insertBefore(div, box.firstChild || null);
+      else box.appendChild(div);
+      box.scrollTop = 0;
       this.fb.fromLog(msg);
       this.fx.fromLog(msg);
       this.showPhantom(msg);
@@ -402,13 +406,10 @@
 
       if (action.type === 'foreign_aid') {
         const hasDuke = me.cards.includes('Duke');
-        const threat = actor.coins + 2 >= 7; // 拿了外援就湊得出政變的 7 金幣
-        // 低風險(沒公爵且對方不構成威脅)直接放行,減少打擾、讓流程更順
-        if (!hasDuke && !threat) return { block: false };
         const title = hasDuke
           ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
-          : `⚠️ ${actor.name} 拿外援後將湊滿政變金幣。要<b>詐唬</b>宣稱【公爵 Duke】阻擋嗎？` +
-            `<br><small>若被質疑拆穿，你將失去一張影響力</small>`;
+          : `${actor.name} 想拿外援。要宣稱【公爵 Duke】阻擋嗎？` +
+            `<br><small>你沒有公爵 → 這是詐唬，被質疑拆穿會失去一張影響力</small>`;
         const v = await this.prompt(title, [
           { label: hasDuke ? '🛡️ 用公爵阻擋' : '🎭 詐唬公爵阻擋', value: true, cls: 'shield' },
           { label: '放行', value: false, cls: '' }
