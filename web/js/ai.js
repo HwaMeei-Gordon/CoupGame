@@ -14,18 +14,26 @@
     constructor(id, difficulty) {
       this.id = id;
       this.difficulty = difficulty || 'normal';
-      // 吹牛係數 / 質疑積極度
-      const presets = {
-        easy:   { bluff: 0.20, challenge: 0.85 },
-        normal: { bluff: 0.45, challenge: 1.00 },
-        hard:   { bluff: 0.60, challenge: 1.15 }
-      };
-      const p = presets[this.difficulty] || presets.normal;
-      this.bluff = p.bluff;
-      this.aggr = p.challenge;
+      // 5 種隱藏性格：風險/進攻保守度各異。每場隨機指派、可重複。
+      const keys = Object.keys(AIAgent.PERSONAS);
+      this.personaKey = keys[Math.floor(Math.random() * keys.length)];
+      const P = AIAgent.PERSONAS[this.personaKey];
+      this.personaName = P.name;
+      // 難度作為全域微調(質疑/吹牛幅度、判讀精準度)
+      const diff = ({
+        easy:   { c: 0.82, b: 0.90, smart: 0.7 },
+        normal: { c: 1.00, b: 1.00, smart: 1.0 },
+        hard:   { c: 1.12, b: 1.05, smart: 1.25 }
+      })[this.difficulty] || { c: 1, b: 1, smart: 1 };
+      this.bluff = Math.min(0.9, P.bluff * diff.b);  // 吹牛頻率
+      this.aggr = P.aggr * diff.c;                   // 質疑積極度
+      this.attack = P.attack;                        // 進攻意願(政變/暗殺/吹牛攻擊)
+      this.blockBluff = P.blockBluff;                // 詐唬反制傾向
+      this.coupAt = P.coupAt;                        // 湊到 7 金幣時政變的機率
+      this.smart = diff.smart;
       this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
-      // 吹牛人設：固定偏好一個假身分,讓謊言前後一致、較不易被識破
-      this.persona = Math.random() < 0.5 ? 'Duke' : 'Captain';
+      // 固定一個假身分,讓吹牛前後一致、較不易被識破
+      this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain';
     }
 
     // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
@@ -78,12 +86,19 @@
 
       // 行為偏差：會宣稱者通常更可能為真
       const truth = p + (1 - p) * 0.30;
-      let threshold = 0.45 * this.aggr;
-      if (claimant.cards.length === 1) threshold += 0.10; // 殘血積極抓
-      if (me.cards.length === 1) threshold -= 0.15;       // 自己殘血保守
-      // 對手建模：宣稱角色種類數超過手牌數 → 提高質疑意願
-      threshold += this.suspicion(claimantId, claimant.cards.length) * 0.18;
-      threshold += (Math.random() - 0.5) * 0.10;
+      const m = this.model[claimantId];
+      const sus = this.suspicion(claimantId, claimant.cards.length); // 吹牛嫌疑(宣稱種類>手牌)
+      const repeats = (m && m.claims[character]) || 0;               // 一再宣稱同角色(含本次)
+
+      // 質疑代價極大(自失一牌、對方還換新牌),且牌面機率在本遊戲不可靠(換牌/重抽會打亂),
+      // 因此「行為(過去宣示)」才是主要依據：基礎門檻很低(牌面只在近乎不可能時才賭),
+      // 對「明顯吹牛(宣稱種類>手牌)」大幅提高質疑;對「前後一致宣稱同角色」則降低質疑(較可信)。
+      let threshold = 0.26 * this.aggr;
+      threshold += sus * 0.40;                            // 行為嫌疑:主要訊號
+      if (repeats >= 2) threshold -= 0.10;                // 一再宣稱同角色 → 較可信,別亂質疑
+      if (claimant.cards.length === 1) threshold += 0.05; // 殘血對手值得拚
+      if (me.cards.length === 1) threshold -= 0.16;       // 自己殘血別亂送命
+      threshold += (Math.random() - 0.5) * 0.07;
       return truth < threshold;
     }
 
@@ -94,6 +109,8 @@
     decideBlock(game, action, blockChars) {
       const me = game.players[this.id];
 
+      const bb = this.blockBluff;
+
       if (action.type === 'foreign_aid') {
         const actor = game.players[action.actorId];
         if (me.cards.includes('Duke')) {
@@ -101,13 +118,13 @@
           const lead = actor.coins >= 5 ? 0.8 : 0.5;
           return { block: Math.random() < lead, character: 'Duke' };
         }
-        return { block: Math.random() < 0.05 * this.bluff, character: 'Duke' };
+        return { block: Math.random() < 0.05 * this.bluff * bb, character: 'Duke' };
       }
 
       if (action.type === 'steal') {
         if (me.cards.includes('Captain')) return { block: true, character: 'Captain' };
         if (me.cards.includes('Ambassador')) return { block: true, character: 'Ambassador' };
-        if (Math.random() < 0.35 * this.bluff) {
+        if (Math.random() < 0.35 * this.bluff * bb) {
           return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
         }
         return { block: false };
@@ -117,7 +134,7 @@
         if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
         // 假 Contessa：高風險（被拆穿一次失兩張）。保命時更願意賭。
         const wouldDie = me.cards.length === 1;
-        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff);
+        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff * bb);
         if (Math.random() < prob) return { block: true, character: 'Contessa' };
         return { block: false };
       }
@@ -177,8 +194,8 @@
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
-      // 划算政變:能收殘血、金幣充裕、或多半時候都發動(積極搶第一)
-      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < 0.85))
+      // 划算政變:殘血必收、金幣充裕、或依性格的政變意願
+      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < this.coupAt))
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
@@ -198,26 +215,36 @@
         if (weakHand && Math.random() < 0.45) return { type: 'exchange' };
       }
 
-      // === 吹牛 / 累積（依 persona 維持一致,謊言較不易被識破） ===
+      // === 吹牛 / 累積（吹牛偏好固定假身分,前後一致;頻率隨性格的進攻意願） ===
       const r = Math.random();
-      // 吹牛暗殺（有錢、夠兇）
-      if (me.coins >= 3 && r < 0.10 * this.bluff) {
+      const atk = this.attack;
+      // 吹牛暗殺（有錢、夠兇的性格才會）
+      if (me.coins >= 3 && r < 0.12 * this.bluff * atk) {
         return { type: 'assassinate', targetId: target.id };
       }
-      const dukeBias = this.persona === 'Duke' ? 0.20 : 0;
-      const capBias = this.persona === 'Captain' ? 0.20 : 0;
+      const dukeBias = this.bluffRole === 'Duke' ? 0.20 : 0;
+      const capBias = this.bluffRole === 'Captain' ? 0.20 : 0;
       // 吹牛課稅（宣稱 Duke）
-      if (r < 0.28 + dukeBias + 0.22 * this.bluff) return { type: 'tax' };
-      // 吹牛偷竊（宣稱 Captain）
-      if (r < 0.42 + capBias + 0.22 * this.bluff) {
+      if (r < 0.26 + dukeBias + 0.24 * this.bluff) return { type: 'tax' };
+      // 吹牛偷竊（宣稱 Captain）— 進攻型更常偷
+      if (r < 0.40 + capBias + 0.22 * this.bluff * atk) {
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
-      // 保守：外援 / 收入
+      // 保守：外援 / 收入(保守型更常選)
       if (Math.random() < 0.5) return { type: 'foreign_aid' };
       return { type: 'income' };
     }
   }
+
+  // 5 種隱藏性格（風險與進攻保守度不同）
+  AIAgent.PERSONAS = {
+    cautious:   { name: '謹慎', bluff: 0.20, aggr: 0.78, attack: 0.55, blockBluff: 0.5, coupAt: 0.55 }, // 少吹牛、少質疑、保守
+    steady:     { name: '穩健', bluff: 0.45, aggr: 1.00, attack: 0.85, blockBluff: 1.0, coupAt: 0.85 }, // 中庸
+    aggressive: { name: '兇悍', bluff: 0.55, aggr: 1.10, attack: 1.20, blockBluff: 1.3, coupAt: 1.00 }, // 猛攻、常政變
+    cunning:    { name: '狡詐', bluff: 0.80, aggr: 0.92, attack: 0.95, blockBluff: 1.6, coupAt: 0.85 }, // 超愛詐唬與假反制
+    paranoid:   { name: '多疑', bluff: 0.38, aggr: 1.42, attack: 0.80, blockBluff: 0.8, coupAt: 0.80 }  // 疑心重、質疑頻繁
+  };
 
   Coup.AIAgent = AIAgent;
 

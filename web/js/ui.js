@@ -177,8 +177,12 @@
       const div = document.createElement('div');
       div.className = 'log-line' + this.logClass(msg);
       div.textContent = msg;
-      this.els.log.appendChild(div);
-      this.els.log.scrollTop = this.els.log.scrollHeight;
+      const box = this.els.log;
+      // 最新訊息置頂(越上面越新)
+      if (typeof box.prepend === 'function') box.prepend(div);
+      else if (typeof box.insertBefore === 'function') box.insertBefore(div, box.firstChild || null);
+      else box.appendChild(div);
+      box.scrollTop = 0;
       this.fb.fromLog(msg);
       this.fx.fromLog(msg);
       this.showPhantom(msg);
@@ -243,19 +247,42 @@
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
     },
 
-    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）
+    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）；可點擊查看宣示紀錄
     oppEl(p) {
       const cls = ['opp'];
       if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
       const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
                     p.lost.map(c => this.miniCard(c, true)).join('');
-      return `<div class="${cls.join(' ')}">
+      const n = (p.claimLog || []).length;
+      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 宣示過的角色">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
-        <div class="opp-inf">${p.alive ? '影響 ' + p.cards.length : '出局'}</div>
+        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 宣示 ${n}</span></div>
       </div>`;
+    },
+
+    // 點對手 → 彈出他「宣示過的角色」清單(越上面越新)
+    showClaims(pid) {
+      const p = this.game.players[pid];
+      if (!p) return;
+      const log = (p.claimLog || []).slice().reverse();
+      const items = log.length
+        ? log.map(c => `<div class="claim-item ${c}"><span class="claim-dot"></span>${ZH[c]} <small>${c}</small></div>`).join('')
+        : '<div class="claim-empty">尚未宣示任何角色</div>';
+      this.els.overlay.innerHTML =
+        `<div class="claims-box">
+          <button class="win-close" aria-label="關閉">✕</button>
+          <div class="claims-title">${p.name} 宣示過的角色</div>
+          <div class="claims-sub">越上面越新 · 共 ${log.length} 次（含真實與詐唬）</div>
+          <div class="claims-list">${items}</div>
+        </div>`;
+      this.els.overlay.classList.add('show');
+      const close = this.els.overlay.querySelector('.win-close');
+      const hide = () => { this.els.overlay.classList.remove('show'); this.els.overlay.innerHTML = ''; };
+      if (close) close.onclick = hide;
+      this.els.overlay.onclick = (e) => { if (e.target === this.els.overlay) hide(); };
     },
 
     // 人類手牌區（大牌 + 資訊）
@@ -280,6 +307,12 @@
       const g = this.game;
       this.els.opponents.innerHTML = g.players
         .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
+      // 對手卡可點:看宣示紀錄
+      if (typeof this.els.opponents.querySelectorAll === 'function') {
+        this.els.opponents.querySelectorAll('.opp').forEach(el => {
+          el.onclick = () => this.showClaims(+el.dataset.pid);
+        });
+      }
       this.els.me.innerHTML = g.players
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
@@ -402,13 +435,10 @@
 
       if (action.type === 'foreign_aid') {
         const hasDuke = me.cards.includes('Duke');
-        const threat = actor.coins + 2 >= 7; // 拿了外援就湊得出政變的 7 金幣
-        // 低風險(沒公爵且對方不構成威脅)直接放行,減少打擾、讓流程更順
-        if (!hasDuke && !threat) return { block: false };
         const title = hasDuke
           ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
-          : `⚠️ ${actor.name} 拿外援後將湊滿政變金幣。要<b>詐唬</b>宣稱【公爵 Duke】阻擋嗎？` +
-            `<br><small>若被質疑拆穿，你將失去一張影響力</small>`;
+          : `${actor.name} 想拿外援。要宣稱【公爵 Duke】阻擋嗎？` +
+            `<br><small>你沒有公爵 → 這是詐唬，被質疑拆穿會失去一張影響力</small>`;
         const v = await this.prompt(title, [
           { label: hasDuke ? '🛡️ 用公爵阻擋' : '🎭 詐唬公爵阻擋', value: true, cls: 'shield' },
           { label: '放行', value: false, cls: '' }
@@ -453,6 +483,12 @@
         const keep = me.originalInfluence;
         const sel = new Set();
         const el = this.els.prompt;
+        document.body.classList.add('exchanging'); // 換牌時隱藏原本手牌、放大選牌區
+        const finish = result => {
+          document.body.classList.remove('exchanging');
+          el.innerHTML = '';
+          resolve(result);
+        };
         const redraw = () => {
           el.innerHTML =
             `<div class="prompt-title">大使交換：選擇保留 ${keep} 張（已選 ${sel.size}）</div>` +
@@ -473,8 +509,7 @@
           const cf = el.querySelector('.confirm');
           if (cf) cf.onclick = () => {
             if (sel.size !== keep) return;
-            el.innerHTML = '';
-            resolve([...sel].map(i => pool[i]));
+            finish([...sel].map(i => pool[i]));
           };
         };
         redraw();

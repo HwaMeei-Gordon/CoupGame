@@ -71,7 +71,8 @@
         cards: [],
         lost: [],
         coins: 0,
-        alive: true
+        alive: true,
+        claimLog: []   // 公開宣示過的角色(供玩家點看)
       }));
       this.agents = {}; // id -> Agent，由外部設定
       this.deck = [];
@@ -147,6 +148,8 @@
 
     // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
     notifyClaim(claimantId, character) {
+      const c = this.players[claimantId];
+      if (c) { (c.claimLog || (c.claimLog = [])).push(character); } // 記錄公開宣示
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.observe === 'function') {

@@ -111,11 +111,12 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 }
 #opponents::-webkit-scrollbar { display: none; }
 .opp {
-  flex: 1 1 0; min-width: 72px;
+  flex: 1 1 0; min-width: 72px; cursor: pointer;
   background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
   padding: 5px 5px 5px; text-align: center;
   transition: box-shadow .2s, border-color .2s, transform .2s;
 }
+.opp:active { transform: scale(.97); }
 .opp.current {
   border-color: var(--gold-lt); transform: translateY(-2px);
   animation: turnPulse 1.9s ease-in-out infinite;
@@ -125,7 +126,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .opp-name { font-weight: 700; font-size: 11px; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .opp-coin { color: var(--gold-lt); font-size: 10.5px; white-space: nowrap; }
 .opp-cards { display: flex; gap: 3px; justify-content: center; min-height: 29px; align-items: center; }
-.opp-inf { color: var(--muted); font-size: 9.5px; margin-top: 3px; }
+.opp-inf { color: var(--muted); font-size: 9.5px; margin-top: 3px; display: flex; justify-content: space-between; gap: 4px; }
+.opp-claims { color: var(--gold-lt); white-space: nowrap; }
 
 /* 對手小卡 */
 .mini { width: 20px; height: 29px; border-radius: 4px; flex: 0 0 auto; }
@@ -227,8 +229,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .log-line.l-block { color: var(--c-blk); }      /* 反制 */
 .log-line.l-good { color: var(--c-good); }       /* 亮牌證明成功 */
 .log-line.l-meta { color: var(--gold-lt); font-style: italic; }
-.log-line:last-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
-@keyframes logIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.log-line:first-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
+@keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */
 #me { flex: 0 0 auto; padding: 5px 2px 4px; }
@@ -358,6 +360,16 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-9px) scale(1.04); box-shadow: 0 0 26px rgba(232,207,114,.7); }
 .exchange .card-banner { font-size: 13px; }
 
+/* 換牌時：隱藏原本手牌與舞台,把整個選牌面板放大、置中、可完整點擊 */
+body.exchanging #me { display: none; }
+body.exchanging #stage { min-height: 0; flex: 0 1 auto; }
+body.exchanging #prompt {
+  max-height: 78dvh; overflow-y: auto;
+  display: flex; flex-direction: column; justify-content: center;
+}
+body.exchanging .exchange { gap: 16px; margin: 8px 0 18px; }
+body.exchanging .exchange .card { width: 104px; height: 156px; }
+
 /* ---------- 全螢幕電影級特效層 ---------- */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
 #fx > div { position: absolute; inset: 0; }
@@ -419,6 +431,30 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .win-cards { display: flex; gap: 10px; justify-content: center; margin: 6px 0 22px; }
 .win-cards .card { width: 84px; height: 126px; }
 .win-box .pbtn { width: 100%; }
+
+/* 對手宣示紀錄彈窗 */
+.claims-box {
+  position: relative;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 16px;
+  padding: 18px 18px 16px; width: 300px; max-width: 92vw; max-height: 80dvh; overflow-y: auto;
+}
+.claims-title { font-family: var(--font); font-weight: 700; font-size: 17px; color: var(--gold-lt); margin-bottom: 3px; }
+.claims-sub { color: var(--muted); font-size: 11.5px; margin-bottom: 12px; }
+.claims-list { display: flex; flex-direction: column; gap: 6px; }
+.claim-item {
+  display: flex; align-items: center; gap: 9px; text-align: left;
+  background: rgba(160,132,31,.08); border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 11px; font-size: 14px; font-weight: 700;
+}
+.claim-item small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.claim-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
+.claim-item.Duke .claim-dot { background: var(--duke); }
+.claim-item.Assassin .claim-dot { background: var(--assassin); }
+.claim-item.Captain .claim-dot { background: var(--captain); }
+.claim-item.Ambassador .claim-dot { background: var(--ambassador); }
+.claim-item.Contessa .claim-dot { background: var(--contessa); }
+.claim-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
 
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
 @media (min-width: 600px) and (min-height: 720px) {
