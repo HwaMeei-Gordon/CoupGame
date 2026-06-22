@@ -247,19 +247,42 @@
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
     },
 
-    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）
+    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）；可點擊查看宣示紀錄
     oppEl(p) {
       const cls = ['opp'];
       if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
       const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
                     p.lost.map(c => this.miniCard(c, true)).join('');
-      return `<div class="${cls.join(' ')}">
+      const n = (p.claimLog || []).length;
+      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 宣示過的角色">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
-        <div class="opp-inf">${p.alive ? '影響 ' + p.cards.length : '出局'}</div>
+        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 宣示 ${n}</span></div>
       </div>`;
+    },
+
+    // 點對手 → 彈出他「宣示過的角色」清單(越上面越新)
+    showClaims(pid) {
+      const p = this.game.players[pid];
+      if (!p) return;
+      const log = (p.claimLog || []).slice().reverse();
+      const items = log.length
+        ? log.map(c => `<div class="claim-item ${c}"><span class="claim-dot"></span>${ZH[c]} <small>${c}</small></div>`).join('')
+        : '<div class="claim-empty">尚未宣示任何角色</div>';
+      this.els.overlay.innerHTML =
+        `<div class="claims-box">
+          <button class="win-close" aria-label="關閉">✕</button>
+          <div class="claims-title">${p.name} 宣示過的角色</div>
+          <div class="claims-sub">越上面越新 · 共 ${log.length} 次（含真實與詐唬）</div>
+          <div class="claims-list">${items}</div>
+        </div>`;
+      this.els.overlay.classList.add('show');
+      const close = this.els.overlay.querySelector('.win-close');
+      const hide = () => { this.els.overlay.classList.remove('show'); this.els.overlay.innerHTML = ''; };
+      if (close) close.onclick = hide;
+      this.els.overlay.onclick = (e) => { if (e.target === this.els.overlay) hide(); };
     },
 
     // 人類手牌區（大牌 + 資訊）
@@ -284,6 +307,12 @@
       const g = this.game;
       this.els.opponents.innerHTML = g.players
         .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
+      // 對手卡可點:看宣示紀錄
+      if (typeof this.els.opponents.querySelectorAll === 'function') {
+        this.els.opponents.querySelectorAll('.opp').forEach(el => {
+          el.onclick = () => this.showClaims(+el.dataset.pid);
+        });
+      }
       this.els.me.innerHTML = g.players
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];

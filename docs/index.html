@@ -134,11 +134,12 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 }
 #opponents::-webkit-scrollbar { display: none; }
 .opp {
-  flex: 1 1 0; min-width: 72px;
+  flex: 1 1 0; min-width: 72px; cursor: pointer;
   background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
   padding: 5px 5px 5px; text-align: center;
   transition: box-shadow .2s, border-color .2s, transform .2s;
 }
+.opp:active { transform: scale(.97); }
 .opp.current {
   border-color: var(--gold-lt); transform: translateY(-2px);
   animation: turnPulse 1.9s ease-in-out infinite;
@@ -148,7 +149,8 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .opp-name { font-weight: 700; font-size: 11px; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .opp-coin { color: var(--gold-lt); font-size: 10.5px; white-space: nowrap; }
 .opp-cards { display: flex; gap: 3px; justify-content: center; min-height: 29px; align-items: center; }
-.opp-inf { color: var(--muted); font-size: 9.5px; margin-top: 3px; }
+.opp-inf { color: var(--muted); font-size: 9.5px; margin-top: 3px; display: flex; justify-content: space-between; gap: 4px; }
+.opp-claims { color: var(--gold-lt); white-space: nowrap; }
 
 /* 對手小卡 */
 .mini { width: 20px; height: 29px; border-radius: 4px; flex: 0 0 auto; }
@@ -443,6 +445,30 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .win-cards .card { width: 84px; height: 126px; }
 .win-box .pbtn { width: 100%; }
 
+/* 對手宣示紀錄彈窗 */
+.claims-box {
+  position: relative;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 16px;
+  padding: 18px 18px 16px; width: 300px; max-width: 92vw; max-height: 80dvh; overflow-y: auto;
+}
+.claims-title { font-family: var(--font); font-weight: 700; font-size: 17px; color: var(--gold-lt); margin-bottom: 3px; }
+.claims-sub { color: var(--muted); font-size: 11.5px; margin-bottom: 12px; }
+.claims-list { display: flex; flex-direction: column; gap: 6px; }
+.claim-item {
+  display: flex; align-items: center; gap: 9px; text-align: left;
+  background: rgba(160,132,31,.08); border: 1px solid var(--line); border-radius: 9px;
+  padding: 8px 11px; font-size: 14px; font-weight: 700;
+}
+.claim-item small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.claim-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
+.claim-item.Duke .claim-dot { background: var(--duke); }
+.claim-item.Assassin .claim-dot { background: var(--assassin); }
+.claim-item.Captain .claim-dot { background: var(--captain); }
+.claim-item.Ambassador .claim-dot { background: var(--ambassador); }
+.claim-item.Contessa .claim-dot { background: var(--contessa); }
+.claim-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
+
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
 @media (min-width: 600px) and (min-height: 720px) {
   .card { width: 86px; height: 129px; }
@@ -691,7 +717,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         cards: [],
         lost: [],
         coins: 0,
-        alive: true
+        alive: true,
+        claimLog: []   // 公開宣示過的角色(供玩家點看)
       }));
       this.agents = {}; // id -> Agent，由外部設定
       this.deck = [];
@@ -767,6 +794,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
     notifyClaim(claimantId, character) {
+      const c = this.players[claimantId];
+      if (c) { (c.claimLog || (c.claimLog = [])).push(character); } // 記錄公開宣示
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.observe === 'function') {
@@ -1085,18 +1114,26 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     constructor(id, difficulty) {
       this.id = id;
       this.difficulty = difficulty || 'normal';
-      // 吹牛係數 / 質疑積極度
-      const presets = {
-        easy:   { bluff: 0.20, challenge: 0.85 },
-        normal: { bluff: 0.45, challenge: 1.00 },
-        hard:   { bluff: 0.60, challenge: 1.15 }
-      };
-      const p = presets[this.difficulty] || presets.normal;
-      this.bluff = p.bluff;
-      this.aggr = p.challenge;
+      // 5 種隱藏性格：風險/進攻保守度各異。每場隨機指派、可重複。
+      const keys = Object.keys(AIAgent.PERSONAS);
+      this.personaKey = keys[Math.floor(Math.random() * keys.length)];
+      const P = AIAgent.PERSONAS[this.personaKey];
+      this.personaName = P.name;
+      // 難度作為全域微調(質疑/吹牛幅度、判讀精準度)
+      const diff = ({
+        easy:   { c: 0.82, b: 0.90, smart: 0.7 },
+        normal: { c: 1.00, b: 1.00, smart: 1.0 },
+        hard:   { c: 1.12, b: 1.05, smart: 1.25 }
+      })[this.difficulty] || { c: 1, b: 1, smart: 1 };
+      this.bluff = Math.min(0.9, P.bluff * diff.b);  // 吹牛頻率
+      this.aggr = P.aggr * diff.c;                   // 質疑積極度
+      this.attack = P.attack;                        // 進攻意願(政變/暗殺/吹牛攻擊)
+      this.blockBluff = P.blockBluff;                // 詐唬反制傾向
+      this.coupAt = P.coupAt;                        // 湊到 7 金幣時政變的機率
+      this.smart = diff.smart;
       this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
-      // 吹牛人設：固定偏好一個假身分,讓謊言前後一致、較不易被識破
-      this.persona = Math.random() < 0.5 ? 'Duke' : 'Captain';
+      // 固定一個假身分,讓吹牛前後一致、較不易被識破
+      this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain';
     }
 
     // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
@@ -1149,13 +1186,16 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       // 行為偏差：會宣稱者通常更可能為真
       const truth = p + (1 - p) * 0.30;
+      const m = this.model[claimantId];
       const sus = this.suspicion(claimantId, claimant.cards.length); // 吹牛嫌疑(宣稱種類>手牌)
+      const repeats = (m && m.claims[character]) || 0;               // 一再宣稱同角色(含本次)
 
       // 質疑代價極大(自失一牌、對方還換新牌),且牌面機率在本遊戲不可靠(換牌/重抽會打亂),
-      // 因此「行為嫌疑」才是主要依據：基礎門檻很低(牌面只在近乎不可能時才賭),
-      // 但對「明顯吹牛(宣稱種類>手牌)」的人質疑意願大幅提高。
+      // 因此「行為(過去宣示)」才是主要依據：基礎門檻很低(牌面只在近乎不可能時才賭),
+      // 對「明顯吹牛(宣稱種類>手牌)」大幅提高質疑;對「前後一致宣稱同角色」則降低質疑(較可信)。
       let threshold = 0.26 * this.aggr;
       threshold += sus * 0.40;                            // 行為嫌疑:主要訊號
+      if (repeats >= 2) threshold -= 0.10;                // 一再宣稱同角色 → 較可信,別亂質疑
       if (claimant.cards.length === 1) threshold += 0.05; // 殘血對手值得拚
       if (me.cards.length === 1) threshold -= 0.16;       // 自己殘血別亂送命
       threshold += (Math.random() - 0.5) * 0.07;
@@ -1169,6 +1209,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     decideBlock(game, action, blockChars) {
       const me = game.players[this.id];
 
+      const bb = this.blockBluff;
+
       if (action.type === 'foreign_aid') {
         const actor = game.players[action.actorId];
         if (me.cards.includes('Duke')) {
@@ -1176,13 +1218,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           const lead = actor.coins >= 5 ? 0.8 : 0.5;
           return { block: Math.random() < lead, character: 'Duke' };
         }
-        return { block: Math.random() < 0.05 * this.bluff, character: 'Duke' };
+        return { block: Math.random() < 0.05 * this.bluff * bb, character: 'Duke' };
       }
 
       if (action.type === 'steal') {
         if (me.cards.includes('Captain')) return { block: true, character: 'Captain' };
         if (me.cards.includes('Ambassador')) return { block: true, character: 'Ambassador' };
-        if (Math.random() < 0.35 * this.bluff) {
+        if (Math.random() < 0.35 * this.bluff * bb) {
           return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
         }
         return { block: false };
@@ -1192,7 +1234,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
         // 假 Contessa：高風險（被拆穿一次失兩張）。保命時更願意賭。
         const wouldDie = me.cards.length === 1;
-        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff);
+        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff * bb);
         if (Math.random() < prob) return { block: true, character: 'Contessa' };
         return { block: false };
       }
@@ -1252,8 +1294,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
-      // 划算政變:能收殘血、金幣充裕、或多半時候都發動(積極搶第一)
-      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < 0.85))
+      // 划算政變:殘血必收、金幣充裕、或依性格的政變意願
+      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < this.coupAt))
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
@@ -1273,26 +1315,36 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         if (weakHand && Math.random() < 0.45) return { type: 'exchange' };
       }
 
-      // === 吹牛 / 累積（依 persona 維持一致,謊言較不易被識破） ===
+      // === 吹牛 / 累積（吹牛偏好固定假身分,前後一致;頻率隨性格的進攻意願） ===
       const r = Math.random();
-      // 吹牛暗殺（有錢、夠兇）
-      if (me.coins >= 3 && r < 0.10 * this.bluff) {
+      const atk = this.attack;
+      // 吹牛暗殺（有錢、夠兇的性格才會）
+      if (me.coins >= 3 && r < 0.12 * this.bluff * atk) {
         return { type: 'assassinate', targetId: target.id };
       }
-      const dukeBias = this.persona === 'Duke' ? 0.20 : 0;
-      const capBias = this.persona === 'Captain' ? 0.20 : 0;
+      const dukeBias = this.bluffRole === 'Duke' ? 0.20 : 0;
+      const capBias = this.bluffRole === 'Captain' ? 0.20 : 0;
       // 吹牛課稅（宣稱 Duke）
-      if (r < 0.28 + dukeBias + 0.22 * this.bluff) return { type: 'tax' };
-      // 吹牛偷竊（宣稱 Captain）
-      if (r < 0.42 + capBias + 0.22 * this.bluff) {
+      if (r < 0.26 + dukeBias + 0.24 * this.bluff) return { type: 'tax' };
+      // 吹牛偷竊（宣稱 Captain）— 進攻型更常偷
+      if (r < 0.40 + capBias + 0.22 * this.bluff * atk) {
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
-      // 保守：外援 / 收入
+      // 保守：外援 / 收入(保守型更常選)
       if (Math.random() < 0.5) return { type: 'foreign_aid' };
       return { type: 'income' };
     }
   }
+
+  // 5 種隱藏性格（風險與進攻保守度不同）
+  AIAgent.PERSONAS = {
+    cautious:   { name: '謹慎', bluff: 0.20, aggr: 0.78, attack: 0.55, blockBluff: 0.5, coupAt: 0.55 }, // 少吹牛、少質疑、保守
+    steady:     { name: '穩健', bluff: 0.45, aggr: 1.00, attack: 0.85, blockBluff: 1.0, coupAt: 0.85 }, // 中庸
+    aggressive: { name: '兇悍', bluff: 0.55, aggr: 1.10, attack: 1.20, blockBluff: 1.3, coupAt: 1.00 }, // 猛攻、常政變
+    cunning:    { name: '狡詐', bluff: 0.80, aggr: 0.92, attack: 0.95, blockBluff: 1.6, coupAt: 0.85 }, // 超愛詐唬與假反制
+    paranoid:   { name: '多疑', bluff: 0.38, aggr: 1.42, attack: 0.80, blockBluff: 0.8, coupAt: 0.80 }  // 疑心重、質疑頻繁
+  };
 
   Coup.AIAgent = AIAgent;
 
@@ -1552,19 +1604,42 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
     },
 
-    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）
+    // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）；可點擊查看宣示紀錄
     oppEl(p) {
       const cls = ['opp'];
       if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
       const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
                     p.lost.map(c => this.miniCard(c, true)).join('');
-      return `<div class="${cls.join(' ')}">
+      const n = (p.claimLog || []).length;
+      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 宣示過的角色">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
-        <div class="opp-inf">${p.alive ? '影響 ' + p.cards.length : '出局'}</div>
+        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 宣示 ${n}</span></div>
       </div>`;
+    },
+
+    // 點對手 → 彈出他「宣示過的角色」清單(越上面越新)
+    showClaims(pid) {
+      const p = this.game.players[pid];
+      if (!p) return;
+      const log = (p.claimLog || []).slice().reverse();
+      const items = log.length
+        ? log.map(c => `<div class="claim-item ${c}"><span class="claim-dot"></span>${ZH[c]} <small>${c}</small></div>`).join('')
+        : '<div class="claim-empty">尚未宣示任何角色</div>';
+      this.els.overlay.innerHTML =
+        `<div class="claims-box">
+          <button class="win-close" aria-label="關閉">✕</button>
+          <div class="claims-title">${p.name} 宣示過的角色</div>
+          <div class="claims-sub">越上面越新 · 共 ${log.length} 次（含真實與詐唬）</div>
+          <div class="claims-list">${items}</div>
+        </div>`;
+      this.els.overlay.classList.add('show');
+      const close = this.els.overlay.querySelector('.win-close');
+      const hide = () => { this.els.overlay.classList.remove('show'); this.els.overlay.innerHTML = ''; };
+      if (close) close.onclick = hide;
+      this.els.overlay.onclick = (e) => { if (e.target === this.els.overlay) hide(); };
     },
 
     // 人類手牌區（大牌 + 資訊）
@@ -1589,6 +1664,12 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const g = this.game;
       this.els.opponents.innerHTML = g.players
         .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
+      // 對手卡可點:看宣示紀錄
+      if (typeof this.els.opponents.querySelectorAll === 'function') {
+        this.els.opponents.querySelectorAll('.opp').forEach(el => {
+          el.onclick = () => this.showClaims(+el.dataset.pid);
+        });
+      }
       this.els.me.innerHTML = g.players
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
