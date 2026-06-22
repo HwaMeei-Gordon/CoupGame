@@ -253,6 +253,23 @@
       }).sort((a, b) => b.w - a.w)[0].o;
     }
 
+    // 場上「有人會用公爵擋外援」的可信度 0..1：誰宣示過公爵、誰擋過我外援。
+    // 用來判斷「現在拿外援會不會被白擋」——已立公爵的人在場，外援多半是浪費回合。
+    dukeBlockThreat(game) {
+      let threat = 0;
+      game.players.forEach(p => {
+        if (!p.alive || p.id === this.id) return;
+        let t = 0;
+        const m = this.model[p.id];
+        const dukeClaims = (m && m.claims['Duke']) || 0;
+        if (dukeClaims > 0) t = Math.min(0.85, 0.45 + 0.2 * dukeClaims); // 宣示過公爵(越多次越可信)
+        const bb = (this.blockedBy[p.id] && this.blockedBy[p.id].foreign_aid) || 0;
+        if (bb > 0) t = Math.max(t, Math.min(0.95, 0.6 + 0.2 * bb));     // 曾擋過我外援(鐵證)
+        threat = Math.max(threat, t);
+      });
+      return threat;
+    }
+
     chooseAction(game) {
       const me = game.players[this.id];
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
@@ -272,12 +289,12 @@
       if (me.cards.includes('Assassin') && me.coins >= 3) {
         return { type: 'assassinate', targetId: target.id };
       }
-      // 真 Captain 偷竊 — 避開老擋我的人；若只剩會擋我的目標，改攢錢（破鬼打牆）
+      // 真 Captain 偷竊 — 被某人擋過「一次」就別再撞同一面盾（智商越高越果斷），改攢錢
       if (me.cards.includes('Captain')) {
         const t = this.stealTarget(opps);
         if (t) {
           const blk = (this.blockedBy[t.id] && this.blockedBy[t.id].steal) || 0;
-          const giveUp = blk >= 2 && Math.random() < (0.4 + 0.5 * this.iq);
+          const giveUp = blk >= 1 && Math.random() < (0.5 + 0.45 * this.iq) * Math.min(1, blk);
           if (!giveUp && Math.random() < 0.85) return { type: 'steal', targetId: t.id };
         }
       }
@@ -308,9 +325,9 @@
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
-      // 保守：外援 / 收入。外援可被任何人宣稱 Duke 擋，聰明者人多時略避。
-      const faRisk = opps.length * 0.06 * this.iq;
-      if (Math.random() < 0.6 - faRisk) return { type: 'foreign_aid' };
+      // 保守：外援 / 收入。場上若有已立可信公爵(會擋外援)，聰明者就別浪費回合拿外援。
+      const faThreat = this.dukeBlockThreat(game) * (0.35 + 0.65 * this.iq); // 智商越高越認得這威脅
+      if (faThreat < 0.4 && Math.random() < 0.7) return { type: 'foreign_aid' };
       return { type: 'income' };
     }
   }
