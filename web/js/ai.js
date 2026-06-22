@@ -31,6 +31,9 @@
       this.blockBluff = P.blockBluff;                // 詐唬反制傾向
       this.coupAt = P.coupAt;                        // 湊到 7 金幣時政變的機率
       this.smart = diff.smart;
+      this.target = P.target;                        // 進攻取向(打誰)
+      // 各取向的「隨機程度」：隨性型亂打、其餘較貫徹自己的風格
+      this.targetNoise = ({ random: 9, even: 2, leader: 2.5, finish: 2.5, rich: 2.5 })[P.target] || 4;
       this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
       // 固定一個假身分,讓吹牛前後一致、較不易被識破
       this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain';
@@ -45,6 +48,17 @@
       // 對手手牌一旦變動（失牌），先前宣稱的參考價值降低 → 重置
       if (target.lost.length !== m.lostSeen) { m.claims = {}; m.lostSeen = target.lost.length; }
       m.claims[character] = (m.claims[character] || 0) + 1;
+    }
+
+    // 某玩家被質疑、亮牌證實後「換了新牌」（公開手牌→洗回→改抽）。引擎在換牌後通知。
+    // 該玩家手牌組成已改變,先前累積的角色宣示不再可靠 → 重置其宣示模型,內部機率重新評估。
+    onSwap(game, playerId, character) {
+      if (playerId === this.id) return; // 自己換牌無須對自己建模
+      const m = this.model[playerId];
+      if (!m) return;
+      const target = game.players[playerId];
+      m.claims = {};
+      m.lostSeen = target ? target.lost.length : 0;
     }
 
     // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
@@ -164,14 +178,39 @@
       return scored.slice(0, keepCount).map(s => s.c);
     }
 
-    // 選擇攻擊目標：威脅加權 + 隨機,對「所有人」都有敵意(會打其他 AI,而非只盯玩家)
+    // 選擇攻擊目標：依各性格的「進攻取向」加權 + 隨機。對所有人都有敵意(會打其他 AI,而非只盯玩家)。
+    //  leader 擒王：打影響力(生命)最多者  even 均衡：讓大家生命盡量齊頭,優先打 2 條的
+    //  finish 收割：優先解決殘血清場       rich 劫富：盯著錢多的  random 隨性：純威脅+大量隨機
     pickTarget(game) {
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
       if (opps.length === 0) return null;
+      const maxInf = Math.max.apply(null, opps.map(o => o.cards.length));
+      const maxCoins = Math.max.apply(null, opps.map(o => o.coins).concat(1));
       const scored = opps.map(o => {
-        let w = o.coins * 0.5 + o.cards.length * 3 + 1;
-        if (o.cards.length === 1) w += 7;        // 趁機收人頭
-        w += Math.random() * 6;                  // 分散火力,讓 AI 互相攻擊
+        let w = 1;
+        switch (this.target) {
+          case 'leader': // 擒賊先擒王：影響力最多者優先,其次有錢
+            w += o.cards.length * 6 + o.coins * 0.5;
+            if (o.cards.length === maxInf) w += 5;
+            break;
+          case 'even':   // 均衡：讓大家生命值盡量齊頭,優先打影響力較多的
+            w += o.cards.length * 5;
+            if (o.cards.length === maxInf && maxInf > 1) w += 6;
+            break;
+          case 'finish': // 收割：優先解決殘血、趁機清場
+            w += (3 - o.cards.length) * 4 + o.coins * 0.2;
+            if (o.cards.length === 1) w += 9;
+            break;
+          case 'rich':   // 劫富：盯著錢多的(視財富為威脅)
+            w += (o.coins / maxCoins) * 9 + o.cards.length * 1.5;
+            break;
+          default:       // random/隨性：輕度威脅加權,大量隨機
+            w += o.cards.length * 1.5 + o.coins * 0.3;
+            break;
+        }
+        // 殘血終究誘人(但均衡型刻意少加,以維持齊頭)
+        if (o.cards.length === 1) w += (this.target === 'even' ? 1 : 3);
+        w += Math.random() * this.targetNoise;
         return { o, w };
       });
       scored.sort((a, b) => b.w - a.w);
@@ -237,13 +276,13 @@
     }
   }
 
-  // 5 種隱藏性格（風險與進攻保守度不同）
+  // 5 種隱藏性格（風險、進攻保守度、進攻取向各異）。target = 打誰的取向。
   AIAgent.PERSONAS = {
-    cautious:   { name: '謹慎', bluff: 0.20, aggr: 0.78, attack: 0.55, blockBluff: 0.5, coupAt: 0.55 }, // 少吹牛、少質疑、保守
-    steady:     { name: '穩健', bluff: 0.45, aggr: 1.00, attack: 0.85, blockBluff: 1.0, coupAt: 0.85 }, // 中庸
-    aggressive: { name: '兇悍', bluff: 0.55, aggr: 1.10, attack: 1.20, blockBluff: 1.3, coupAt: 1.00 }, // 猛攻、常政變
-    cunning:    { name: '狡詐', bluff: 0.80, aggr: 0.92, attack: 0.95, blockBluff: 1.6, coupAt: 0.85 }, // 超愛詐唬與假反制
-    paranoid:   { name: '多疑', bluff: 0.38, aggr: 1.42, attack: 0.80, blockBluff: 0.8, coupAt: 0.80 }  // 疑心重、質疑頻繁
+    cautious:   { name: '謹慎', bluff: 0.20, aggr: 0.78, attack: 0.55, blockBluff: 0.5, coupAt: 0.55, target: 'finish' }, // 保守,專收殘血
+    steady:     { name: '穩健', bluff: 0.45, aggr: 1.00, attack: 0.85, blockBluff: 1.0, coupAt: 0.85, target: 'even'   }, // 中庸,打得平均
+    aggressive: { name: '兇悍', bluff: 0.55, aggr: 1.10, attack: 1.20, blockBluff: 1.3, coupAt: 1.00, target: 'leader' }, // 猛攻,擒賊先擒王
+    cunning:    { name: '狡詐', bluff: 0.80, aggr: 0.92, attack: 0.95, blockBluff: 1.6, coupAt: 0.85, target: 'random' }, // 詐唬多,出手難捉摸
+    paranoid:   { name: '多疑', bluff: 0.38, aggr: 1.42, attack: 0.80, blockBluff: 0.8, coupAt: 0.80, target: 'rich'   }  // 疑心重,盯著錢多的打
   };
 
   Coup.AIAgent = AIAgent;
