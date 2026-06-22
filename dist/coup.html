@@ -1149,12 +1149,16 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       // 行為偏差：會宣稱者通常更可能為真
       const truth = p + (1 - p) * 0.30;
-      let threshold = 0.45 * this.aggr;
-      if (claimant.cards.length === 1) threshold += 0.10; // 殘血積極抓
-      if (me.cards.length === 1) threshold -= 0.15;       // 自己殘血保守
-      // 對手建模：宣稱角色種類數超過手牌數 → 提高質疑意願
-      threshold += this.suspicion(claimantId, claimant.cards.length) * 0.18;
-      threshold += (Math.random() - 0.5) * 0.10;
+      const sus = this.suspicion(claimantId, claimant.cards.length); // 吹牛嫌疑(宣稱種類>手牌)
+
+      // 質疑代價極大(自失一牌、對方還換新牌),且牌面機率在本遊戲不可靠(換牌/重抽會打亂),
+      // 因此「行為嫌疑」才是主要依據：基礎門檻很低(牌面只在近乎不可能時才賭),
+      // 但對「明顯吹牛(宣稱種類>手牌)」的人質疑意願大幅提高。
+      let threshold = 0.26 * this.aggr;
+      threshold += sus * 0.40;                            // 行為嫌疑:主要訊號
+      if (claimant.cards.length === 1) threshold += 0.05; // 殘血對手值得拚
+      if (me.cards.length === 1) threshold -= 0.16;       // 自己殘血別亂送命
+      threshold += (Math.random() - 0.5) * 0.07;
       return truth < threshold;
     }
 
