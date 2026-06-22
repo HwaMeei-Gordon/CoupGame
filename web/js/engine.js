@@ -72,7 +72,8 @@
         lost: [],
         coins: 0,
         alive: true,
-        claimLog: []   // 公開宣示過的角色(供玩家點看)
+        claimLog: [],  // 公開宣示過的角色(AI 嫌疑判讀)
+        timeline: []   // 公開事件流(宣示/換牌/大使交換)供玩家點看
       }));
       this.agents = {}; // id -> Agent，由外部設定
       this.deck = [];
@@ -149,7 +150,10 @@
     // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
     notifyClaim(claimantId, character) {
       const c = this.players[claimantId];
-      if (c) { (c.claimLog || (c.claimLog = [])).push(character); } // 記錄公開宣示
+      if (c) {
+        (c.claimLog || (c.claimLog = [])).push(character);
+        (c.timeline || (c.timeline = [])).push({ kind: 'claim', ch: character });
+      }
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.observe === 'function') {
@@ -160,6 +164,8 @@
 
     // 通知所有代理人：playerId 被質疑證實後換了新牌（手牌組成已變,供 AI 重評機率）
     notifySwap(playerId, character) {
+      const c = this.players[playerId];
+      if (c) (c.timeline || (c.timeline = [])).push({ kind: 'swap', ch: character });
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.onSwap === 'function') {
@@ -168,12 +174,28 @@
       }
     }
 
-    // 質疑窗口：詢問其他存活玩家是否質疑 claimant 的 character 宣稱
+    // 通知所有代理人：一個行動的結果（被擋 / 命中），供 AI 記憶「誰一直擋我」「誰攻擊我」
+    notifyOutcome(ev) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observeOutcome === 'function') {
+          try { a.observeOutcome(this, ev); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
+    // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
+    // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
-    async runChallenge(claimantId, character) {
+    async runChallenge(claimantId, character, eligible) {
       const claimant = this.players[claimantId];
       this.notifyClaim(claimantId, character);
-      for (const pid of this.aliveOrderFrom(claimantId)) {
+      let order = this.aliveOrderFrom(claimantId);
+      if (Array.isArray(eligible)) {
+        const allow = new Set(eligible);
+        order = order.filter(id => allow.has(id));
+      }
+      for (const pid of order) {
         const p = this.players[pid];
         if (!p.alive) continue;
         const wants = await this.agents[pid].decideChallenge(this, claimantId, character);
@@ -230,12 +252,14 @@
         this.hooks.onState();
         await this.hooks.pause();
 
-        // 反制本身可被質疑（任何人，含原行動者）
-        const res = await this.runChallenge(bid, ch);
+        // 反制只由「當事人」（原行動者）質疑——兩人之間的對抗
+        const res = await this.runChallenge(bid, ch, [action.actorId]);
         if (res.challenged && res.success) {
           this.log('➡️ 反制的假面被撕下，原行動繼續降臨');
           return false; // 反制者吹牛被抓 → 反制失敗 → 行動續行
         }
+        // 行動被成功擋下：通知 AI（記憶「這人會擋我的這種行動」）
+        this.notifyOutcome({ type: action.type, actorId: action.actorId, targetId: action.targetId, blocked: true, blockerId: bid, blockChar: ch });
         return true; // 反制成立 → 行動被擋
       }
       return false;
@@ -275,6 +299,7 @@
       if (!Array.isArray(kept)) kept = actor.cards.slice(0, keepCount);
       this.applyExchange(actor, kept);
       delete actor.originalInfluence;
+      (actor.timeline || (actor.timeline = [])).push({ kind: 'exchange', ch: 'Ambassador' });
       this.log(`🔄 ${actor.name} 換上新的面孔（保留 ${actor.cards.length} 張）`);
       this.hooks.onState();
     }
@@ -322,6 +347,7 @@
         this.log(`🎯 ${actor.name} 傾盡 7 金幣，對 ${target.name} 發動政變`);
         this.hooks.onState();
         await this.hooks.pause();
+        this.notifyOutcome({ type: 'coup', actorId: actor.id, targetId: target.id, blocked: false });
         await this.loseInfluence(target);
         return;
       }
@@ -353,7 +379,10 @@
       this.hooks.onState();
       await this.hooks.pause();
 
-      const cres = await this.runChallenge(actor.id, meta.character);
+      // 質疑範圍：課稅(公爵)/換牌(大使)＝所有人可質疑；暗殺/偷竊＝只有目標當事人可質疑
+      const everyoneCanChallenge = (action.type === 'tax' || action.type === 'exchange');
+      const challengeEligible = everyoneCanChallenge ? undefined : [action.targetId];
+      const cres = await this.runChallenge(actor.id, meta.character, challengeEligible);
       if (cres.challenged && cres.success) {
         if (action.type === 'assassinate') {
           actor.coins += 3; // 行動作廢 → 退費
@@ -385,10 +414,12 @@
           target.coins -= amt;
           actor.coins += amt;
           this.log(`💰 ${actor.name} 自 ${target.name} 攫走 ${amt} 金幣`);
+          this.notifyOutcome({ type: 'steal', actorId: actor.id, targetId: target.id, blocked: false });
           break;
         }
         case 'assassinate':
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
+          this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
           await this.loseInfluence(target);
           break;
         case 'exchange':
