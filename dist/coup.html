@@ -383,6 +383,16 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .exchange .card.picked { outline: 3px solid var(--gold-lt); transform: translateY(-9px) scale(1.04); box-shadow: 0 0 26px rgba(232,207,114,.7); }
 .exchange .card-banner { font-size: 13px; }
 
+/* 換牌時：隱藏原本手牌與舞台,把整個選牌面板放大、置中、可完整點擊 */
+body.exchanging #me { display: none; }
+body.exchanging #stage { min-height: 0; flex: 0 1 auto; }
+body.exchanging #prompt {
+  max-height: 78dvh; overflow-y: auto;
+  display: flex; flex-direction: column; justify-content: center;
+}
+body.exchanging .exchange { gap: 16px; margin: 8px 0 18px; }
+body.exchanging .exchange .card { width: 104px; height: 156px; }
+
 /* ---------- 全螢幕電影級特效層 ---------- */
 #fx { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
 #fx > div { position: absolute; inset: 0; }
@@ -1840,6 +1850,12 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         const keep = me.originalInfluence;
         const sel = new Set();
         const el = this.els.prompt;
+        document.body.classList.add('exchanging'); // 換牌時隱藏原本手牌、放大選牌區
+        const finish = result => {
+          document.body.classList.remove('exchanging');
+          el.innerHTML = '';
+          resolve(result);
+        };
         const redraw = () => {
           el.innerHTML =
             `<div class="prompt-title">大使交換：選擇保留 ${keep} 張（已選 ${sel.size}）</div>` +
@@ -1860,8 +1876,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           const cf = el.querySelector('.confirm');
           if (cf) cf.onclick = () => {
             if (sel.size !== keep) return;
-            el.innerHTML = '';
-            resolve([...sel].map(i => pool[i]));
+            finish([...sel].map(i => pool[i]));
           };
         };
         redraw();

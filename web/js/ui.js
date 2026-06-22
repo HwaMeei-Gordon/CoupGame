@@ -483,6 +483,12 @@
         const keep = me.originalInfluence;
         const sel = new Set();
         const el = this.els.prompt;
+        document.body.classList.add('exchanging'); // 換牌時隱藏原本手牌、放大選牌區
+        const finish = result => {
+          document.body.classList.remove('exchanging');
+          el.innerHTML = '';
+          resolve(result);
+        };
         const redraw = () => {
           el.innerHTML =
             `<div class="prompt-title">大使交換：選擇保留 ${keep} 張（已選 ${sel.size}）</div>` +
@@ -503,8 +509,7 @@
           const cf = el.querySelector('.confirm');
           if (cf) cf.onclick = () => {
             if (sel.size !== keep) return;
-            el.innerHTML = '';
-            resolve([...sel].map(i => pool[i]));
+            finish([...sel].map(i => pool[i]));
           };
         };
         redraw();
