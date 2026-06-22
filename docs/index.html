@@ -1203,6 +1203,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.model = {};     // id -> { claims:{char:count}, lostSeen }  宣示建模
       this.blockedBy = {}; // blockerId -> { actionType: count }       我的行動被誰擋過幾次
       this.grudge = {};    // id -> 仇恨值（被其攻擊累積）              報復目標依據
+      this.probing = false; // 本回合是否「故意拿外援去逼問公爵」（→ 之後更願意質疑該反制）
     }
 
     _dominantTrait() {
@@ -1311,6 +1312,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (character === 'Assassin') threshold -= 0.16 + (me.cards.length <= 2 ? 0.05 : 0);
       // 手握大量金幣／領先時，別為小事冒險送命，守住優勢
       if (me.coins >= 7) threshold -= 0.08;
+      // 我是「故意拿外援逼問公爵」的 → 既然來試探，就跟進質疑這個擋來驗證真偽（邏輯自洽）
+      if (this.probing && character === 'Duke') { threshold += 0.24; this.probing = false; }
       threshold += (Math.random() - 0.5) * 0.10 * (1.4 - this.iq);     // 智商低 → 更隨機
       return truth < threshold;
     }
@@ -1443,6 +1446,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const me = game.players[this.id];
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
       const target = this.pickTarget(game);
+      this.probing = false; // 每回合重置試探旗標
       if (!target) return { type: 'income' };
 
       // 強制政變
@@ -1494,10 +1498,16 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
-      // 保守：外援 / 收入。場上若有已立可信公爵(會擋外援)，聰明者就別浪費回合拿外援。
-      const faThreat = this.dukeBlockThreat(game) * (0.35 + 0.65 * this.iq); // 智商越高越認得這威脅
-      if (faThreat < 0.4 && Math.random() < 0.7) return { type: 'foreign_aid' };
-      return { type: 'income' };
+      // 外援 / 收入。場上若有已立可信公爵(會擋外援)：拿外援本身合法,但通常較低；
+      // 多疑/有膽者會「故意拿外援逼問」對方跳公爵,再反過來質疑去驗證(設 probing 旗標跟進)。
+      const threat = this.dukeBlockThreat(game);
+      if (threat > 0.3) {
+        const probe = ((1 - this.trust) * 0.35 + this.nerve * 0.20) * Math.max(0.05, 1 - threat * 0.8);
+        if (Math.random() < probe) { this.probing = true; return { type: 'foreign_aid' }; }
+        return { type: 'income' }; // 尊重已立公爵,不白送外援
+      }
+      // 無公爵威脅：正常多半拿外援(+2 優於收入)
+      return Math.random() < 0.7 ? { type: 'foreign_aid' } : { type: 'income' };
     }
   }
 
