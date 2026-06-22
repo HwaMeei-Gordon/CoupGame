@@ -143,13 +143,15 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   font-size: 10px; color: rgba(232,207,114,.55);
 }
 .mini.lost {
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: var(--parch); border: 1px solid rgba(201,162,39,.5);
-  opacity: .65; filter: grayscale(.4); transform: rotate(-4deg);
+  position: relative; overflow: hidden;
+  border: 1px solid rgba(201,162,39,.55);
+  opacity: .9; transform: rotate(-4deg); background: #2a2030;
 }
-.mini.lost.Duke { background: var(--duke); } .mini.lost.Assassin { background: var(--assassin); }
-.mini.lost.Captain { background: var(--captain); } .mini.lost.Ambassador { background: var(--ambassador); }
-.mini.lost.Contessa { background: var(--contessa); }
+.mini-img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(.55) brightness(.82); }
+.mini-x {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #ff5a6a; font-size: 13px; font-weight: 900; text-shadow: 0 0 4px #000, 0 1px 2px #000;
+}
 
 /* ---------- 牌桌動態（狀態 + 日誌動態） ---------- */
 #stage {
@@ -455,6 +457,26 @@ body.exchanging .exchange .card { width: 104px; height: 156px; }
 .claim-item.Ambassador .claim-dot { background: var(--ambassador); }
 .claim-item.Contessa .claim-dot { background: var(--contessa); }
 .claim-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
+
+/* 底細彈窗：死牌縮圖 + 事件流（宣示/換牌） */
+.rec-dead { margin-bottom: 12px; }
+.rec-dead-lab { color: var(--muted); font-size: 11.5px; margin-bottom: 5px; }
+.rec-dead-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+.rec-dead-cards .mini { width: 40px; height: 58px; border-radius: 6px; }
+.rec-item {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  background: rgba(160,132,31,.08); border: 1px solid var(--line);
+  border-left: 4px solid var(--muted); border-radius: 9px; padding: 7px 10px;
+}
+.rec-img { width: 30px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(201,162,39,.4); flex: 0 0 auto; }
+.rec-tx { display: flex; flex-direction: column; gap: 1px; }
+.rec-tx b { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.rec-tx small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.rec-item.k-swap { border-left-color: #c98a2a; }
+.rec-item.k-exchange { border-left-color: #2a8ac9; }
+.rec-item.Duke { border-left-color: var(--duke); } .rec-item.Assassin { border-left-color: var(--assassin); }
+.rec-item.Captain { border-left-color: var(--captain); } .rec-item.Ambassador { border-left-color: var(--ambassador); }
+.rec-item.Contessa { border-left-color: var(--contessa); }
 
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
 @media (min-width: 600px) and (min-height: 720px) {

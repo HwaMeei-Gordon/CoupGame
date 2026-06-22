@@ -134,6 +134,113 @@
       }
     },
 
+    // 中世紀宮廷氛圍音樂：程序合成（無需音檔，單檔自含）。
+    // 低音風笛式持續音(drone) + 琉特琴分解和弦 + 直笛旋律 + 小手鼓，D Dorian 調式。
+    music: {
+      ctx: null, master: null, playing: false, step: 0, nextT: 0, timer: null,
+      droneNodes: null, bpm: 80, vol: 0.15,
+      mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); },
+      // 4 小節 × 八分音符 = 32 步。和弦根音：Dm · C · Dm · G（Dorian 調式色彩）
+      chordRoots: [50,50,50,50,50,50,50,50, 48,48,48,48,48,48,48,48,
+                   50,50,50,50,50,50,50,50, 55,55,55,55,55,55,55,55],
+      // 直笛旋律（稀疏，null = 休止），D Dorian
+      melody: [69,null,74,null, 72,null,69,null, 67,null,64,null, 67,null,null,null,
+               65,null,69,null, 67,null,65,null, 64,null,62,null, null,null,null,null],
+      ensure(ctx) {
+        this.ctx = ctx;
+        if (!this.master) {
+          this.master = ctx.createGain();
+          this.master.gain.value = 0.0;
+          this.master.connect(ctx.destination);
+        }
+      },
+      start(ctx) {
+        if (this.playing || !ctx) return;
+        this.ensure(ctx);
+        this.playing = true; this.step = 0; this.nextT = ctx.currentTime + 0.15;
+        const g = this.master.gain, t = ctx.currentTime;
+        g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t);
+        g.linearRampToValueAtTime(this.vol, t + 3.0); // 緩緩浮現
+        this.startDrone();
+        this.loop();
+      },
+      stop() {
+        this.playing = false;
+        if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+        this.stopDrone();
+      },
+      setMuted(m) {
+        if (!this.ctx || !this.master) return;
+        const g = this.master.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(m ? 0.0 : this.vol, t + 0.5);
+      },
+      startDrone() {
+        const c = this.ctx; if (!c) return;
+        this.stopDrone();
+        this.droneNodes = [38, 45].map(m => { // D2 + A2 完全五度持續音
+          const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+          o.type = 'sawtooth'; o.frequency.value = this.mtof(m);
+          f.type = 'lowpass'; f.frequency.value = 430; f.Q.value = 0.6;
+          g.gain.value = 0.05;
+          o.connect(f); f.connect(g); g.connect(this.master); o.start();
+          return { o, g };
+        });
+      },
+      stopDrone() {
+        if (this.droneNodes) { this.droneNodes.forEach(n => { try { n.o.stop(); } catch (e) {} }); this.droneNodes = null; }
+      },
+      pluck(midi, t, dur, gain) { // 琉特琴撥弦
+        const c = this.ctx; if (!c) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.value = this.mtof(midi);
+        o.connect(g); g.connect(this.master);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.03);
+      },
+      reed(midi, t, dur, gain) { // 直笛/簧管旋律（基音 + 弱八度泛音）
+        const c = this.ctx; if (!c) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = this.mtof(midi);
+        const o2 = c.createOscillator(), g2 = c.createGain();
+        o2.type = 'triangle'; o2.frequency.value = this.mtof(midi) * 2; g2.gain.value = 0.10;
+        o2.connect(g2); g2.connect(g); o.connect(g); g.connect(this.master);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(gain, t + 0.06);
+        g.gain.setValueAtTime(gain, t + dur * 0.65);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.05); o2.start(t); o2.stop(t + dur + 0.05);
+      },
+      tabor(t, gain) { // 小手鼓
+        const c = this.ctx; if (!c) return;
+        const dur = 0.12, buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+        const src = c.createBufferSource(); src.buffer = buf;
+        const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 170; f.Q.value = 1.1;
+        const g = c.createGain(); g.gain.value = gain;
+        src.connect(f); f.connect(g); g.connect(this.master); src.start(t);
+      },
+      loop() {
+        if (!this.playing || !this.ctx) return;
+        const c = this.ctx, stepDur = (60 / this.bpm) / 2;
+        while (this.nextT < c.currentTime + 0.25) {
+          const s = this.step % 32, root = this.chordRoots[s];
+          // 大三和弦(C, G 小節) vs 小三和弦(Dm 小節)
+          const major = (s >= 8 && s < 16) || (s >= 24 && s < 32);
+          const tones = [root, root + (major ? 4 : 3), root + 7, root + 12];
+          this.pluck(tones[this.step % tones.length], this.nextT, stepDur * 1.7, 0.045);
+          const mel = this.melody[s];
+          if (mel != null) this.reed(mel, this.nextT, stepDur * 1.9, 0.055);
+          if (s % 4 === 0) this.tabor(this.nextT, s % 8 === 0 ? 0.05 : 0.03);
+          this.step++; this.nextT += stepDur;
+        }
+        this.timer = setTimeout(() => this.loop(), 60);
+      }
+    },
+
     init() {
       this.els = {
         opponents: document.getElementById('opponents'),
@@ -240,11 +347,13 @@
       </div>`;
     },
 
-    // 對手小卡（牌背 / 已攤開的死牌）
+    // 對手小卡（牌背 / 已攤開的死牌——用與玩家相同的塔羅插畫，方便辨識）
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
       const a = ARCANA[ch];
-      return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
+      return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
+        <img class="mini-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <span class="mini-x">✕</span></div>`;
     },
 
     // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）；可點擊查看宣示紀錄
@@ -254,28 +363,45 @@
       if (!p.alive) cls.push('dead');
       const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
                     p.lost.map(c => this.miniCard(c, true)).join('');
-      const n = (p.claimLog || []).length;
-      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 宣示過的角色">
+      const n = (p.timeline || []).length;
+      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 的底細（宣示與換牌紀錄）">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
-        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 宣示 ${n}</span></div>
+        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 紀錄 ${n}</span></div>
       </div>`;
     },
 
-    // 點對手 → 彈出他「宣示過的角色」清單(越上面越新)
+    // 點對手 → 彈出他的「底細」：已亮出的死牌 + 公開紀錄(宣示/換牌,越上面越新)
     showClaims(pid) {
       const p = this.game.players[pid];
       if (!p) return;
-      const log = (p.claimLog || []).slice().reverse();
-      const items = log.length
-        ? log.map(c => `<div class="claim-item ${c}"><span class="claim-dot"></span>${ZH[c]} <small>${c}</small></div>`).join('')
-        : '<div class="claim-empty">尚未宣示任何角色</div>';
+      // 已公開的死牌（與玩家相同的插畫）
+      const dead = (p.lost || []).length
+        ? `<div class="rec-dead"><div class="rec-dead-lab">已亮出的死牌</div>
+            <div class="rec-dead-cards">${p.lost.map(c => this.miniCard(c, true)).join('')}</div></div>`
+        : '';
+      // 公開事件流（宣示 / 證實換牌 / 大使換牌）
+      const tl = (p.timeline || []).slice().reverse();
+      const items = tl.length
+        ? tl.map(ev => {
+            const ch = ev.ch;
+            const a = ARCANA[ch] || { zh: '', en: '' };
+            const img = `<img class="rec-img" src="cards/${ch}.webp" alt="${a.zh}" draggable="false" />`;
+            let tag, sub;
+            if (ev.kind === 'swap') { tag = '🔀 被質疑→證實後換牌'; sub = `亮出真【${a.zh} ${a.en}】，已洗回換新牌`; }
+            else if (ev.kind === 'exchange') { tag = '🔄 大使換牌'; sub = '與命運之輪交換手牌'; }
+            else { tag = '🗣️ 宣示角色'; sub = `宣稱【${a.zh} ${a.en}】（真偽未知）`; }
+            return `<div class="rec-item ${ch} k-${ev.kind}">${img}
+              <div class="rec-tx"><b>${tag}</b><small>${sub}</small></div></div>`;
+          }).join('')
+        : '<div class="claim-empty">尚無任何公開紀錄</div>';
       this.els.overlay.innerHTML =
         `<div class="claims-box">
           <button class="win-close" aria-label="關閉">✕</button>
-          <div class="claims-title">${p.name} 宣示過的角色</div>
-          <div class="claims-sub">越上面越新 · 共 ${log.length} 次（含真實與詐唬）</div>
+          <div class="claims-title">${p.name} 的底細</div>
+          <div class="claims-sub">${p.alive ? '影響 ' + p.cards.length : '已出局'} · 🪙 ${p.coins} · 公開紀錄共 ${tl.length} 筆（越上面越新）</div>
+          ${dead}
           <div class="claims-list">${items}</div>
         </div>`;
       this.els.overlay.classList.add('show');

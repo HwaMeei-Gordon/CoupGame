@@ -43,13 +43,6 @@
             <option value="6">6 人</option>
           </select>
         </label>
-        <label>難度
-          <select id="difficulty">
-            <option value="easy">簡單</option>
-            <option value="normal" selected>普通</option>
-            <option value="hard">困難</option>
-          </select>
-        </label>
         <label>速度
           <select id="speed">
             <option value="fast">快</option>
@@ -80,8 +73,10 @@
           <li><b>免角色</b>：收入 +1、外援 +2、政變付 7（對手失 1 命）。</li>
           <li><b>宣稱角色</b>：課稅／暗殺／偷竊／換牌——可被「質疑」。</li>
           <li><b>質疑</b>：說謊被抓→你失 1 命；說真→質疑者失 1 命、你把該牌洗回換新牌。</li>
-          <li><b>反制</b>：公爵擋外援、夫人擋暗殺、隊長／大使擋偷；反制也能被質疑。</li>
+          <li><b>誰能質疑</b>：課稅（公爵）、換牌（大使）＝<b>全場都能</b>質疑；暗殺／偷竊／各種反制＝<b>只有當事人</b>能質疑。</li>
+          <li><b>反制</b>：公爵擋外援、夫人擋暗殺、隊長／大使擋偷；反制也能被（當事人）質疑。</li>
           <li><b>吹牛</b>：你可宣稱任何角色（手上沒有也行），賭沒人質疑。</li>
+          <li><b>對手</b>：每個 AI 性格隨機且隱藏（智商／信任／詐術／野心／報復／膽識各不同）。點對手頭像可看他的宣示與換牌紀錄。</li>
         </ul>
       </div>
     </div>

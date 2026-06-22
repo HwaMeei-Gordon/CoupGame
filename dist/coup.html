@@ -166,13 +166,15 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
   font-size: 10px; color: rgba(232,207,114,.55);
 }
 .mini.lost {
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: var(--parch); border: 1px solid rgba(201,162,39,.5);
-  opacity: .65; filter: grayscale(.4); transform: rotate(-4deg);
+  position: relative; overflow: hidden;
+  border: 1px solid rgba(201,162,39,.55);
+  opacity: .9; transform: rotate(-4deg); background: #2a2030;
 }
-.mini.lost.Duke { background: var(--duke); } .mini.lost.Assassin { background: var(--assassin); }
-.mini.lost.Captain { background: var(--captain); } .mini.lost.Ambassador { background: var(--ambassador); }
-.mini.lost.Contessa { background: var(--contessa); }
+.mini-img { width: 100%; height: 100%; object-fit: cover; display: block; filter: grayscale(.55) brightness(.82); }
+.mini-x {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #ff5a6a; font-size: 13px; font-weight: 900; text-shadow: 0 0 4px #000, 0 1px 2px #000;
+}
 
 /* ---------- 牌桌動態（狀態 + 日誌動態） ---------- */
 #stage {
@@ -479,6 +481,26 @@ body.exchanging .exchange .card { width: 104px; height: 156px; }
 .claim-item.Contessa .claim-dot { background: var(--contessa); }
 .claim-empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
 
+/* 底細彈窗：死牌縮圖 + 事件流（宣示/換牌） */
+.rec-dead { margin-bottom: 12px; }
+.rec-dead-lab { color: var(--muted); font-size: 11.5px; margin-bottom: 5px; }
+.rec-dead-cards { display: flex; gap: 8px; flex-wrap: wrap; }
+.rec-dead-cards .mini { width: 40px; height: 58px; border-radius: 6px; }
+.rec-item {
+  display: flex; align-items: center; gap: 10px; text-align: left;
+  background: rgba(160,132,31,.08); border: 1px solid var(--line);
+  border-left: 4px solid var(--muted); border-radius: 9px; padding: 7px 10px;
+}
+.rec-img { width: 30px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(201,162,39,.4); flex: 0 0 auto; }
+.rec-tx { display: flex; flex-direction: column; gap: 1px; }
+.rec-tx b { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.rec-tx small { color: var(--muted); font-weight: 400; font-size: 11px; }
+.rec-item.k-swap { border-left-color: #c98a2a; }
+.rec-item.k-exchange { border-left-color: #2a8ac9; }
+.rec-item.Duke { border-left-color: var(--duke); } .rec-item.Assassin { border-left-color: var(--assassin); }
+.rec-item.Captain { border-left-color: var(--captain); } .rec-item.Ambassador { border-left-color: var(--ambassador); }
+.rec-item.Contessa { border-left-color: var(--contessa); }
+
 /* ---------- 較大螢幕：維持手機式單欄,稍微放大 ---------- */
 @media (min-width: 600px) and (min-height: 720px) {
   .card { width: 86px; height: 129px; }
@@ -595,13 +617,6 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
             <option value="6">6 人</option>
           </select>
         </label>
-        <label>難度
-          <select id="difficulty">
-            <option value="easy">簡單</option>
-            <option value="normal" selected>普通</option>
-            <option value="hard">困難</option>
-          </select>
-        </label>
         <label>速度
           <select id="speed">
             <option value="fast">快</option>
@@ -632,8 +647,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           <li><b>免角色</b>：收入 +1、外援 +2、政變付 7（對手失 1 命）。</li>
           <li><b>宣稱角色</b>：課稅／暗殺／偷竊／換牌——可被「質疑」。</li>
           <li><b>質疑</b>：說謊被抓→你失 1 命；說真→質疑者失 1 命、你把該牌洗回換新牌。</li>
-          <li><b>反制</b>：公爵擋外援、夫人擋暗殺、隊長／大使擋偷；反制也能被質疑。</li>
+          <li><b>誰能質疑</b>：課稅（公爵）、換牌（大使）＝<b>全場都能</b>質疑；暗殺／偷竊／各種反制＝<b>只有當事人</b>能質疑。</li>
+          <li><b>反制</b>：公爵擋外援、夫人擋暗殺、隊長／大使擋偷；反制也能被（當事人）質疑。</li>
           <li><b>吹牛</b>：你可宣稱任何角色（手上沒有也行），賭沒人質疑。</li>
+          <li><b>對手</b>：每個 AI 性格隨機且隱藏（智商／信任／詐術／野心／報復／膽識各不同）。點對手頭像可看他的宣示與換牌紀錄。</li>
         </ul>
       </div>
     </div>
@@ -728,7 +745,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         lost: [],
         coins: 0,
         alive: true,
-        claimLog: []   // 公開宣示過的角色(供玩家點看)
+        claimLog: [],  // 公開宣示過的角色(AI 嫌疑判讀)
+        timeline: []   // 公開事件流(宣示/換牌/大使交換)供玩家點看
       }));
       this.agents = {}; // id -> Agent，由外部設定
       this.deck = [];
@@ -805,7 +823,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 通知所有代理人：claimant 宣稱了 character（供 AI 做對手建模）
     notifyClaim(claimantId, character) {
       const c = this.players[claimantId];
-      if (c) { (c.claimLog || (c.claimLog = [])).push(character); } // 記錄公開宣示
+      if (c) {
+        (c.claimLog || (c.claimLog = [])).push(character);
+        (c.timeline || (c.timeline = [])).push({ kind: 'claim', ch: character });
+      }
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.observe === 'function') {
@@ -816,6 +837,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     // 通知所有代理人：playerId 被質疑證實後換了新牌（手牌組成已變,供 AI 重評機率）
     notifySwap(playerId, character) {
+      const c = this.players[playerId];
+      if (c) (c.timeline || (c.timeline = [])).push({ kind: 'swap', ch: character });
       for (const id in this.agents) {
         const a = this.agents[id];
         if (a && typeof a.onSwap === 'function') {
@@ -824,12 +847,28 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
     }
 
-    // 質疑窗口：詢問其他存活玩家是否質疑 claimant 的 character 宣稱
+    // 通知所有代理人：一個行動的結果（被擋 / 命中），供 AI 記憶「誰一直擋我」「誰攻擊我」
+    notifyOutcome(ev) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observeOutcome === 'function') {
+          try { a.observeOutcome(this, ev); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
+    // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
+    // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
-    async runChallenge(claimantId, character) {
+    async runChallenge(claimantId, character, eligible) {
       const claimant = this.players[claimantId];
       this.notifyClaim(claimantId, character);
-      for (const pid of this.aliveOrderFrom(claimantId)) {
+      let order = this.aliveOrderFrom(claimantId);
+      if (Array.isArray(eligible)) {
+        const allow = new Set(eligible);
+        order = order.filter(id => allow.has(id));
+      }
+      for (const pid of order) {
         const p = this.players[pid];
         if (!p.alive) continue;
         const wants = await this.agents[pid].decideChallenge(this, claimantId, character);
@@ -886,12 +925,14 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.hooks.onState();
         await this.hooks.pause();
 
-        // 反制本身可被質疑（任何人，含原行動者）
-        const res = await this.runChallenge(bid, ch);
+        // 反制只由「當事人」（原行動者）質疑——兩人之間的對抗
+        const res = await this.runChallenge(bid, ch, [action.actorId]);
         if (res.challenged && res.success) {
           this.log('➡️ 反制的假面被撕下，原行動繼續降臨');
           return false; // 反制者吹牛被抓 → 反制失敗 → 行動續行
         }
+        // 行動被成功擋下：通知 AI（記憶「這人會擋我的這種行動」）
+        this.notifyOutcome({ type: action.type, actorId: action.actorId, targetId: action.targetId, blocked: true, blockerId: bid, blockChar: ch });
         return true; // 反制成立 → 行動被擋
       }
       return false;
@@ -931,6 +972,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (!Array.isArray(kept)) kept = actor.cards.slice(0, keepCount);
       this.applyExchange(actor, kept);
       delete actor.originalInfluence;
+      (actor.timeline || (actor.timeline = [])).push({ kind: 'exchange', ch: 'Ambassador' });
       this.log(`🔄 ${actor.name} 換上新的面孔（保留 ${actor.cards.length} 張）`);
       this.hooks.onState();
     }
@@ -978,6 +1020,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.log(`🎯 ${actor.name} 傾盡 7 金幣，對 ${target.name} 發動政變`);
         this.hooks.onState();
         await this.hooks.pause();
+        this.notifyOutcome({ type: 'coup', actorId: actor.id, targetId: target.id, blocked: false });
         await this.loseInfluence(target);
         return;
       }
@@ -1009,7 +1052,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.hooks.onState();
       await this.hooks.pause();
 
-      const cres = await this.runChallenge(actor.id, meta.character);
+      // 質疑範圍：課稅(公爵)/換牌(大使)＝所有人可質疑；暗殺/偷竊＝只有目標當事人可質疑
+      const everyoneCanChallenge = (action.type === 'tax' || action.type === 'exchange');
+      const challengeEligible = everyoneCanChallenge ? undefined : [action.targetId];
+      const cres = await this.runChallenge(actor.id, meta.character, challengeEligible);
       if (cres.challenged && cres.success) {
         if (action.type === 'assassinate') {
           actor.coins += 3; // 行動作廢 → 退費
@@ -1041,10 +1087,12 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           target.coins -= amt;
           actor.coins += amt;
           this.log(`💰 ${actor.name} 自 ${target.name} 攫走 ${amt} 金幣`);
+          this.notifyOutcome({ type: 'steal', actorId: actor.id, targetId: target.id, blocked: false });
           break;
         }
         case 'assassinate':
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
+          this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
           await this.loseInfluence(target);
           break;
         case 'exchange':
@@ -1120,45 +1168,51 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 </script>
   <script>
 /*
- * AIAgent：以牌面機率 + 期望值 + 混合策略吹牛驅動的電腦對手。
- * 同步回傳決策（引擎負責加上節奏延遲）。
+ * AIAgent：以牌面機率 + 對手建模 + 多維隨機性格驅動的電腦對手。
+ *
+ * 不再有「難度」差異——每個 AI 在每場開局時，獨立隨機抽取多個性格維度
+ * （智商 / 信任 / 說謊 / 野心 / 報復 / 膽識 + 進攻風格），可重複，藏於暗處，
+ * 讓每位對手難以捉摸。各維度都實際影響不同決策。
  */
 (function (root) {
   'use strict';
   const Coup = root.Coup = root.Coup || {};
-  const CHARACTERS = Coup.CHARACTERS;
   const comb = Coup.comb;
 
   const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3 };
+  const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
 
   class AIAgent {
     constructor(id, difficulty) {
       this.id = id;
-      this.difficulty = difficulty || 'normal';
-      // 5 種隱藏性格：風險/進攻保守度各異。每場隨機指派、可重複。
-      const keys = Object.keys(AIAgent.PERSONAS);
-      this.personaKey = keys[Math.floor(Math.random() * keys.length)];
-      const P = AIAgent.PERSONAS[this.personaKey];
-      this.personaName = P.name;
-      // 難度作為全域微調(質疑/吹牛幅度、判讀精準度)
-      const diff = ({
-        easy:   { c: 0.82, b: 0.90, smart: 0.7 },
-        normal: { c: 1.00, b: 1.00, smart: 1.0 },
-        hard:   { c: 1.12, b: 1.05, smart: 1.25 }
-      })[this.difficulty] || { c: 1, b: 1, smart: 1 };
-      this.bluff = Math.min(0.9, P.bluff * diff.b);  // 吹牛頻率
-      this.aggr = P.aggr * diff.c;                   // 質疑積極度
-      this.attack = P.attack;                        // 進攻意願(政變/暗殺/吹牛攻擊)
-      this.blockBluff = P.blockBluff;                // 詐唬反制傾向
-      this.coupAt = P.coupAt;                        // 湊到 7 金幣時政變的機率
-      this.smart = diff.smart;
-      this.target = P.target;                        // 進攻取向(打誰)
-      // 各取向的「隨機程度」：隨性型亂打、其餘較貫徹自己的風格
-      this.targetNoise = ({ random: 9, even: 2, leader: 2.5, finish: 2.5, rich: 2.5 })[P.target] || 4;
-      this.model = {}; // 對手建模：id -> { claims:{char:次數}, lostSeen }
-      // 固定一個假身分,讓吹牛前後一致、較不易被識破
-      this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain';
+      this.difficulty = difficulty || 'normal'; // 保留簽名相容；不再造成難度差異
+
+      // —— 多維隨機性格（每場每人獨立隨機、可重複、隱藏）。每個維度都影響決策 ——
+      this.iq        = rnd(0.15, 1.0); // 智商：機率判讀精準度、應變、少犯蠢、認得套路
+      this.trust     = rnd(0.0, 1.0);  // 對他人信任度：越高越少質疑、越信任宣示
+      this.deceit    = rnd(0.0, 1.0);  // 說謊能力：吹牛行動與假反制的頻率
+      this.ambition  = rnd(0.2, 1.0);  // 勝利渴望：進攻、政變時機、衝向致命金幣
+      this.vengeance = rnd(0.0, 1.0);  // 報復程度：優先攻擊傷害過自己的人
+      this.nerve     = rnd(0.0, 1.0);  // 膽識：壓力下/殘血時敢不敢賭一把
+      this.style     = STYLES[Math.floor(Math.random() * STYLES.length)]; // 進攻取向
+      this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain'; // 固定假身分，前後一致
+      this.personaName = this._dominantTrait(); // 隱藏的性格標籤（內部/除錯）
+
+      this.model = {};     // id -> { claims:{char:count}, lostSeen }  宣示建模
+      this.blockedBy = {}; // blockerId -> { actionType: count }       我的行動被誰擋過幾次
+      this.grudge = {};    // id -> 仇恨值（被其攻擊累積）              報復目標依據
     }
+
+    _dominantTrait() {
+      const t = [['智多', this.iq], ['多疑', 1 - this.trust], ['詐術', this.deceit],
+                 ['野心', this.ambition], ['睚眥', this.vengeance], ['膽識', this.nerve]];
+      t.sort((a, b) => b[1] - a[1]);
+      return t[0][0];
+    }
+
+    // ---- 觀察 / 記憶 ----
 
     // 觀察某玩家的角色宣稱（引擎在每次宣稱時通知）
     observe(game, claimantId, character) {
@@ -1171,10 +1225,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       m.claims[character] = (m.claims[character] || 0) + 1;
     }
 
-    // 某玩家被質疑、亮牌證實後「換了新牌」（公開手牌→洗回→改抽）。引擎在換牌後通知。
-    // 該玩家手牌組成已改變,先前累積的角色宣示不再可靠 → 重置其宣示模型,內部機率重新評估。
+    // 某玩家被質疑、亮牌證實後換了新牌：手牌已變 → 重置其宣示模型，內部機率重新評估。
     onSwap(game, playerId, character) {
-      if (playerId === this.id) return; // 自己換牌無須對自己建模
+      if (playerId === this.id) return;
       const m = this.model[playerId];
       if (!m) return;
       const target = game.players[playerId];
@@ -1182,12 +1235,25 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       m.lostSeen = target ? target.lost.length : 0;
     }
 
+    // 行動結果回報：記憶「誰一直擋我」（反制鬼打牆）與「誰攻擊我」（報復）
+    observeOutcome(game, ev) {
+      if (!ev) return;
+      if (ev.blocked && ev.actorId === this.id && ev.blockerId != null) {
+        const b = this.blockedBy[ev.blockerId] || (this.blockedBy[ev.blockerId] = {});
+        b[ev.type] = (b[ev.type] || 0) + 1;
+      }
+      if (!ev.blocked && ev.targetId === this.id && ev.actorId !== this.id && ev.actorId != null) {
+        const w = (ev.type === 'coup' || ev.type === 'assassinate') ? 3 : 1;
+        this.grudge[ev.actorId] = (this.grudge[ev.actorId] || 0) + w;
+      }
+    }
+
     // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
     suspicion(claimantId, influence) {
       const m = this.model[claimantId];
       if (!m) return 0;
       const distinct = Object.keys(m.claims).length;
-      return Math.max(0, distinct - influence); // 例如 2 影響力卻宣稱過 3 種角色 → 1
+      return Math.max(0, distinct - influence);
     }
 
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
@@ -1204,7 +1270,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const copies = 3 - seen;
       const target = game.players[targetId];
       const h = target.cards.length;
-      if (copies <= 0 || unknownTotal <= 0 || h <= 0) return copies <= 0 ? 0 : 0;
+      if (copies <= 0 || unknownTotal <= 0 || h <= 0) return 0;
       if (unknownTotal - copies < 0) return 1;
       const pNone = comb(unknownTotal - copies, h) / comb(unknownTotal, h);
       return 1 - pNone;
@@ -1219,21 +1285,28 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const p = this.estimateOpponentHas(game, claimantId, character);
       if (p <= 0.0001) return true; // 牌面不可能 → 必抓
 
-      // 行為偏差：會宣稱者通常更可能為真
-      const truth = p + (1 - p) * 0.30;
+      // 信任度 → 對「會宣稱者通常為真」的先驗；智商 → 更會用行為訊號
+      const honesty = 0.18 + this.trust * 0.30;            // 0.18~0.48
+      const truth = p + (1 - p) * honesty;
       const m = this.model[claimantId];
-      const sus = this.suspicion(claimantId, claimant.cards.length); // 吹牛嫌疑(宣稱種類>手牌)
-      const repeats = (m && m.claims[character]) || 0;               // 一再宣稱同角色(含本次)
+      const sus = this.suspicion(claimantId, claimant.cards.length); // 宣稱種類>手牌
+      const repeats = (m && m.claims[character]) || 0;              // 一再宣稱同角色
 
-      // 質疑代價極大(自失一牌、對方還換新牌),且牌面機率在本遊戲不可靠(換牌/重抽會打亂),
-      // 因此「行為(過去宣示)」才是主要依據：基礎門檻很低(牌面只在近乎不可能時才賭),
-      // 對「明顯吹牛(宣稱種類>手牌)」大幅提高質疑;對「前後一致宣稱同角色」則降低質疑(較可信)。
-      let threshold = 0.26 * this.aggr;
-      threshold += sus * 0.40;                            // 行為嫌疑:主要訊號
-      if (repeats >= 2) threshold -= 0.10;                // 一再宣稱同角色 → 較可信,別亂質疑
-      if (claimant.cards.length === 1) threshold += 0.05; // 殘血對手值得拚
-      if (me.cards.length === 1) threshold -= 0.16;       // 自己殘血別亂送命
-      threshold += (Math.random() - 0.5) * 0.07;
+      // 基礎門檻低（牌面不可靠，主要看行為）；信任越高基礎越低。
+      let threshold = 0.30 * (1 - this.trust * 0.5);
+      threshold += sus * (0.34 + 0.20 * this.iq);          // 嫌疑：主要訊號，智商越高越敏銳
+      if (repeats >= 2) threshold -= 0.10 * this.iq;       // 前後一致較可信（聰明者看得出）
+      // 反制鬼打牆：這人一直擋我 → 賭一把拆穿（膽識加成）
+      const b = this.blockedBy[claimantId];
+      if (b) {
+        const tot = sum(b);
+        if (tot >= 2) threshold += Math.min(0.25, 0.08 * tot) * (0.5 + this.nerve);
+      }
+      // 報復：對仇人更願意賭質疑
+      if (this.grudge[claimantId]) threshold += Math.min(0.12, this.grudge[claimantId] * 0.03) * this.vengeance;
+      if (claimant.cards.length === 1) threshold += 0.05;  // 對方殘血值得拚
+      if (me.cards.length === 1) threshold -= 0.18 * (1 - this.nerve); // 自己殘血別亂送（膽識高敢賭）
+      threshold += (Math.random() - 0.5) * 0.10 * (1.4 - this.iq);     // 智商低 → 更隨機
       return truth < threshold;
     }
 
@@ -1243,34 +1316,41 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     decideBlock(game, action, blockChars) {
       const me = game.players[this.id];
-
-      const bb = this.blockBluff;
+      const actor = game.players[action.actorId];
+      const myInf = me.cards.length;
 
       if (action.type === 'foreign_aid') {
-        const actor = game.players[action.actorId];
-        if (me.cards.includes('Duke')) {
-          // 真 Duke：對手越領先越想擋
-          const lead = actor.coins >= 5 ? 0.8 : 0.5;
-          return { block: Math.random() < lead, character: 'Duke' };
+        const haveDuke = me.cards.includes('Duke');
+        const after = actor.coins + 2;
+        const nearLethal = after >= 7;                 // 拿了這 +2 下一步就能政變
+        const leftTwo = game.alive().length <= 2;
+        if (haveDuke) {
+          let pr = 0.45 + this.ambition * 0.35;
+          if (actor.coins >= 5) pr += 0.2;
+          if (nearLethal) pr += 0.3;
+          return { block: Math.random() < Math.min(0.98, pr), character: 'Duke' };
         }
-        return { block: Math.random() < 0.05 * this.bluff * bb, character: 'Duke' };
+        // 沒公爵 → 詐唬擋。平時很少，但「對手逼近致命金幣／殘局」時野心+膽識會拚。
+        // （新規則下擋外援只有原行動者能質疑，詐唬更安全）
+        let pr = 0.04 + this.deceit * 0.10;
+        if (nearLethal) pr += (0.25 + 0.40 * this.ambition) * (0.4 + 0.6 * this.nerve);
+        if (leftTwo) pr += 0.15 * this.ambition;       // 只剩兩人，不擋就被 farm 死
+        return { block: Math.random() < Math.min(0.9, pr), character: 'Duke' };
       }
 
       if (action.type === 'steal') {
         if (me.cards.includes('Captain')) return { block: true, character: 'Captain' };
         if (me.cards.includes('Ambassador')) return { block: true, character: 'Ambassador' };
-        if (Math.random() < 0.35 * this.bluff * bb) {
-          return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
-        }
+        const pr = Math.min(0.85, (0.12 + this.deceit * 0.40) * (0.5 + 0.7 * this.nerve));
+        if (Math.random() < pr) return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
         return { block: false };
       }
 
       if (action.type === 'assassinate') {
         if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
-        // 假 Contessa：高風險（被拆穿一次失兩張）。保命時更願意賭。
-        const wouldDie = me.cards.length === 1;
-        const prob = (wouldDie ? 0.55 : 0.25) * (0.5 + this.bluff * bb);
-        if (Math.random() < prob) return { block: true, character: 'Contessa' };
+        const wouldDie = myInf === 1; // 假夫人高風險（拆穿一次失兩張）；保命時更敢賭
+        const pr = Math.min(0.9, (wouldDie ? 0.55 : 0.18) * (0.4 + this.deceit + this.nerve * 0.5));
+        if (Math.random() < pr) return { block: true, character: 'Contessa' };
         return { block: false };
       }
 
@@ -1291,17 +1371,15 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const me = game.players[playerId];
       const pool = me.cards.slice(); // 引擎已把 drawn 併入 me.cards
       const keepCount = me.originalInfluence != null ? me.originalInfluence : (pool.length - drawn.length);
-      const scored = pool.map(c => ({ c, v: (VALUE[c] || 3) + Math.random() * 0.2 }));
-      // 略為懲罰重複（保留多樣性）
+      const scored = pool.map(c => ({ c, v: (VALUE[c] || 3) + Math.random() * (0.4 - this.iq * 0.3) }));
+      // 智商越高越懂得保留多樣性（避免同名重複，攻防更靈活）
       const seen = {};
-      scored.forEach(s => { if (seen[s.c]) s.v -= 1.0; seen[s.c] = true; });
+      scored.forEach(s => { if (seen[s.c]) s.v -= 1.0 * (0.5 + this.iq); seen[s.c] = true; });
       scored.sort((a, b) => b.v - a.v);
       return scored.slice(0, keepCount).map(s => s.c);
     }
 
-    // 選擇攻擊目標：依各性格的「進攻取向」加權 + 隨機。對所有人都有敵意(會打其他 AI,而非只盯玩家)。
-    //  leader 擒王：打影響力(生命)最多者  even 均衡：讓大家生命盡量齊頭,優先打 2 條的
-    //  finish 收割：優先解決殘血清場       rich 劫富：盯著錢多的  random 隨性：純威脅+大量隨機
+    // 選擇攻擊目標：依風格 + 野心 + 報復加權 + 隨機（智商越低越隨機）。對所有人都有敵意。
     pickTarget(game) {
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
       if (opps.length === 0) return null;
@@ -1309,41 +1387,34 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const maxCoins = Math.max.apply(null, opps.map(o => o.coins).concat(1));
       const scored = opps.map(o => {
         let w = 1;
-        switch (this.target) {
-          case 'leader': // 擒賊先擒王：影響力最多者優先,其次有錢
-            w += o.cards.length * 6 + o.coins * 0.5;
-            if (o.cards.length === maxInf) w += 5;
-            break;
-          case 'even':   // 均衡：讓大家生命值盡量齊頭,優先打影響力較多的
-            w += o.cards.length * 5;
-            if (o.cards.length === maxInf && maxInf > 1) w += 6;
-            break;
-          case 'finish': // 收割：優先解決殘血、趁機清場
-            w += (3 - o.cards.length) * 4 + o.coins * 0.2;
-            if (o.cards.length === 1) w += 9;
-            break;
-          case 'rich':   // 劫富：盯著錢多的(視財富為威脅)
-            w += (o.coins / maxCoins) * 9 + o.cards.length * 1.5;
-            break;
-          default:       // random/隨性：輕度威脅加權,大量隨機
-            w += o.cards.length * 1.5 + o.coins * 0.3;
-            break;
+        switch (this.style) {
+          case 'leader': w += o.cards.length * 6 + o.coins * 0.5 + (o.cards.length === maxInf ? 5 : 0); break;
+          case 'even':   w += o.cards.length * 5 + ((o.cards.length === maxInf && maxInf > 1) ? 6 : 0); break;
+          case 'finish': w += (3 - o.cards.length) * 4 + o.coins * 0.2 + (o.cards.length === 1 ? 9 : 0); break;
+          case 'rich':   w += (o.coins / maxCoins) * 9 + o.cards.length * 1.5; break;
+          default:       w += o.cards.length * 1.5 + o.coins * 0.3; break;
         }
-        // 殘血終究誘人(但均衡型刻意少加,以維持齊頭)
-        if (o.cards.length === 1) w += (this.target === 'even' ? 1 : 3);
-        w += Math.random() * this.targetNoise;
+        if (o.cards.length === 1) w += (this.style === 'even' ? 1 : 3); // 殘血終究誘人
+        if (this.grudge[o.id]) w += Math.min(8, this.grudge[o.id]) * this.vengeance * 1.4; // 報復
+        w += o.cards.length * this.ambition * 1.0; // 野心：盯著影響力高的領先者
+        w += Math.random() * (2 + (1 - this.iq) * 8 + (this.style === 'random' ? 6 : 0));
         return { o, w };
       });
       scored.sort((a, b) => b.w - a.w);
       return scored[0].o;
     }
 
-    // 偷竊目標：有錢者優先,但帶隨機(不會每次都偷同一人/玩家)
+    // 偷竊目標：有錢者優先；避開老擋我的人（智商越高越會避）；仇人加權
     stealTarget(opps) {
       const rich = opps.filter(o => o.coins >= 1);
       if (!rich.length) return null;
-      return rich.map(o => ({ o, w: o.coins + Math.random() * 4 }))
-        .sort((a, b) => b.w - a.w)[0].o;
+      return rich.map(o => {
+        let w = o.coins + Math.random() * 3;
+        const blk = (this.blockedBy[o.id] && this.blockedBy[o.id].steal) || 0;
+        if (blk) w -= blk * 4 * (0.5 + this.iq);
+        if (this.grudge[o.id]) w += this.grudge[o.id] * this.vengeance;
+        return { o, w };
+      }).sort((a, b) => b.w - a.w)[0].o;
     }
 
     chooseAction(game) {
@@ -1354,57 +1425,57 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
-      // 划算政變:殘血必收、金幣充裕、或依性格的政變意願
-      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 8 || Math.random() < this.coupAt))
+      // 政變時機：野心越高越早動手；殘血必收；金幣多了不留手（政變不可擋，破僵局關鍵手）
+      const coupUrge = 0.25 + this.ambition * 0.7;
+      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 9 || Math.random() < coupUrge))
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
       if (me.cards.includes('Assassin') && me.coins >= 3) {
         return { type: 'assassinate', targetId: target.id };
       }
-      // 真 Captain 偷竊
+      // 真 Captain 偷竊 — 避開老擋我的人；若只剩會擋我的目標，改攢錢（破鬼打牆）
       if (me.cards.includes('Captain')) {
         const t = this.stealTarget(opps);
-        if (t && Math.random() < 0.85) return { type: 'steal', targetId: t.id };
+        if (t) {
+          const blk = (this.blockedBy[t.id] && this.blockedBy[t.id].steal) || 0;
+          const giveUp = blk >= 2 && Math.random() < (0.4 + 0.5 * this.iq);
+          if (!giveUp && Math.random() < 0.85) return { type: 'steal', targetId: t.id };
+        }
       }
       // 真 Duke 課稅
       if (me.cards.includes('Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
       if (me.cards.includes('Ambassador')) {
-        const weakHand = !me.cards.includes('Duke') && !me.cards.includes('Contessa');
-        if (weakHand && Math.random() < 0.45) return { type: 'exchange' };
+        const weak = !me.cards.includes('Duke') && !me.cards.includes('Contessa');
+        if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 
-      // === 吹牛 / 累積（吹牛偏好固定假身分,前後一致;頻率隨性格的進攻意願） ===
+      // 攢錢取向：聰明且有野心者在 4~6 金幣時更傾向穩定累積，衝向 7 政變（不空轉）
+      const wantBank = me.coins >= 4 && me.coins < 7 && (this.iq * 0.5 + this.ambition * 0.5) > 0.5;
+
+      // === 吹牛 / 累積 ===
       const r = Math.random();
-      const atk = this.attack;
-      // 吹牛暗殺（有錢、夠兇的性格才會）
-      if (me.coins >= 3 && r < 0.12 * this.bluff * atk) {
+      const dec = this.deceit;
+      // 吹牛暗殺（有錢、夠敢）
+      if (me.coins >= 3 && r < 0.10 * dec * (0.5 + this.ambition)) {
         return { type: 'assassinate', targetId: target.id };
       }
-      const dukeBias = this.bluffRole === 'Duke' ? 0.20 : 0;
-      const capBias = this.bluffRole === 'Captain' ? 0.20 : 0;
-      // 吹牛課稅（宣稱 Duke）
-      if (r < 0.26 + dukeBias + 0.24 * this.bluff) return { type: 'tax' };
-      // 吹牛偷竊（宣稱 Captain）— 進攻型更常偷
-      if (r < 0.40 + capBias + 0.22 * this.bluff * atk) {
+      const dukeBias = this.bluffRole === 'Duke' ? 0.18 : 0;
+      const capBias = this.bluffRole === 'Captain' ? 0.18 : 0;
+      // 吹牛課稅（宣稱 Duke）— 攢錢取向更愛
+      if (r < 0.22 + dukeBias + 0.26 * dec + (wantBank ? 0.15 : 0)) return { type: 'tax' };
+      // 吹牛偷竊（宣稱 Captain）
+      if (r < 0.38 + capBias + 0.20 * dec) {
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
-      // 保守：外援 / 收入(保守型更常選)
-      if (Math.random() < 0.5) return { type: 'foreign_aid' };
+      // 保守：外援 / 收入。外援可被任何人宣稱 Duke 擋，聰明者人多時略避。
+      const faRisk = opps.length * 0.06 * this.iq;
+      if (Math.random() < 0.6 - faRisk) return { type: 'foreign_aid' };
       return { type: 'income' };
     }
   }
-
-  // 5 種隱藏性格（風險、進攻保守度、進攻取向各異）。target = 打誰的取向。
-  AIAgent.PERSONAS = {
-    cautious:   { name: '謹慎', bluff: 0.20, aggr: 0.78, attack: 0.55, blockBluff: 0.5, coupAt: 0.55, target: 'finish' }, // 保守,專收殘血
-    steady:     { name: '穩健', bluff: 0.45, aggr: 1.00, attack: 0.85, blockBluff: 1.0, coupAt: 0.85, target: 'even'   }, // 中庸,打得平均
-    aggressive: { name: '兇悍', bluff: 0.55, aggr: 1.10, attack: 1.20, blockBluff: 1.3, coupAt: 1.00, target: 'leader' }, // 猛攻,擒賊先擒王
-    cunning:    { name: '狡詐', bluff: 0.80, aggr: 0.92, attack: 0.95, blockBluff: 1.6, coupAt: 0.85, target: 'random' }, // 詐唬多,出手難捉摸
-    paranoid:   { name: '多疑', bluff: 0.38, aggr: 1.42, attack: 0.80, blockBluff: 0.8, coupAt: 0.80, target: 'rich'   }  // 疑心重,盯著錢多的打
-  };
 
   Coup.AIAgent = AIAgent;
 
@@ -1551,6 +1622,113 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
     },
 
+    // 中世紀宮廷氛圍音樂：程序合成（無需音檔，單檔自含）。
+    // 低音風笛式持續音(drone) + 琉特琴分解和弦 + 直笛旋律 + 小手鼓，D Dorian 調式。
+    music: {
+      ctx: null, master: null, playing: false, step: 0, nextT: 0, timer: null,
+      droneNodes: null, bpm: 80, vol: 0.15,
+      mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); },
+      // 4 小節 × 八分音符 = 32 步。和弦根音：Dm · C · Dm · G（Dorian 調式色彩）
+      chordRoots: [50,50,50,50,50,50,50,50, 48,48,48,48,48,48,48,48,
+                   50,50,50,50,50,50,50,50, 55,55,55,55,55,55,55,55],
+      // 直笛旋律（稀疏，null = 休止），D Dorian
+      melody: [69,null,74,null, 72,null,69,null, 67,null,64,null, 67,null,null,null,
+               65,null,69,null, 67,null,65,null, 64,null,62,null, null,null,null,null],
+      ensure(ctx) {
+        this.ctx = ctx;
+        if (!this.master) {
+          this.master = ctx.createGain();
+          this.master.gain.value = 0.0;
+          this.master.connect(ctx.destination);
+        }
+      },
+      start(ctx) {
+        if (this.playing || !ctx) return;
+        this.ensure(ctx);
+        this.playing = true; this.step = 0; this.nextT = ctx.currentTime + 0.15;
+        const g = this.master.gain, t = ctx.currentTime;
+        g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t);
+        g.linearRampToValueAtTime(this.vol, t + 3.0); // 緩緩浮現
+        this.startDrone();
+        this.loop();
+      },
+      stop() {
+        this.playing = false;
+        if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+        this.stopDrone();
+      },
+      setMuted(m) {
+        if (!this.ctx || !this.master) return;
+        const g = this.master.gain, t = this.ctx.currentTime;
+        g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+        g.linearRampToValueAtTime(m ? 0.0 : this.vol, t + 0.5);
+      },
+      startDrone() {
+        const c = this.ctx; if (!c) return;
+        this.stopDrone();
+        this.droneNodes = [38, 45].map(m => { // D2 + A2 完全五度持續音
+          const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+          o.type = 'sawtooth'; o.frequency.value = this.mtof(m);
+          f.type = 'lowpass'; f.frequency.value = 430; f.Q.value = 0.6;
+          g.gain.value = 0.05;
+          o.connect(f); f.connect(g); g.connect(this.master); o.start();
+          return { o, g };
+        });
+      },
+      stopDrone() {
+        if (this.droneNodes) { this.droneNodes.forEach(n => { try { n.o.stop(); } catch (e) {} }); this.droneNodes = null; }
+      },
+      pluck(midi, t, dur, gain) { // 琉特琴撥弦
+        const c = this.ctx; if (!c) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.value = this.mtof(midi);
+        o.connect(g); g.connect(this.master);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.03);
+      },
+      reed(midi, t, dur, gain) { // 直笛/簧管旋律（基音 + 弱八度泛音）
+        const c = this.ctx; if (!c) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = 'sine'; o.frequency.value = this.mtof(midi);
+        const o2 = c.createOscillator(), g2 = c.createGain();
+        o2.type = 'triangle'; o2.frequency.value = this.mtof(midi) * 2; g2.gain.value = 0.10;
+        o2.connect(g2); g2.connect(g); o.connect(g); g.connect(this.master);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(gain, t + 0.06);
+        g.gain.setValueAtTime(gain, t + dur * 0.65);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.start(t); o.stop(t + dur + 0.05); o2.start(t); o2.stop(t + dur + 0.05);
+      },
+      tabor(t, gain) { // 小手鼓
+        const c = this.ctx; if (!c) return;
+        const dur = 0.12, buf = c.createBuffer(1, Math.floor(c.sampleRate * dur), c.sampleRate);
+        const d = buf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+        const src = c.createBufferSource(); src.buffer = buf;
+        const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 170; f.Q.value = 1.1;
+        const g = c.createGain(); g.gain.value = gain;
+        src.connect(f); f.connect(g); g.connect(this.master); src.start(t);
+      },
+      loop() {
+        if (!this.playing || !this.ctx) return;
+        const c = this.ctx, stepDur = (60 / this.bpm) / 2;
+        while (this.nextT < c.currentTime + 0.25) {
+          const s = this.step % 32, root = this.chordRoots[s];
+          // 大三和弦(C, G 小節) vs 小三和弦(Dm 小節)
+          const major = (s >= 8 && s < 16) || (s >= 24 && s < 32);
+          const tones = [root, root + (major ? 4 : 3), root + 7, root + 12];
+          this.pluck(tones[this.step % tones.length], this.nextT, stepDur * 1.7, 0.045);
+          const mel = this.melody[s];
+          if (mel != null) this.reed(mel, this.nextT, stepDur * 1.9, 0.055);
+          if (s % 4 === 0) this.tabor(this.nextT, s % 8 === 0 ? 0.05 : 0.03);
+          this.step++; this.nextT += stepDur;
+        }
+        this.timer = setTimeout(() => this.loop(), 60);
+      }
+    },
+
     init() {
       this.els = {
         opponents: document.getElementById('opponents'),
@@ -1657,11 +1835,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       </div>`;
     },
 
-    // 對手小卡（牌背 / 已攤開的死牌）
+    // 對手小卡（牌背 / 已攤開的死牌——用與玩家相同的塔羅插畫，方便辨識）
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
       const a = ARCANA[ch];
-      return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">${a.sym}</div>`;
+      return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
+        <img class="mini-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <span class="mini-x">✕</span></div>`;
     },
 
     // 對手座位卡（精簡：名稱 / 金幣 / 影響力小卡）；可點擊查看宣示紀錄
@@ -1671,28 +1851,45 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (!p.alive) cls.push('dead');
       const minis = p.cards.map(() => this.miniCard(null, false)).join('') +
                     p.lost.map(c => this.miniCard(c, true)).join('');
-      const n = (p.claimLog || []).length;
-      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 宣示過的角色">
+      const n = (p.timeline || []).length;
+      return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 的底細（宣示與換牌紀錄）">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
-        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 宣示 ${n}</span></div>
+        <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 紀錄 ${n}</span></div>
       </div>`;
     },
 
-    // 點對手 → 彈出他「宣示過的角色」清單(越上面越新)
+    // 點對手 → 彈出他的「底細」：已亮出的死牌 + 公開紀錄(宣示/換牌,越上面越新)
     showClaims(pid) {
       const p = this.game.players[pid];
       if (!p) return;
-      const log = (p.claimLog || []).slice().reverse();
-      const items = log.length
-        ? log.map(c => `<div class="claim-item ${c}"><span class="claim-dot"></span>${ZH[c]} <small>${c}</small></div>`).join('')
-        : '<div class="claim-empty">尚未宣示任何角色</div>';
+      // 已公開的死牌（與玩家相同的插畫）
+      const dead = (p.lost || []).length
+        ? `<div class="rec-dead"><div class="rec-dead-lab">已亮出的死牌</div>
+            <div class="rec-dead-cards">${p.lost.map(c => this.miniCard(c, true)).join('')}</div></div>`
+        : '';
+      // 公開事件流（宣示 / 證實換牌 / 大使換牌）
+      const tl = (p.timeline || []).slice().reverse();
+      const items = tl.length
+        ? tl.map(ev => {
+            const ch = ev.ch;
+            const a = ARCANA[ch] || { zh: '', en: '' };
+            const img = `<img class="rec-img" src="cards/${ch}.webp" alt="${a.zh}" draggable="false" />`;
+            let tag, sub;
+            if (ev.kind === 'swap') { tag = '🔀 被質疑→證實後換牌'; sub = `亮出真【${a.zh} ${a.en}】，已洗回換新牌`; }
+            else if (ev.kind === 'exchange') { tag = '🔄 大使換牌'; sub = '與命運之輪交換手牌'; }
+            else { tag = '🗣️ 宣示角色'; sub = `宣稱【${a.zh} ${a.en}】（真偽未知）`; }
+            return `<div class="rec-item ${ch} k-${ev.kind}">${img}
+              <div class="rec-tx"><b>${tag}</b><small>${sub}</small></div></div>`;
+          }).join('')
+        : '<div class="claim-empty">尚無任何公開紀錄</div>';
       this.els.overlay.innerHTML =
         `<div class="claims-box">
           <button class="win-close" aria-label="關閉">✕</button>
-          <div class="claims-title">${p.name} 宣示過的角色</div>
-          <div class="claims-sub">越上面越新 · 共 ${log.length} 次（含真實與詐唬）</div>
+          <div class="claims-title">${p.name} 的底細</div>
+          <div class="claims-sub">${p.alive ? '影響 ' + p.cards.length : '已出局'} · 🪙 ${p.coins} · 公開紀錄共 ${tl.length} 筆（越上面越新）</div>
+          ${dead}
           <div class="claims-list">${items}</div>
         </div>`;
       this.els.overlay.classList.add('show');
@@ -1945,10 +2142,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const Main = root.CoupMain = {
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
-      const diff = document.getElementById('difficulty').value;
       const speedMap = { fast: 260, normal: 620, slow: 1100 };
       const speed = speedMap[document.getElementById('speed').value] || 800;
-      root.Coup.UI.newGame(n, diff, speed);
+      // 不再有難度——每個 AI 每場隨機性格
+      root.Coup.UI.newGame(n, null, speed);
     }
   };
 
@@ -1957,14 +2154,23 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     const setup = document.getElementById('setup');
     document.getElementById('settingsToggle').onclick = () => setup.classList.toggle('open');
 
-    // 音效 / 觸覺：首次互動時解鎖 AudioContext;標題列可一鍵靜音
+    // 音效 / 音樂 / 觸覺：首次互動時解鎖 AudioContext 並奏起中世紀宮廷樂;標題列可一鍵靜音
     const fb = root.Coup.UI.fb;
-    document.addEventListener('pointerdown', () => fb.ensure(), { once: true });
+    const music = root.Coup.UI.music;
+    document.addEventListener('pointerdown', () => {
+      const ctx = fb.ensure();
+      if (ctx && !fb.muted) music.start(ctx); // 自動播放政策：須首次手勢後才能發聲
+    }, { once: true });
     const mute = document.getElementById('muteToggle');
     mute.onclick = () => {
       fb.muted = !fb.muted;
       mute.textContent = fb.muted ? '🔇' : '🔊';
-      if (!fb.muted) { fb.ensure(); fb.tone(660, 0.1, 'sine', 0.05); }
+      const ctx = fb.ensure();
+      music.setMuted(fb.muted);
+      if (!fb.muted) {
+        if (ctx) music.start(ctx); // 若尚未開始(例如一進場就先按)則啟動
+        fb.tone(660, 0.1, 'sine', 0.05);
+      }
     };
     document.getElementById('newGame').onclick = () => {
       Main.start();
