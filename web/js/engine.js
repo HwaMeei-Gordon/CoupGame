@@ -158,6 +158,16 @@
       }
     }
 
+    // 通知所有代理人：playerId 被質疑證實後換了新牌（手牌組成已變,供 AI 重評機率）
+    notifySwap(playerId, character) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.onSwap === 'function') {
+          try { a.onSwap(this, playerId, character); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
     // 質疑窗口：詢問其他存活玩家是否質疑 claimant 的 character 宣稱
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
     async runChallenge(claimantId, character) {
@@ -178,6 +188,7 @@
           this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
           const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
+          this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
           this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
           if (claimant.isHuman && fresh) this.log(`🎴 你抽到的新身分牌是【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
