@@ -69,9 +69,10 @@
     // 行動結果回報：記憶「誰一直擋我」（反制鬼打牆）與「誰攻擊我」（報復）
     observeOutcome(game, ev) {
       if (!ev) return;
-      if (ev.blocked && ev.actorId === this.id && ev.blockerId != null) {
+      if (ev.blocked && ev.blockerId != null) {
         const b = this.blockedBy[ev.blockerId] || (this.blockedBy[ev.blockerId] = {});
-        b[ev.type] = (b[ev.type] || 0) + 1;
+        // 我的行動被擋：強記；旁觀他人被同一人擋下：公開資訊，弱學習(別跟著去餵)
+        b[ev.type] = (b[ev.type] || 0) + (ev.actorId === this.id ? 1 : 0.5);
       }
       if (!ev.blocked && ev.targetId === this.id && ev.actorId !== this.id && ev.actorId != null) {
         const w = (ev.type === 'coup' || ev.type === 'assassinate') ? 3 : 1;
@@ -137,6 +138,10 @@
       if (this.grudge[claimantId]) threshold += Math.min(0.12, this.grudge[claimantId] * 0.03) * this.vengeance;
       if (claimant.cards.length === 1) threshold += 0.05;  // 對方殘血值得拚
       if (me.cards.length === 1) threshold -= 0.18 * (1 - this.nerve); // 自己殘血別亂送（膽識高敢賭）
+      // 挑戰刺客＝雙重風險（質疑錯→失質疑牌＋仍被暗殺＝一回合掉兩張），沒把握別賭命
+      if (character === 'Assassin') threshold -= 0.16 + (me.cards.length <= 2 ? 0.05 : 0);
+      // 手握大量金幣／領先時，別為小事冒險送命，守住優勢
+      if (me.coins >= 7) threshold -= 0.08;
       threshold += (Math.random() - 0.5) * 0.10 * (1.4 - this.iq);     // 智商低 → 更隨機
       return truth < threshold;
     }
@@ -256,9 +261,11 @@
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
-      // 政變時機：野心越高越早動手；殘血必收；金幣多了不留手（政變不可擋，破僵局關鍵手）
-      const coupUrge = 0.25 + this.ambition * 0.7;
-      if (me.coins >= 7 && (target.cards.length === 1 || me.coins >= 9 || Math.random() < coupUrge))
+      // 8+ 幾乎必政變：囤金幣只會被白白政變掉，且 10 就強制（修正觀察到的「囤到 11 反而送頭」）
+      if (me.coins >= 8) return { type: 'coup', targetId: target.id };
+      // 7：殘血必收，否則依野心決定政變或續攢
+      const coupUrge = 0.30 + this.ambition * 0.60;
+      if (me.coins >= 7 && (target.cards.length === 1 || Math.random() < coupUrge))
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺

@@ -99,17 +99,70 @@
           o.start(t); o.stop(t + (dur || 0.15) + 0.03);
         } catch (e) { /* 音效失敗不影響遊戲 */ }
       },
+      // 濾波噪聲：刀刃／碎裂等質感（from→to 為濾波掃頻）
+      noise(dur, o) {
+        if (this.muted) return;
+        const c = this.ensure(); if (!c) return;
+        try {
+          o = o || {};
+          const len = Math.max(1, Math.floor(c.sampleRate * dur));
+          const buf = c.createBuffer(1, len, c.sampleRate);
+          const d = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+          const src = c.createBufferSource(); src.buffer = buf;
+          const f = c.createBiquadFilter();
+          f.type = o.type || 'bandpass'; f.Q.value = o.q != null ? o.q : 1;
+          const g = c.createGain(); const t = c.currentTime;
+          f.frequency.setValueAtTime(o.from || 2000, t);
+          if (o.to != null) f.frequency.exponentialRampToValueAtTime(Math.max(40, o.to), t + dur);
+          g.gain.setValueAtTime(o.gain || 0.06, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+          src.connect(f); f.connect(g); g.connect(c.destination);
+          src.start(t); src.stop(t + dur + 0.02);
+        } catch (e) { /* 音效失敗不影響遊戲 */ }
+      },
       buzz(p) { try { if (typeof navigator !== 'undefined' && navigator.vibrate && !this.muted) navigator.vibrate(p); } catch (e) {} },
       turn()      { this.tone(660, 0.12, 'sine', 0.05); this.buzz(25); },
       challenge() { this.tone(247, 0.16, 'sawtooth', 0.05); this.buzz(35); },
-      death()     { this.tone(150, 0.28, 'sawtooth', 0.06); this.buzz([25, 35, 55]); },
+      // 隨從殞落：低沉崩塌 + 一抹碎裂
+      death()     { this.tone(140, 0.26, 'sawtooth', 0.05); this.noise(0.22, { type: 'lowpass', from: 1400, to: 300, q: 0.6, gain: 0.05 }); this.buzz([25, 35, 55]); },
       win()  { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'sine', 0.06), i * 110)); this.buzz([20, 40, 20, 40, 90]); },
       lose() { [392, 294, 196].forEach((f, i) => setTimeout(() => this.tone(f, 0.26, 'sine', 0.05), i * 150)); this.buzz(140); },
-      slash()     { this.tone(180, 0.08, 'sawtooth', 0.05); setTimeout(() => this.tone(90, 0.18, 'sawtooth', 0.05), 70); this.buzz([15, 30, 15]); },
+      // 暗殺命中：刀刃劃過（高頻噪聲快速下掃 + 金屬殘響）
+      slash() {
+        this.noise(0.16, { type: 'bandpass', from: 4200, to: 700, q: 0.7, gain: 0.11 });
+        this.tone(520, 0.05, 'sawtooth', 0.035);
+        setTimeout(() => this.tone(300, 0.07, 'sawtooth', 0.03), 45);
+        this.buzz([12, 24, 12]);
+      },
+      // 政變：崩裂（低頻撞擊 + 玻璃／石塊碎裂顆粒）
+      shatter() {
+        this.tone(90, 0.18, 'sawtooth', 0.06);
+        this.tone(58, 0.30, 'sine', 0.05);
+        this.noise(0.30, { type: 'highpass', from: 800, to: 3200, q: 0.8, gain: 0.07 });
+        for (let i = 0; i < 4; i++) {
+          setTimeout(() => this.noise(0.08, { type: 'bandpass', from: 1600 + Math.random() * 2600, to: 600, q: 2.2, gain: 0.05 }), 55 + i * 50);
+        }
+        this.buzz([30, 40, 60]);
+      },
+      // 金幣入袋：數枚明亮金屬叮噹（big=大額多聲；小額單聲）
+      coins(big) {
+        const n = big ? 4 : 1;
+        for (let i = 0; i < n; i++) {
+          setTimeout(() => {
+            const f = 1700 + Math.random() * 900;
+            this.tone(f, 0.08, 'triangle', 0.04);
+            this.tone(f * 1.5, 0.05, 'sine', 0.02); // 泛音添金屬感
+          }, i * 55);
+        }
+        this.buzz(big ? [10, 20] : 8);
+      },
       fromLog(m) {
-        if (m.indexOf('🗡️') >= 0) this.slash();
+        if (m.indexOf('🗡️') >= 0) this.slash();              // 暗殺命中 → 刀砍
+        else if (m.indexOf('🎯') >= 0) this.shatter();        // 政變 → 裂開
         else if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) this.death();
         else if (m.indexOf('❓') >= 0 || m.indexOf('🛡️') >= 0) this.challenge();
+        if (m.indexOf('💰') >= 0) this.coins(m.indexOf('+1（') < 0); // 拿到錢 → 金幣碰撞(收入單聲,其餘多聲)
       }
     },
 
@@ -127,6 +180,7 @@
       },
       fromLog(m) {
         if (m.indexOf('🗡️') >= 0) this.spawn('fx-slash', 700);
+        else if (m.indexOf('🎯') >= 0) this.spawn('fx-crack', 600);   // 政變：畫面裂開
         else if (m.indexOf('🛡️') >= 0) this.spawn('fx-shield', 750);
         else if (m.indexOf('課得賦稅') >= 0 || m.indexOf('援助悄然入袋') >= 0) this.spawn('fx-gold', 800);
         else if (m.indexOf('❓') >= 0) this.spawn('fx-crack', 500);
