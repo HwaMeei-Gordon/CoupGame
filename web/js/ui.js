@@ -71,6 +71,7 @@
     game: null,
     speed: 800,
     currentTurn: -1,
+    myId: 0, // 「我」在這場的座位 id（單機=0；連線時房主=0、客人=各自座位）
 
     // 回饋層：Web Audio 合成音效（無需音檔）+ 手機觸覺震動
     fb: {
@@ -309,6 +310,7 @@
     // ---------- 開新局 ----------
     newGame(numPlayers, difficulty, speed) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
+      this.myId = 0; // 單機：你是 player 0
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
@@ -559,8 +561,8 @@
 
     async chooseAction(game) {
       this.fb.turn(); // 輪到你：提示音 + 震動
-      const me = game.players[0];
-      const opps = game.players.filter(p => p.alive && p.id !== 0);
+      const me = game.players[this.myId];
+      const opps = game.players.filter(p => p.alive && p.id !== this.myId);
       const forced = me.coins >= 10;
       const defs = [
         { type: 'income',      ic: '＋', name: '收入', sub: '+1 金幣',   ok: !forced, role: '' },
@@ -592,7 +594,7 @@
     },
 
     decideChallenge(game, claimantId, character) {
-      if (claimantId === 0) return false;
+      if (claimantId === this.myId) return false;
       const claimant = game.players[claimantId];
       let visible = 0;
       game.players.forEach(p => p.lost.forEach(c => { if (c === character) visible++; }));
@@ -610,7 +612,7 @@
     },
 
     async decideBlock(game, action, blockChars) {
-      const me = game.players[0];
+      const me = game.players[this.myId];
       const actor = game.players[action.actorId];
 
       if (action.type === 'foreign_aid') {
