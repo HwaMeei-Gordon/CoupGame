@@ -54,7 +54,7 @@
         '<div class="lobby-title">建立房間中…</div><div class="lobby-msg" id="lbMsg">連線中，請稍候</div>'
       );
       Net.createRoom(name, {
-        onError: t => msg('⚠ ' + t),
+        onError: t => msg(t),
         onCode: code => renderHost(code, [{ name: name, you: true }]),
         onRoster: list => { const r = ov().querySelector('#lbRoster'); if (r) r.outerHTML = '<div id="lbRoster">' + rosterHTML(list) + '</div>'; }
       });
@@ -86,7 +86,7 @@
         '<div id="lbRoster"></div><div class="lobby-msg" id="lbMsg">連線中，請稍候</div>'
       );
       Net.joinRoom(code, name, {
-        onError: t => msg('⚠ ' + t),
+        onError: t => msg(t),
         onLobbyJoined: () => msg('已連上，等待房主開始…'),
         onRoster: list => { const r = ov().querySelector('#lbRoster'); if (r) r.innerHTML = rosterHTML(list); },
         onStart: () => close() // 房主開始 → 收起大廳，棋盤接管

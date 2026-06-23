@@ -88,6 +88,18 @@
     observeOutcome(game, ev)    { try { this.fallback.observeOutcome(game, ev); } catch (e) {} }
   }
 
+  // PeerJS 連線設定：多組 STUN（找對外位址）+ 免費 TURN（NAT 穿透失敗時改用中繼）。
+  // 沒有 TURN 時，行動網路/嚴格路由器常常連不上；TURN 中繼可大幅提高成功率。
+  const ICE = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ];
+  const PEER_OPTS = { debug: 1, config: { iceServers: ICE } };
+
   const Net = {
     role: null,          // 'host' | 'guest' | null
     peer: null,
@@ -121,13 +133,14 @@
     _tryCreate(attempt) {
       const code = this._genCode();
       this.roomCode = code;
-      this.peer = new root.Peer(this._peerId(code));
+      this.peer = new root.Peer(this._peerId(code), PEER_OPTS);
       this.peer.on('open', () => { if (this.hooks.onCode) this.hooks.onCode(code); });
       this.peer.on('connection', conn => this._onGuestConn(conn));
+      this.peer.on('disconnected', () => { try { this.peer.reconnect(); } catch (x) {} });
       this.peer.on('error', e => {
         const type = e && e.type ? e.type : '';
         if (type === 'unavailable-id' && attempt < 5) { try { this.peer.destroy(); } catch (x) {} this._tryCreate(attempt + 1); }
-        else this._err('連線錯誤：' + (type || e));
+        else this._err(this._errText(type));
       });
     },
 
@@ -222,19 +235,24 @@
     joinRoom(code, name, hooks) {
       this.role = 'guest';
       this.hooks = hooks || {};
-      if (!this._hasPeer()) { this._err('連線元件未載入（需要網路連線以載入 PeerJS）'); return; }
-      this.peer = new root.Peer();
-      this.peer.on('error', e => this._err('連線錯誤：' + (e && e.type ? e.type : e)));
+      if (!this._hasPeer()) { this._err('連線元件未載入（請重新整理，並確認有網路）'); return; }
+      this._joined = false;
+      this.peer = new root.Peer(PEER_OPTS);
+      this.peer.on('error', e => this._err(this._errText(e && e.type ? e.type : '')));
+      this.peer.on('disconnected', () => { try { this.peer.reconnect(); } catch (x) {} });
       this.peer.on('open', () => {
-        const conn = this.peer.connect(this._peerId(code));
+        const conn = this.peer.connect(this._peerId(code), { reliable: true });
         this.conn = conn;
+        // 連線逾時提示（15 秒內若沒接上房主）
+        const to = setTimeout(() => { if (!this._joined) this._err('連不上房主。請確認房號正確、房主仍在大廳；若仍失敗可換網路（例如改用手機熱點）再試。'); }, 15000);
         conn.on('open', () => {
+          this._joined = true; clearTimeout(to);
           conn.send({ t: 'join', name: name || '玩家' });
           if (this.hooks.onLobbyJoined) this.hooks.onLobbyJoined();
         });
         conn.on('data', msg => this._guestOnData(conn, msg));
-        conn.on('error', e => this._err('資料通道錯誤'));
-        conn.on('close', () => this._err('與房主的連線中斷'));
+        conn.on('error', () => this._err('資料通道錯誤，請重試'));
+        conn.on('close', () => { if (this._joined) this._err('與房主的連線中斷'); });
       });
     },
 
@@ -283,6 +301,19 @@
     },
 
     // ====================== 共用 ======================
+    _errText(type) {
+      const map = {
+        'peer-unavailable': '找不到這個房號（房主可能已關閉或房號打錯）',
+        'network': '無法連到連線伺服器，請檢查網路後重試',
+        'server-error': '連線伺服器忙線，請稍後再試',
+        'socket-error': '網路連線中斷，請重試',
+        'socket-closed': '網路連線已關閉，請重新整理再試',
+        'webrtc': 'WebRTC 連線失敗（可能被防火牆/NAT 擋住，試著換網路或開手機熱點）',
+        'browser-incompatible': '此瀏覽器不支援 WebRTC，請改用 Chrome/Safari 最新版',
+        'ssl-unavailable': '需以 https 開啟才能連線'
+      };
+      return '⚠ ' + (map[type] || ('連線錯誤' + (type ? '（' + type + '）' : '')));
+    },
     _err(text) { if (this.hooks && this.hooks.onError) this.hooks.onError(text); },
     leave() {
       try { if (this.conn) this.conn.close(); } catch (e) {}
