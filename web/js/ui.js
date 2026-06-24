@@ -311,6 +311,7 @@
     newGame(numPlayers, difficulty, speed) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
       this.myId = 0; // 單機：你是 player 0
+      this.reportText = ''; // 清除上一局戰報
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
@@ -524,6 +525,10 @@
       const hand = (w && w.cards && w.cards.length)
         ? `<div class="win-sub">勝者手牌</div><div class="win-cards">${w.cards.map(c => this.cardEl(c, true, false)).join('')}</div>`
         : '';
+      // 完整戰報（上帝視角）：單機由本機引擎產生；連線由房主送來存於 this.reportText
+      const report = this.reportText ||
+        (this.game && typeof this.game.buildReport === 'function' ? this.game.buildReport() : '');
+      const reportBtn = report ? `<button class="pbtn copy-report" id="copyReportBtn">📋 複製完整戰報</button>` : '';
       this.els.overlay.innerHTML =
         `<div class="win-box ${isMe ? 'win' : 'lose'}">
           <button class="win-close" aria-label="關閉以回看過程">✕</button>
@@ -531,12 +536,16 @@
           <div class="win-sub">勝者：${w ? w.name : '無'}</div>
           ${hand}
           <button id="againBtn" class="pbtn act">再來一局</button>
+          ${reportBtn}
           <button class="win-review" aria-label="回看過程">🔍 回看這局過程</button>
+          <div class="report-msg" id="reportMsg"></div>
         </div>`;
       this.els.overlay.classList.add('show');
       const start = () => root.CoupMain.start();
       const btn = document.getElementById('againBtn');
       if (btn) btn.onclick = start;
+      const rb = document.getElementById('copyReportBtn');
+      if (rb) rb.onclick = () => this.copyReport(report);
       // 關閉遮罩以回看牌局/日誌;底部留一顆持久的「再來一局」
       const dismiss = () => {
         this.els.overlay.classList.remove('show');
@@ -550,6 +559,31 @@
       const reviewBtn = this.els.overlay.querySelector('.win-review');
       if (closeBtn) closeBtn.onclick = dismiss;
       if (reviewBtn) reviewBtn.onclick = dismiss;
+    },
+
+    // 複製完整戰報到剪貼簿；失敗則顯示可手動選取複製的文字框
+    copyReport(text) {
+      const note = t => { const m = document.getElementById('reportMsg'); if (m) m.textContent = t; };
+      const fallback = () => {
+        // 顯示可長按/選取複製的文字框
+        const box = this.els.overlay.querySelector('.win-box') || this.els.overlay;
+        let ta = box.querySelector('.report-ta');
+        if (!ta) {
+          ta = document.createElement('textarea');
+          ta.className = 'report-ta';
+          box.appendChild(ta);
+        }
+        ta.value = text;
+        ta.readOnly = false;
+        ta.focus(); ta.select();
+        try { document.execCommand('copy'); note('已複製！（或長按上方文字全選複製）'); }
+        catch (e) { note('請長按文字框全選後複製'); }
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => note('✅ 已複製完整戰報到剪貼簿'), fallback);
+        } else { fallback(); }
+      } catch (e) { fallback(); }
     },
 
     // ---------- 提示工具 ----------
