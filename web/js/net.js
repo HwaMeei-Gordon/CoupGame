@@ -205,7 +205,7 @@
         onLog: m => { UI.log(m); self._broadcast({ t: 'log', msg: m }); },
         onState: () => { UI.render(); self._broadcastState(game); },
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
-        onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null }); },
+        onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
         pause: () => new Promise(r => setTimeout(r, self.speed))
       });
 
@@ -276,6 +276,7 @@
         UI.logPrivate(msg.msg); // 只有這位客人會收到自己的私訊
       } else if (msg.t === 'over') {
         const w = (this.lastView && this.lastView.players) ? this.lastView.players[msg.winnerId] : null;
+        UI.reportText = msg.report || ''; // 房主送來的完整戰報（遊戲已結束，可全揭露）
         // 勝者若非自己,手牌在視角中為 null（不洩漏）→ 過濾掉,過場畫面就不顯示牌面
         UI.showWinner(w ? { name: w.name, isHuman: w.id === UI.myId, cards: (w.cards || []).filter(c => c) } : null);
       } else if (msg.t === 'request') {

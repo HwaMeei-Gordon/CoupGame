@@ -81,6 +81,7 @@
       this.over = false;
       this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
       this.winner = null;
+      this.history = []; // 完整戰報（上帝視角：含隱藏手牌，供結束後複製回顧）
       this.setup();
     }
 
@@ -129,9 +130,11 @@
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
+      this.record({ k: 'lose', who: player.id, card });
       this.log(`💥 ${player.name} 的一名隨從墮入深淵，攤開【${ZH[card]} ${card}】（永久消逝，不可再用）`);
       if (player.cards.length === 0) {
         player.alive = false;
+        this.record({ k: 'out', who: player.id });
         this.log(`☠️ ${player.name} 的最後一絲影響力殞落，黯然退場！`);
       }
       this.hooks.onState();
@@ -193,6 +196,59 @@
       }
     }
 
+    // 完整戰報錄製（上帝視角，含隱藏手牌）。結束後可格式化為文字供複製回顧。
+    record(ev) { (this.history || (this.history = [])).push(ev); }
+
+    buildReport() {
+      const H = this.history || [];
+      const nameOf = id => (this.players[id] ? this.players[id].name : '?');
+      const card = c => `${ZH[c] || ''} ${c}`.trim();
+      const cards = arr => (arr && arr.length ? arr.map(card).join('、') : '（無）');
+      const actLabel = { income: '收入 +1', foreign_aid: '外援 +2', coup: '政變', tax: '課稅 +3', steal: '偷竊', assassinate: '暗殺', exchange: '大使換牌' };
+      const lines = [];
+      lines.push('=== Coup · 政變　完整戰報 ===');
+      const start = H.find(e => e.k === 'start');
+      const end = H.find(e => e.k === 'end');
+      lines.push('玩家：' + this.players.map(p => p.name).join('、'));
+      if (end) lines.push('勝者：' + (end.winner != null ? nameOf(end.winner) : '無'));
+      lines.push('');
+      lines.push('▍起手牌');
+      if (start) start.hands.forEach(h => lines.push(`　${h.name}：${cards(h.hand)}`));
+      lines.push('');
+      lines.push('▍完整過程（依時間，含真/詐唬與隱藏牌）');
+      let n = 0;
+      H.forEach(e => {
+        if (e.k === 'act') {
+          n++;
+          let s = `${n}. ${nameOf(e.actor)} ${actLabel[e.type] || e.type}`;
+          if (e.target != null) s += ` → ${nameOf(e.target)}`;
+          if (e.claim) {
+            const truth = (e.hand || []).includes(e.claim) ? '真' : '詐唬';
+            s += `（宣稱 ${ZH[e.claim]}；手牌[${cards(e.hand)}]→${truth}）`;
+          }
+          lines.push(s);
+        } else if (e.k === 'chal') {
+          lines.push(`　❓ ${nameOf(e.by)} 質疑 ${nameOf(e.of)} 的【${ZH[e.ch]}】→ ${e.truthful ? '撲空（對方為真）' : '成功（揭穿詐唬）'}`);
+        } else if (e.k === 'block') {
+          lines.push(`　🛡️ ${nameOf(e.by)} 以【${ZH[e.ch]}】反制 ${nameOf(e.of)} 的${actLabel[e.act] || e.act}`);
+        } else if (e.k === 'swap') {
+          lines.push(`　🔀 ${nameOf(e.who)} 將【${ZH[e.ret]}】洗回，改抽到【${ZH[e.got]}】`);
+        } else if (e.k === 'exch') {
+          lines.push(`　☽ ${nameOf(e.who)} 抽到[${cards(e.drawn)}]，保留[${cards(e.kept)}]`);
+        } else if (e.k === 'lose') {
+          lines.push(`　💥 ${nameOf(e.who)} 失去【${ZH[e.card]}】`);
+        } else if (e.k === 'out') {
+          lines.push(`　☠️ ${nameOf(e.who)} 出局`);
+        }
+      });
+      lines.push('');
+      lines.push('▍結局手牌');
+      if (end) end.hands.forEach(h => {
+        lines.push(`　${h.name}${h.id === end.winner ? '（勝）' : ''}：${h.alive ? cards(h.hand) : '出局'}　[已失：${cards(h.lost)}]`);
+      });
+      return lines.join('\n');
+    }
+
     // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
     // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
@@ -215,10 +271,12 @@
         await this.hooks.pause();
 
         const truthful = claimant.cards.includes(character);
+        this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
         if (truthful) {
           this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
           const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
+          this.record({ k: 'swap', who: claimantId, ret: character, got: fresh });
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
           this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
           // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
@@ -258,6 +316,7 @@
         if (!dec || !dec.block) continue;
         const ch = dec.character;
 
+        this.record({ k: 'block', by: bid, ch, act: action.type, of: action.actorId });
         this.log(`🛡️ ${b.name} 以【${ZH[ch]} ${ch}】之名，舉盾擋下這一擊`);
         this.hooks.onState();
         await this.hooks.pause();
@@ -309,6 +368,7 @@
       if (!Array.isArray(kept)) kept = actor.cards.slice(0, keepCount);
       this.applyExchange(actor, kept);
       delete actor.originalInfluence;
+      this.record({ k: 'exch', who: actor.id, drawn: drawn.slice(), kept: actor.cards.slice() });
       (actor.timeline || (actor.timeline = [])).push({ kind: 'exchange', ch: 'Ambassador' });
       this.log(`🔄 ${actor.name} 換上新的面孔（保留 ${actor.cards.length} 張）`);
       this.hooks.onState();
@@ -346,6 +406,8 @@
       const actor = this.players[action.actorId];
       const meta = ACTIONS[action.type];
       const target = action.targetId != null ? this.players[action.targetId] : null;
+      // 戰報：記錄此行動與當下真實手牌（用於判斷真/詐唬）
+      this.record({ k: 'act', actor: action.actorId, type: action.type, target: action.targetId, claim: meta ? meta.character : null, hand: actor.cards.slice() });
 
       if (action.type === 'income') {
         actor.coins += 1;
@@ -461,6 +523,7 @@
     // 主回合循環
     async play() {
       this.log('🎬 命運之輪開始轉動，宮廷陰謀就此展開……');
+      this.record({ k: 'start', hands: this.players.map(p => ({ id: p.id, name: p.name, hand: p.cards.slice() })) });
       // 私密告知每位真人玩家自己的起手牌（AI/其他玩家不會知道）
       this.players.forEach(p => {
         if (p.isHuman) this.notifyPrivate(p.id, `🂠 你的起手牌：${p.cards.map(c => ZH[c] + ' ' + c).join('、')}`);
@@ -493,6 +556,8 @@
         this.advance();
       }
       this.log(`🏁 塵埃落定，唯一存活者登上權力之巔：${this.winner ? this.winner.name : '無'}`);
+      this.record({ k: 'end', winner: this.winner ? this.winner.id : null,
+        hands: this.players.map(p => ({ id: p.id, name: p.name, hand: p.cards.slice(), lost: (p.lost || []).slice(), alive: p.alive })) });
       this.hooks.onState();
       this.hooks.onGameOver(this.winner);
       return this.winner;

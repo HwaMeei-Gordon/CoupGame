@@ -467,6 +467,18 @@ body.exchanging .exchange .card { width: 104px; height: 156px; }
   background: transparent; border: 1px solid var(--line); color: var(--muted);
   border-radius: 10px; padding: 9px; font-size: 13px; font-family: inherit; cursor: pointer;
 }
+.copy-report {
+  display: block; width: 100%; margin-top: 10px;
+  background: linear-gradient(180deg, #3a5db0, #28407e); color: #eaf0ff; border: none;
+  border-radius: 10px; padding: 10px; font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.copy-report:active { filter: brightness(1.1); }
+.report-msg { color: var(--gold-lt); font-size: 12.5px; margin-top: 8px; min-height: 16px; }
+.report-ta {
+  width: 100%; height: 130px; margin-top: 8px; font-size: 11px; line-height: 1.4;
+  border-radius: 8px; border: 1px solid var(--line); background: var(--field-bg); color: var(--ink);
+  padding: 8px; white-space: pre; resize: vertical;
+}
 .win-box.win { box-shadow: 0 0 40px rgba(201,162,39,.4); }
 .win-box.lose { border-color: var(--contessa); }
 .win-title { font-size: clamp(22px, 7vw, 30px); font-weight: 700; font-family: var(--font); margin-bottom: 8px; color: var(--gold-lt); }
