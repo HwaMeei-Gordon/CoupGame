@@ -569,15 +569,15 @@
         { type: 'foreign_aid', ic: '🤝', name: '外援', sub: '+2 金幣',   ok: !forced, role: '' },
         { type: 'tax',         ic: '♔', name: '課稅', sub: '公爵 · +3',  ok: !forced, role: 'Duke' },
         { type: 'steal',       ic: '⚓', name: '偷竊', sub: '隊長 · 偷2', ok: !forced && opps.length > 0, role: 'Captain' },
-        { type: 'exchange',    ic: '☽', name: '換牌', sub: '大使',       ok: !forced, role: 'Ambassador' },
-        { type: 'assassinate', ic: '⚔', name: '暗殺', sub: '刺客 · 付3', ok: !forced && me.coins >= 3 && opps.length > 0, role: 'Assassin' },
+        { type: 'exchange',    ic: '☽', name: '換牌', sub: '大使',       ok: true, role: 'Ambassador' },
+        { type: 'assassinate', ic: '⚔', name: '暗殺', sub: '刺客 · 付3', ok: me.coins >= 3 && opps.length > 0, role: 'Assassin' },
         { type: 'coup',        ic: '🎯', name: '政變', sub: '付7',        ok: me.coins >= 7 && opps.length > 0, role: '' }
       ];
       const buttons = defs.map(d => ({
         label: `<span class="b-ic">${d.ic}</span><span class="b-tx"><b>${d.name}</b><small>${d.sub}</small></span>`,
         value: d.type, disabled: !d.ok, cls: 'actbtn' + (d.role ? ' r-' + d.role : '')
       }));
-      const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
+      const title = forced ? '你有 10+ 金幣：只能 政變／暗殺／換牌' : '輪到你了，選擇一個行動：';
       const type = await this.prompt(title, buttons, 'grid4');
 
       if (Coup.ACTIONS[type].targeted) {

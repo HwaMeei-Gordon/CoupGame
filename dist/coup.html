@@ -1021,8 +1021,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const pickTarget = () => (opps.sort((a, b) =>
         (b.coins + b.cards.length * 3) - (a.coins + a.cards.length * 3))[0]);
 
-      // 10 金幣強制政變
-      if (actor.coins >= 10) action = { type: 'coup', targetId: action.targetId };
+      // 10+ 金幣（房規）：只允許 政變／暗殺／換牌；其餘行動一律改為政變
+      if (actor.coins >= 10 && action.type !== 'coup' && action.type !== 'assassinate' && action.type !== 'exchange') {
+        action = { type: 'coup', targetId: action.targetId };
+      }
       // 負擔不起 → 退回收入
       if (action.type === 'coup' && actor.coins < 7) action = { type: 'income' };
       if (action.type === 'assassinate' && actor.coins < 3) action = { type: 'income' };
@@ -2128,15 +2130,15 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         { type: 'foreign_aid', ic: '🤝', name: '外援', sub: '+2 金幣',   ok: !forced, role: '' },
         { type: 'tax',         ic: '♔', name: '課稅', sub: '公爵 · +3',  ok: !forced, role: 'Duke' },
         { type: 'steal',       ic: '⚓', name: '偷竊', sub: '隊長 · 偷2', ok: !forced && opps.length > 0, role: 'Captain' },
-        { type: 'exchange',    ic: '☽', name: '換牌', sub: '大使',       ok: !forced, role: 'Ambassador' },
-        { type: 'assassinate', ic: '⚔', name: '暗殺', sub: '刺客 · 付3', ok: !forced && me.coins >= 3 && opps.length > 0, role: 'Assassin' },
+        { type: 'exchange',    ic: '☽', name: '換牌', sub: '大使',       ok: true, role: 'Ambassador' },
+        { type: 'assassinate', ic: '⚔', name: '暗殺', sub: '刺客 · 付3', ok: me.coins >= 3 && opps.length > 0, role: 'Assassin' },
         { type: 'coup',        ic: '🎯', name: '政變', sub: '付7',        ok: me.coins >= 7 && opps.length > 0, role: '' }
       ];
       const buttons = defs.map(d => ({
         label: `<span class="b-ic">${d.ic}</span><span class="b-tx"><b>${d.name}</b><small>${d.sub}</small></span>`,
         value: d.type, disabled: !d.ok, cls: 'actbtn' + (d.role ? ' r-' + d.role : '')
       }));
-      const title = forced ? '你有 10+ 金幣，必須發動政變！' : '輪到你了，選擇一個行動：';
+      const title = forced ? '你有 10+ 金幣：只能 政變／暗殺／換牌' : '輪到你了，選擇一個行動：';
       const type = await this.prompt(title, buttons, 'grid4');
 
       if (Coup.ACTIONS[type].targeted) {
