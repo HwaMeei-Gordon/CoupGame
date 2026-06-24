@@ -311,8 +311,10 @@
       const pickTarget = () => (opps.sort((a, b) =>
         (b.coins + b.cards.length * 3) - (a.coins + a.cards.length * 3))[0]);
 
-      // 10 金幣強制政變
-      if (actor.coins >= 10) action = { type: 'coup', targetId: action.targetId };
+      // 10+ 金幣（房規）：只允許 政變／暗殺／換牌；其餘行動一律改為政變
+      if (actor.coins >= 10 && action.type !== 'coup' && action.type !== 'assassinate' && action.type !== 'exchange') {
+        action = { type: 'coup', targetId: action.targetId };
+      }
       // 負擔不起 → 退回收入
       if (action.type === 'coup' && actor.coins < 7) action = { type: 'income' };
       if (action.type === 'assassinate' && actor.coins < 3) action = { type: 'income' };
