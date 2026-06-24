@@ -86,6 +86,8 @@
     observe(game, c, ch)        { try { this.fallback.observe(game, c, ch); } catch (e) {} }
     onSwap(game, p, ch)         { try { this.fallback.onSwap(game, p, ch); } catch (e) {} }
     observeOutcome(game, ev)    { try { this.fallback.observeOutcome(game, ev); } catch (e) {} }
+    // 私訊：只送給「這一位」客人（不廣播）；AI fallback 不需要
+    privateNote(game, msg)      { if (this.connected && this.conn) { try { this.conn.send({ t: 'private', msg }); } catch (e) {} } }
   }
 
   // PeerJS 連線設定：多組 STUN（找對外位址）+ 免費 TURN（NAT 穿透失敗時改用中繼）。
@@ -270,6 +272,8 @@
         this._applyView(msg.view);
       } else if (msg.t === 'log') {
         UI.log(msg.msg);
+      } else if (msg.t === 'private') {
+        UI.logPrivate(msg.msg); // 只有這位客人會收到自己的私訊
       } else if (msg.t === 'over') {
         const w = (this.lastView && this.lastView.players) ? this.lastView.players[msg.winnerId] : null;
         // 勝者若非自己,手牌在視角中為 null（不洩漏）→ 過濾掉,過場畫面就不顯示牌面

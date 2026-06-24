@@ -266,6 +266,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .log-line.l-good { color: var(--c-good); }       /* 亮牌證明成功 */
 .log-line.l-meta { color: var(--gold-lt); font-style: italic; }
 .log-line:first-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
+/* 私密訊息：獨立的框（只有你看得到，AI/其他玩家不會知道） */
+.log-line.log-private {
+  color: #2a4a7a; font-weight: 700; border-bottom: none;
+  background: rgba(70,110,180,.13); border: 1px dashed rgba(70,110,180,.7);
+  border-radius: 8px; padding: 6px 9px; margin: 4px 0;
+}
+.log-line.log-private:first-child { filter: none; font-size: inherit; }
+body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,255,.12); border-color: rgba(120,160,255,.55); }
 @keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */

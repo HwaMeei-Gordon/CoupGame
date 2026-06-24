@@ -289,6 +289,14 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 .log-line.l-good { color: var(--c-good); }       /* 亮牌證明成功 */
 .log-line.l-meta { color: var(--gold-lt); font-style: italic; }
 .log-line:first-child { filter: brightness(1.18); font-weight: 700; font-size: 12px; }
+/* 私密訊息：獨立的框（只有你看得到，AI/其他玩家不會知道） */
+.log-line.log-private {
+  color: #2a4a7a; font-weight: 700; border-bottom: none;
+  background: rgba(70,110,180,.13); border: 1px dashed rgba(70,110,180,.7);
+  border-radius: 8px; padding: 6px 9px; margin: 4px 0;
+}
+.log-line.log-private:first-child { filter: none; font-size: inherit; }
+body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,255,.12); border-color: rgba(120,160,255,.55); }
 @keyframes logIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 /* ---------- 你的手牌 ---------- */
@@ -894,6 +902,15 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
     }
 
+    // 私密通知：只送給「該玩家自己」的代理人（人類本機顯示；連線時只送該客人；AI 不會收到）。
+    // 用於起手牌、大使換牌抽到/保留、被質疑後改抽到的牌——這些不可進共享歷程、不可廣播。
+    notifyPrivate(playerId, msg) {
+      const a = this.agents[playerId];
+      if (a && typeof a.privateNote === 'function') {
+        try { a.privateNote(this, msg); } catch (e) { /* 私訊失敗不影響流程 */ }
+      }
+    }
+
     // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
     // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
@@ -922,7 +939,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
           this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
-          if (claimant.isHuman && fresh) this.log(`🎴 你抽到的新身分牌是【${ZH[fresh]} ${fresh}】`);
+          // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
+          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[character]} ${character}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
@@ -1161,6 +1179,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 主回合循環
     async play() {
       this.log('🎬 命運之輪開始轉動，宮廷陰謀就此展開……');
+      // 私密告知每位真人玩家自己的起手牌（AI/其他玩家不會知道）
+      this.players.forEach(p => {
+        if (p.isHuman) this.notifyPrivate(p.id, `🂠 你的起手牌：${p.cards.map(c => ZH[c] + ' ' + c).join('、')}`);
+      });
       this.hooks.onState();
       let safety = 0;
       while (!this.over && !this.cancelled) {
@@ -1913,6 +1935,21 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.showReveal(msg);
     },
 
+    // 私密訊息：只在本機顯示成獨立的框（🔒 只有你看得到）。永不進共享歷程、永不廣播。
+    // 由引擎 notifyPrivate 經 agent.privateNote 呼叫（人類=本 UI；連線時各客人各自顯示）。
+    privateNote(_game, msg) { this.logPrivate(msg); },
+    logPrivate(msg) {
+      if (!this.els || !this.els.log) return;
+      const div = document.createElement('div');
+      div.className = 'log-line log-private';
+      div.textContent = '🔒 ' + msg;
+      const box = this.els.log;
+      if (typeof box.prepend === 'function') box.prepend(div);
+      else if (typeof box.insertBefore === 'function') box.insertBefore(div, box.firstChild || null);
+      else box.appendChild(div);
+      box.scrollTop = 0;
+    },
+
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
@@ -2226,10 +2263,15 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         const keep = me.originalInfluence;
         const sel = new Set();
         const el = this.els.prompt;
+        const zh = c => (ARCANA[c] ? ARCANA[c].zh + ' ' + c : c);
         document.body.classList.add('exchanging'); // 換牌時隱藏原本手牌、放大選牌區
+        // 私密告知：這次抽到了哪些牌（只有你看得到）
+        if (Array.isArray(drawn) && drawn.length) this.logPrivate('大使換牌——你抽到：' + drawn.map(zh).join('、'));
         const finish = result => {
           document.body.classList.remove('exchanging');
           el.innerHTML = '';
+          // 私密告知：你最後保留了哪些牌
+          if (Array.isArray(result) && result.length) this.logPrivate('大使換牌——你保留：' + result.map(zh).join('、'));
           resolve(result);
         };
         const redraw = () => {
@@ -2353,6 +2395,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     observe(game, c, ch)        { try { this.fallback.observe(game, c, ch); } catch (e) {} }
     onSwap(game, p, ch)         { try { this.fallback.onSwap(game, p, ch); } catch (e) {} }
     observeOutcome(game, ev)    { try { this.fallback.observeOutcome(game, ev); } catch (e) {} }
+    // 私訊：只送給「這一位」客人（不廣播）；AI fallback 不需要
+    privateNote(game, msg)      { if (this.connected && this.conn) { try { this.conn.send({ t: 'private', msg }); } catch (e) {} } }
   }
 
   // PeerJS 連線設定：多組 STUN（找對外位址）+ 免費 TURN（NAT 穿透失敗時改用中繼）。
@@ -2537,6 +2581,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this._applyView(msg.view);
       } else if (msg.t === 'log') {
         UI.log(msg.msg);
+      } else if (msg.t === 'private') {
+        UI.logPrivate(msg.msg); // 只有這位客人會收到自己的私訊
       } else if (msg.t === 'over') {
         const w = (this.lastView && this.lastView.players) ? this.lastView.players[msg.winnerId] : null;
         // 勝者若非自己,手牌在視角中為 null（不洩漏）→ 過濾掉,過場畫面就不顯示牌面

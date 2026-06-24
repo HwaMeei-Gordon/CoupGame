@@ -184,6 +184,15 @@
       }
     }
 
+    // 私密通知：只送給「該玩家自己」的代理人（人類本機顯示；連線時只送該客人；AI 不會收到）。
+    // 用於起手牌、大使換牌抽到/保留、被質疑後改抽到的牌——這些不可進共享歷程、不可廣播。
+    notifyPrivate(playerId, msg) {
+      const a = this.agents[playerId];
+      if (a && typeof a.privateNote === 'function') {
+        try { a.privateNote(this, msg); } catch (e) { /* 私訊失敗不影響流程 */ }
+      }
+    }
+
     // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
     // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
@@ -212,7 +221,8 @@
           const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
           this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
-          if (claimant.isHuman && fresh) this.log(`🎴 你抽到的新身分牌是【${ZH[fresh]} ${fresh}】`);
+          // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
+          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[character]} ${character}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
@@ -451,6 +461,10 @@
     // 主回合循環
     async play() {
       this.log('🎬 命運之輪開始轉動，宮廷陰謀就此展開……');
+      // 私密告知每位真人玩家自己的起手牌（AI/其他玩家不會知道）
+      this.players.forEach(p => {
+        if (p.isHuman) this.notifyPrivate(p.id, `🂠 你的起手牌：${p.cards.map(c => ZH[c] + ' ' + c).join('、')}`);
+      });
       this.hooks.onState();
       let safety = 0;
       while (!this.over && !this.cancelled) {

@@ -352,6 +352,21 @@
       this.showReveal(msg);
     },
 
+    // 私密訊息：只在本機顯示成獨立的框（🔒 只有你看得到）。永不進共享歷程、永不廣播。
+    // 由引擎 notifyPrivate 經 agent.privateNote 呼叫（人類=本 UI；連線時各客人各自顯示）。
+    privateNote(_game, msg) { this.logPrivate(msg); },
+    logPrivate(msg) {
+      if (!this.els || !this.els.log) return;
+      const div = document.createElement('div');
+      div.className = 'log-line log-private';
+      div.textContent = '🔒 ' + msg;
+      const box = this.els.log;
+      if (typeof box.prepend === 'function') box.prepend(div);
+      else if (typeof box.insertBefore === 'function') box.insertBefore(div, box.firstChild || null);
+      else box.appendChild(div);
+      box.scrollTop = 0;
+    },
+
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
@@ -665,10 +680,15 @@
         const keep = me.originalInfluence;
         const sel = new Set();
         const el = this.els.prompt;
+        const zh = c => (ARCANA[c] ? ARCANA[c].zh + ' ' + c : c);
         document.body.classList.add('exchanging'); // 換牌時隱藏原本手牌、放大選牌區
+        // 私密告知：這次抽到了哪些牌（只有你看得到）
+        if (Array.isArray(drawn) && drawn.length) this.logPrivate('大使換牌——你抽到：' + drawn.map(zh).join('、'));
         const finish = result => {
           document.body.classList.remove('exchanging');
           el.innerHTML = '';
+          // 私密告知：你最後保留了哪些牌
+          if (Array.isArray(result) && result.length) this.logPrivate('大使換牌——你保留：' + result.map(zh).join('、'));
           resolve(result);
         };
         const redraw = () => {
