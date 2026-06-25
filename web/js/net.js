@@ -83,6 +83,7 @@
     decideChallengeBlock(game, b, ch)        { return this._decideRemote('decideChallengeBlock', [b, ch], game); }
     decideBlock(game, action, blockChars)    { return this._decideRemote('decideBlock', [action, blockChars], game); }
     chooseCardToLose(game, pid)              { return this._decideRemote('chooseCardToLose', [pid], game); }
+    chooseCardToGive(game, pid)              { return this._decideRemote('chooseCardToGive', [pid], game); }
     chooseExchange(game, pid, drawn)         { return this._decideRemote('chooseExchange', [pid, drawn], game); }
     // 觀察類通知：同步餵給 fallback AI，讓它隨時能無縫接手
     observe(game, c, ch)        { try { this.fallback.observe(game, c, ch); } catch (e) {} }

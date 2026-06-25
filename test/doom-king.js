@@ -36,7 +36,8 @@ function challenger(id, willChallenge) {
   ok(cnt('King') === 1 && cnt('Duke') === 2, '國王 1 + 公爵 2');
   ok(cnt('Bandit') === 1 && cnt('Assassin') === 2, '強盜 1 + 刺客 2');
   ok(cnt('Queen') === 1 && cnt('Contessa') === 2, '皇后 1 + 夫人 2');
-  ok(cnt('Captain') === 3 && cnt('Ambassador') === 3, '隊長／大使各 3 張');
+  ok(cnt('Mole') === 1 && cnt('Ambassador') === 2, '內奸 1 + 大使 2');
+  ok(cnt('Commander') === 1 && cnt('Captain') === 2, '司令 1 + 隊長 2');
   ok(g.mode === 'kingdom', 'mode = kingdom');
 })();
 
@@ -127,6 +128,41 @@ ok(holdsRole(['Captain'], 'Duke') === false, 'holdsRole：沒公爵就是沒有'
   ok(gq.players[1].cards.length === 3, '皇后被質疑證實 → 額外抽牌，手牌增為 3 張（超過上限）');
   ok(gq.players[0].cards.length === 1, '質疑皇后失敗的 P0 失 1 影響力');
   ok(gq.players[1].lost.length === 0, '皇后擋下暗殺，未受傷');
+
+  // ---- 7) 內奸：被質疑換牌（質疑者交牌 + 收內奸 + 失影響力）----
+  const gm = new GameController([{ name: 'P0' }, { name: 'P1' }], {
+    onLog: () => {}, onState: () => {}, pause: () => Promise.resolve()
+  }, { mode: 'kingdom' });
+  gm.players[0].cards = ['Mole', 'Contessa']; gm.players[0].coins = 2; // P0 持內奸,做換牌
+  gm.players[1].cards = ['Duke', 'Assassin']; gm.players[1].coins = 2; // P1 質疑
+  gm.agents[0] = { id: 0, decideChallenge: () => false, decideChallengeBlock: () => false, decideBlock: () => ({ block: false }),
+    chooseCardToLose: () => 0, chooseCardToGive: () => 0, chooseExchange: (g, p) => g.players[p].cards.slice(0, g.players[p].originalInfluence),
+    observe() {}, onSwap() {}, observeOutcome() {}, privateNote() {} };
+  gm.agents[1] = { id: 1, decideChallenge: (g, c, ch) => ch === 'Ambassador', decideChallengeBlock: () => false,
+    decideBlock: () => ({ block: false }), chooseCardToLose: () => 0, chooseCardToGive: () => 0, // 交出 index0 = Duke
+    chooseExchange: (g, p) => g.players[p].cards.slice(0, g.players[p].originalInfluence),
+    observe() {}, onSwap() {}, observeOutcome() {}, privateNote() {} };
+  await gm.resolveAction({ type: 'exchange', actorId: 0 });
+  ok(gm.players[0].cards.includes('Duke'), 'P0 內奸奪得 P1 的牌（Duke）');
+  ok(!gm.players[0].cards.includes('Mole'), 'P0 已把內奸交出');
+  ok(gm.players[1].lost.length === 1, 'P1 質疑失敗 → 失 1 影響力');
+  ok(gm.players[0].cards.length === 2, 'P0 換牌後維持 2 張影響力');
+
+  // ---- 8) 司令：被質疑 → 抽 1、N+1 選 N（手牌數不變）----
+  const gc = new GameController([{ name: 'P0' }, { name: 'P1' }], {
+    onLog: () => {}, onState: () => {}, pause: () => Promise.resolve()
+  }, { mode: 'kingdom' });
+  gc.players[0].cards = ['Commander', 'Contessa']; gc.players[0].coins = 2; // P0 持司令,偷 P1
+  gc.players[1].cards = ['Duke', 'Assassin']; gc.players[1].coins = 5;
+  gc.agents[0] = challenger(0, false);
+  gc.agents[1] = { id: 1, decideChallenge: (g, c, ch) => ch === 'Captain', decideChallengeBlock: () => false,
+    decideBlock: () => ({ block: false }), chooseCardToLose: () => 0, chooseCardToGive: () => 0,
+    chooseExchange: (g, p) => g.players[p].cards.slice(0, g.players[p].originalInfluence),
+    observe() {}, onSwap() {}, observeOutcome() {}, privateNote() {} };
+  await gc.resolveAction({ type: 'steal', actorId: 0, targetId: 1 });
+  ok(gc.players[1].cards.length === 1, '質疑司令失敗的 P1 失 1 影響力');
+  ok(gc.players[0].cards.length === 2, '司令抽1選N後 P0 維持 2 張');
+  ok(gc.players[0].coins === 4 && gc.players[1].coins === 3, '偷竊照常生效：P0 +2、P1 -2');
 
   const total = pass + fail;
   console.log(`\n亡國模式角色測試：通過 ${pass} / 失敗 ${fail}（共 ${total}）`);
