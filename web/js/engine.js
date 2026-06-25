@@ -55,7 +55,9 @@
   const resolved = () => Promise.resolve();
 
   class GameController {
-    constructor(playerConfigs, hooks) {
+    constructor(playerConfigs, hooks, options) {
+      options = options || {};
+      this.mode = options.mode === 'kingdom' ? 'kingdom' : 'normal'; // 一般 / 王國（特殊角色，後續實作）
       this.hooks = Object.assign({
         onState: noop,    // () => void        重新渲染
         onLog: noop,      // (msg) => void     寫入日誌

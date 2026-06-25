@@ -19,6 +19,7 @@
   function serializeView(game, viewerId) {
     return {
       myId: viewerId,
+      mode: game.mode || 'normal',
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,
@@ -185,10 +186,11 @@
     },
 
     // 房主開始遊戲：humanSeats = 已入座客人；可加 AI 補到 numPlayers
-    startGame(numPlayers, speed) {
+    startGame(numPlayers, speed, mode) {
       const humans = this.seats.slice();
       const total = Math.max(2, Math.min(6, numPlayers || (1 + humans.length)));
       this.speed = speed || 800;
+      this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
 
       const configs = [{ name: this.hostName, isHuman: true }];
       humans.forEach(s => configs.push({ name: s.name, isHuman: true }));
@@ -213,9 +215,9 @@
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
         onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
         pause: () => new Promise(r => setTimeout(r, self.speed))
-      });
+      }, { mode: this.mode });
 
-      game.agents[0] = UI; // 房主用本地 UI
+      game.agents[0] = UI; UI.mode = this.mode; // 房主用本地 UI
       // 已入座客人 → RemoteAgent（座位 1..n）；其餘 → AI
       humans.forEach(s => {
         const agent = new RemoteAgent(s.seat, s.conn, { fallback: new Coup.AIAgent(s.seat) });

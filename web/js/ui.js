@@ -314,10 +314,11 @@
     },
 
     // ---------- 開新局 ----------
-    newGame(numPlayers, difficulty, speed) {
+    newGame(numPlayers, speed, mode) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
       this.myId = 0; // 單機：你是 player 0
       this.reportText = ''; // 清除上一局戰報
+      this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
@@ -338,7 +339,7 @@
         onTurn: (id) => { this.currentTurn = id; this.render(); },
         onGameOver: (w) => this.showWinner(w),
         pause: () => new Promise(r => setTimeout(r, this.speed))
-      });
+      }, { mode: this.mode });
       game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
       for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
 
@@ -526,6 +527,7 @@
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 王國' : '⚔ 一般'}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
     },

@@ -23,6 +23,52 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="home">
+    <div class="home-card">
+      <h1 class="home-title">Coup <span>政變</span></h1>
+      <div class="home-tagline">古典塔羅・宮廷權謀・人機對戰</div>
+      <div class="home-label">選擇模式</div>
+      <div class="home-modes">
+        <button class="mode-opt selected" data-mode="normal">
+          <span class="mode-ic">⚔</span>
+          <span class="mode-name">一般模式</span>
+          <span class="mode-desc">經典 5 角色政變對局</span>
+        </button>
+        <button class="mode-opt" data-mode="kingdom">
+          <span class="mode-ic">👑</span>
+          <span class="mode-name">王國模式</span>
+          <span class="mode-desc">額外特殊角色與能力 · 開發中</span>
+        </button>
+      </div>
+      <div class="home-settings">
+        <label>人數
+          <select id="homeNum">
+            <option value="2">2 人</option>
+            <option value="3">3 人</option>
+            <option value="4" selected>4 人</option>
+            <option value="5">5 人</option>
+            <option value="6">6 人</option>
+          </select>
+        </label>
+        <label>速度
+          <select id="homeSpeed">
+            <option value="fast">快</option>
+            <option value="normal" selected>普通</option>
+            <option value="slow">慢</option>
+          </select>
+        </label>
+        <label>風格
+          <select id="homeTheme">
+            <option value="tarot" selected>塔羅</option>
+            <option value="minimal">簡約</option>
+          </select>
+        </label>
+      </div>
+      <button id="homeStart" class="home-start">進入遊戲</button>
+      <button id="homeOnline" class="home-online">🌐 連線對戰（和朋友）</button>
+    </div>
+  </div>
+
   <div id="app">
     <header>
       <h1>Coup <span>政變</span></h1>
@@ -34,6 +80,12 @@
 
     <div id="setup">
       <div class="setup-row">
+        <label>模式
+          <select id="mode">
+            <option value="normal" selected>一般</option>
+            <option value="kingdom">王國</option>
+          </select>
+        </label>
         <label>人數
           <select id="numPlayers">
             <option value="2">2 人</option>
@@ -59,6 +111,7 @@
       </div>
       <button id="newGame">開新局</button>
       <button id="onlineBtn" class="online-entry">🌐 連線對戰（和朋友）</button>
+      <button id="homeBtn" class="online-entry" style="background:linear-gradient(180deg,#6a5a3a,#4a3d28)">🏠 回首頁</button>
       <div class="legend">
         <h4>角色速查</h4>
         <ul>
