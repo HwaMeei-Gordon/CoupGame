@@ -18,7 +18,7 @@
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
     Ambassador: '大使', Contessa: '夫人',
     King: '國王',     // 亡國模式：公爵的特殊變體
-    Bandit: '強盜',   // 亡國模式：刺客的特殊變體
+    Devil: '惡魔',    // 亡國模式：刺客的特殊變體
     Queen: '皇后',    // 亡國模式：夫人的特殊變體
     Mole: '內奸',     // 亡國模式：大使的特殊變體
     Commander: '司令' // 亡國模式：隊長的特殊變體
@@ -26,9 +26,9 @@
   Coup.ZH = ZH;
 
   // 亡國模式：每個原角色 → 其特殊變體（牌庫中以變體替換 1 張）
-  const VARIANTS = { Duke: 'King', Assassin: 'Bandit', Contessa: 'Queen', Ambassador: 'Mole', Captain: 'Commander' };
+  const VARIANTS = { Duke: 'King', Assassin: 'Devil', Contessa: 'Queen', Ambassador: 'Mole', Captain: 'Commander' };
   Coup.VARIANTS = VARIANTS;
-  const VARIANT_OF = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
+  const VARIANT_OF = { King: 'Duke', Devil: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
 
   // 角色變體對應：變體在所有判定上等同其原角色
   function roleMatches(card, character) {
@@ -106,13 +106,11 @@
       this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
       this.winner = null;
       this.history = []; // 完整戰報（上帝視角：含隱藏手牌，供結束後複製回顧）
-      this.banditCoins = 0; // 亡國模式：強盜卡上累積的金幣（全場單張）
       this.setup();
     }
 
     setup() {
       const deck = [];
-      this.banditCoins = 0;
       CHARACTERS.forEach(ch => {
         // 亡國模式：每種角色把其中 1 張替換為變體（2 原角色 + 1 變體）
         if (this.mode === 'kingdom' && VARIANTS[ch]) deck.push(VARIANTS[ch], ch, ch);
@@ -160,7 +158,6 @@
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
-      if (card === 'Bandit') this.banditCoins = 0; // 強盜陣亡 → 卡上累積金幣隨之消滅
       this.record({ k: 'lose', who: player.id, card });
       this.log(`💥 ${player.name} 的一名隨從墮入深淵，攤開【${ZH[card]} ${card}】（永久消逝，不可再用）`);
       if (player.cards.length === 0) {
@@ -275,6 +272,8 @@
           lines.push(`　🔀 ${nameOf(e.who)} 將【${ZH[e.ret]}】洗回，改抽到【${ZH[e.got]}】`);
         } else if (e.k === 'exch') {
           lines.push(`　☽ ${nameOf(e.who)} 抽到[${cards(e.drawn)}]，保留[${cards(e.kept)}]`);
+        } else if (e.k === 'devil') {
+          lines.push(`　😈 ${nameOf(e.who)} 以惡魔奪走 ${nameOf(e.from)} 攤出的【${ZH[e.card]}】（公開入手）`);
         } else if (e.k === 'lose') {
           lines.push(`　💥 ${nameOf(e.who)} 失去【${ZH[e.card]}】`);
         } else if (e.k === 'out') {
@@ -296,21 +295,47 @@
       if (character === 'Contessa' && c.includes('Queen')) return 'Queen';     // 皇后額外抽牌恆有利
       if (character === 'Ambassador' && c.includes('Mole')) return 'Mole';     // 內奸奪牌恆有利
       if (character === 'Captain' && c.includes('Commander')) return 'Commander'; // 司令抽牌恆有利
-      if (character === 'Assassin' && c.includes('Bandit')) {
-        // 強盜：卡上有錢可兌現、或別無普通刺客時攤強盜；否則攤普通刺客保留強盜
-        if ((this.banditCoins || 0) > 0 || !c.includes('Assassin')) return 'Bandit';
-      }
+      // 惡魔：宣示刺客被質疑時攤惡魔以發動奪牌（恆有利 → 優先攤惡魔）
+      if (character === 'Assassin' && c.includes('Devil')) return 'Devil';
       return character;
     }
 
-    // 🗡️ 強盜「兌現」：持有者收取強盜卡累積的全部金幣，卡上歸零
-    async banditCashIn(bandit) {
-      const got = this.banditCoins || 0;
-      this.banditCoins = 0;
-      bandit.coins += got;
-      this.log(`🗡️ 強盜現身！${bandit.name} 收取強盜卡上累積的 ${got} 金幣`);
+    // 😈 惡魔：質疑者攤出的牌不入棄牌堆，而是直接成為惡魔持有者的手牌（公開可見）；
+    // 惡魔本身洗回牌庫並補抽一張替換。質疑者若因此失去最後一張牌則出局。
+    async devilSteal(claimant, challenger) {
+      // 1. 質疑者選一張牌攤出（只剩一張則強制那張）
+      let giveIdx = 0;
+      if (challenger.cards.length > 1) {
+        const a = this.agents[challenger.id];
+        if (a && typeof a.chooseCardToLose === 'function') {
+          giveIdx = await a.chooseCardToLose(this, challenger.id);
+        }
+        if (typeof giveIdx !== 'number' || giveIdx < 0 || giveIdx >= challenger.cards.length) giveIdx = 0;
+      }
+      const taken = challenger.cards.splice(giveIdx, 1)[0];
+      // 2. 惡魔本身洗回牌庫、徹底洗牌、補抽一張替換（身分重新隱藏）
+      const di = claimant.cards.indexOf('Devil');
+      if (di >= 0) {
+        this.deck.push(claimant.cards.splice(di, 1)[0]);
+        this.shuffleDeck();
+        const fresh = this.drawRandom();
+        if (fresh) claimant.cards.push(fresh);
+        if (claimant.isHuman && fresh) this.notifyPrivate(claimant.id, `😈 你把惡魔洗回牌庫，改抽到【${ZH[fresh]} ${fresh}】`);
+      }
+      // 3. 質疑者攤出的牌直接成為惡魔持有者的手牌（眾人皆見）
+      claimant.cards.push(taken);
+      this.record({ k: 'devil', who: claimant.id, from: challenger.id, card: taken });
+      this.log(`😈 惡魔現身！${challenger.name} 攤出的【${ZH[taken]} ${taken}】被 ${claimant.name} 攫入手中（眾人皆見其多了此牌），${claimant.name} 另補抽一張取代惡魔`);
+      if (claimant.isHuman) this.notifyPrivate(claimant.id, `😈 你奪得 ${challenger.name} 攤出的【${ZH[taken]} ${taken}】（公開），現有 ${claimant.cards.length} 張手牌`);
+      this.notifySwap(claimant.id, 'Assassin'); // 惡魔者手牌已變，AI 重新評估
+      // 4. 質疑者若已無牌則出局
+      if (challenger.cards.length === 0) {
+        challenger.alive = false;
+        this.record({ k: 'out', who: challenger.id });
+        this.log(`☠️ ${challenger.name} 的最後一絲影響力被惡魔攫取，黯然退場！`);
+      }
       this.hooks.onState();
-      if (got > 0) await this.hooks.pause();
+      await this.hooks.pause();
     }
 
     // 🕵 內奸：與質疑者換牌——質疑者交一張給內奸者、內奸者把內奸交給質疑者；質疑者再失 1 影響力
@@ -423,9 +448,16 @@
             return { challenged: true, success: false, challenger: pid };
           }
 
+          // 😈 惡魔：質疑者攤出的牌不入棄牌堆，而是被惡魔者奪入手牌；惡魔洗回補抽
+          if (revealed === 'Devil') {
+            await this.devilSteal(claimant, p);
+            this.notifySwap(claimantId, character);
+            this.hooks.onState();
+            return { challenged: true, success: false, challenger: pid };
+          }
+
           await this.loseInfluence(p); // 質疑者失 1 影響力
           if (revealed === 'King') await this.kingLevy(claimant, p);     // 👑 強制徵收
-          if (revealed === 'Bandit') await this.banditCashIn(claimant);  // 🗡️ 強盜兌現
 
           // 🎖 司令：以「抽 1、N+1 選 N」迷你交換取代普通洗回換牌（同樣重新隱藏身分）
           if (revealed === 'Commander') {
@@ -656,14 +688,7 @@
         case 'assassinate': {
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
           this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
-          const before = target.cards.length;
           await this.loseInfluence(target);
-          const killed = target.cards.length < before; // 匕首真的造成影響力損失才算「成功」
-          // 亡國模式：持強盜者「成功」暗殺 → 強盜卡累積 1 金幣
-          if (killed && this.mode === 'kingdom' && actor.cards.includes('Bandit')) {
-            this.banditCoins = (this.banditCoins || 0) + 1;
-            this.notifyPrivate(actor.id, `🗡️ 強盜得手！你的強盜卡已累積 ${this.banditCoins} 金幣（被質疑攤牌時收取）`);
-          }
           break;
         }
         case 'exchange':

@@ -12,7 +12,7 @@
   const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
   const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4, Mole: 5, Commander: 5 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Devil: 6, Queen: 4, Mole: 5, Commander: 5 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
