@@ -3,12 +3,13 @@
   'use strict';
   const SPEEDS = { fast: 260, normal: 620, slow: 1100 };
   const Main = root.CoupMain = {
+    _spectate: false,
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
       const speed = SPEEDS[document.getElementById('speed').value] || 800;
       const modeEl = document.getElementById('mode');
       const mode = modeEl ? modeEl.value : 'normal';
-      root.Coup.UI.newGame(n, speed, mode);
+      root.Coup.UI.newGame(n, speed, mode, this._spectate);
     }
   };
 
@@ -156,7 +157,7 @@
       if (root.Coup.UI.game) root.Coup.UI.game.cancel(); // 停掉背景對局
       home.style.display = 'flex';
     };
-    const enterGame = () => {
+    const enterGame = (spectate) => {
       // 把首頁選擇同步到遊戲內設定，套用主題，開始
       const mode = selectedMode();
       document.getElementById('numPlayers').value = document.getElementById('homeNum').value;
@@ -166,9 +167,12 @@
       try { localStorage.setItem('coupTheme', t); } catch (e) {}
       document.getElementById('mode').value = mode;
       home.style.display = 'none';
+      Main._spectate = !!spectate;
       Main.start();
     };
-    document.getElementById('homeStart').onclick = enterGame;
+    document.getElementById('homeStart').onclick = () => enterGame(false);
+    const specBtn = document.getElementById('homeSpectate');
+    if (specBtn) specBtn.onclick = () => enterGame(true);
     document.getElementById('homeOnline').onclick = () => { home.style.display = 'none'; lobby.open(); };
     document.getElementById('homeBtn').onclick = () => { setup.classList.remove('open'); showHome(); };
     // 套用首頁記憶的主題（與遊戲內一致）

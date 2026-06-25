@@ -81,6 +81,9 @@
     speed: 800,
     currentTurn: -1,
     myId: 0, // 「我」在這場的座位 id（單機=0；連線時房主=0、客人=各自座位）
+    spectator: false, // 旁觀者模式（全員 AI）
+    viewId: 0,        // 旁觀模式下：目前以哪位玩家的視角看牌
+    _think: null,     // 目前思考中狀態 { id, kind, start, dur }
 
     // 回饋層：Web Audio 合成音效（無需音檔）+ 手機觸覺震動
     fb: {
@@ -323,8 +326,11 @@
     },
 
     // ---------- 開新局 ----------
-    newGame(numPlayers, speed, mode) {
+    // spectate=true：旁觀者模式（全員 AI，你不參與，從某 AI 視角看牌局）
+    newGame(numPlayers, speed, mode, spectate) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
+      this._clearThink();
+      this.spectator = !!spectate;
       this.myId = 0; // 單機：你是 player 0
       this.reportText = ''; // 清除上一局戰報
       this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
@@ -334,29 +340,51 @@
       this.els.overlay.classList.remove('show');
       this.els.overlay.innerHTML = '';
 
-      // 每場隨機配發不重複的具名角色給 AI 座位（名稱即玩家名）
-      const personas = Coup.AIAgent.drawPersonas(numPlayers - 1);
-      const configs = [{ name: '你', isHuman: true }];
-      for (let i = 1; i < numPlayers; i++) {
-        const pa = personas[i - 1];
-        configs.push({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false });
-      }
-
-      const game = new Coup.GameController(configs, {
+      const hooks = {
         onLog: (m) => this.log(m),
         onState: () => this.render(),
         onTurn: (id) => { this.currentTurn = id; this.render(); },
         onGameOver: (w) => this.showWinner(w),
         // scale：AI 思考深度倍率（思考型沉吟更久；真人決策不經此延遲）
-        pause: (scale) => new Promise(r => setTimeout(r, this.speed * (scale || 1)))
-      }, { mode: this.mode });
-      game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
-      for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
+        pause: (scale) => new Promise(r => setTimeout(r, this.speed * (scale || 1))),
+        // AI 長考：可見倒數（所有人都看得到，越久＝在深算或在裝）
+        onThink: (id, ms, kind) => this.onThink(id, ms, kind)
+      };
 
-      this.game = game;
+      if (this.spectator) {
+        // 旁觀：全員 AI，隨機配發不重複具名角色
+        const personas = Coup.AIAgent.drawPersonas(numPlayers);
+        const configs = personas.map((pa, i) => ({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false }));
+        const game = new Coup.GameController(configs, hooks, { mode: this.mode });
+        for (let i = 0; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i]);
+        this.viewId = 0; // 預設從第一位 AI 視角看，可隨時切換
+        this.game = game;
+      } else {
+        // 每場隨機配發不重複的具名角色給 AI 座位（名稱即玩家名）
+        const personas = Coup.AIAgent.drawPersonas(numPlayers - 1);
+        const configs = [{ name: '你', isHuman: true }];
+        for (let i = 1; i < numPlayers; i++) {
+          const pa = personas[i - 1];
+          configs.push({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false });
+        }
+        const game = new Coup.GameController(configs, hooks, { mode: this.mode });
+        game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
+        for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
+        this.viewId = 0;
+        this.game = game;
+      }
+
       this.currentTurn = 0;
       this.render();
-      game.play();
+      this.game.play();
+    },
+
+    // 旁觀模式：切換到某玩家的視角（看他的手牌）
+    setView(pid) {
+      if (!this.spectator || !this.game || !this.game.players[pid]) return;
+      this.viewId = pid;
+      this.log(`👁 切換視角：改以【${this.game.players[pid].name}】的角度觀戰`);
+      this.render();
     },
 
     log(msg) {
@@ -469,6 +497,7 @@
       const n = (p.timeline || []).length;
       return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 的底細（宣示與換牌紀錄）">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
+          <span class="think-badge" data-think="${p.id}"></span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
         <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 紀錄 ${n}</span></div>
@@ -514,18 +543,19 @@
       this.els.overlay.onclick = (e) => { if (e.target === this.els.overlay) hide(); };
     },
 
-    // 人類手牌區（大牌 + 資訊）
+    // 視角手牌區（大牌 + 資訊）：單機=你；旁觀模式=所選 AI 視角
     meEl(p) {
       const cls = ['me-inner'];
-      if (this.currentTurn === 0 && p.alive) cls.push('current');
+      if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
       const hand = p.cards.map(c => this.cardEl(c, true, false)).join('') +
                    p.lost.map(c => this.cardEl(c, true, true)).join('');
       return `<div class="${cls.join(' ')}">
         <div class="me-foot">
-          <span class="me-name">你</span>
+          <span class="me-name">${this.spectator ? p.name + '（視角）' : '你'}</span>
           <span class="me-coin">🪙 <b>${p.coins}</b></span>
           <span class="me-inf">影響 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span>
+          <span class="think-badge" data-think="${p.id}"></span>
         </div>
         <div class="me-cards">${hand}</div>
       </div>`;
@@ -534,25 +564,97 @@
     render() {
       if (!this.game) return;
       const g = this.game;
+      const view = this.spectator ? this.viewId : this.myId; // 下方手牌區呈現誰的視角
       this.els.opponents.innerHTML = g.players
-        .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
-      // 對手卡可點:看宣示紀錄
+        .filter(p => p.id !== view).map(p => this.oppEl(p)).join('');
+      // 對手卡可點:看宣示紀錄（旁觀模式則切換到該玩家視角）
       if (typeof this.els.opponents.querySelectorAll === 'function') {
         this.els.opponents.querySelectorAll('.opp').forEach(el => {
-          el.onclick = () => this.showClaims(+el.dataset.pid);
+          el.onclick = () => {
+            if (this.spectator) this.setView(+el.dataset.pid);
+            else this.showClaims(+el.dataset.pid);
+          };
         });
       }
       this.els.me.innerHTML = g.players
-        .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
+        .filter(p => p.id === view).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
-        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}</span>` +
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}${this.spectator ? ' · 👁 旁觀' : ''}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
+      this._renderThink(); // 重繪後重新套用思考徽章
+    },
+
+    // ---------- AI 思考（可見倒數 + 等待者持續盤算）----------
+    // 速度→思考時間壓縮倍率：慢速=完整 7~30 秒體驗，越快越壓縮
+    thinkPace() { return ({ 1100: 1.0, 620: 1.0, 260: 0.42 })[this.speed] || 1.0; },
+
+    onThink(playerId, ms, kind) {
+      return new Promise(resolve => {
+        if (typeof document === 'undefined') { resolve(); return; }
+        const dur = Math.max(300, Math.round(ms * this.thinkPace()));
+        this._think = { id: playerId, kind, start: Date.now(), dur };
+        const finish = () => {
+          if (this._thinkIv) { clearInterval(this._thinkIv); this._thinkIv = null; }
+          if (this._thinkTo) { clearTimeout(this._thinkTo); this._thinkTo = null; }
+          this._thinkResolve = null;
+          this._think = null;
+          this._renderThink();
+          resolve();
+        };
+        this._thinkResolve = finish; // 讓 _clearThink 能提前結束並 resolve（避免取消時舊迴圈卡死）
+        this._renderThink();
+        this._thinkIv = setInterval(() => {
+          if (!this.game || this.game.cancelled) { finish(); return; }
+          this._renderThink();
+        }, 100);
+        this._thinkTo = setTimeout(finish, dur);
+      });
+    },
+
+    _clearThink() {
+      if (this._thinkResolve) { this._thinkResolve(); return; } // 結束待解的思考 promise
+      if (this._thinkIv) { clearInterval(this._thinkIv); this._thinkIv = null; }
+      if (this._thinkTo) { clearTimeout(this._thinkTo); this._thinkTo = null; }
+      this._think = null;
+    },
+
+    // 更新思考徽章：當前思考者顯示倒數秒數（越久＝在深算或在裝）；其餘存活 AI 持續「盤算中」
+    _renderThink() {
+      if (typeof document === 'undefined' || !this.game) return;
+      const t = this._think;
+      const activeIds = !t ? [] :
+        (t.id === -1
+          ? this.game.players.filter(p => p.alive && p.id !== this.currentTurn).map(p => p.id)
+          : [t.id]);
+      const secs = t ? ((Date.now() - t.start) / 1000).toFixed(1) : '0';
+      const badges = document.querySelectorAll ? document.querySelectorAll('.think-badge[data-think]') : [];
+      badges.forEach(el => {
+        const pid = +el.dataset.think;
+        const p = this.game.players[pid];
+        const panel = el.closest ? el.closest('.opp, .me-inner') : null;
+        if (activeIds.indexOf(pid) >= 0) {
+          el.textContent = '🤔 ' + secs + 's';
+          el.className = 'think-badge on';
+          if (panel) { panel.classList.add('thinking'); panel.classList.remove('pondering'); }
+        } else if (t && p && p.alive && pid !== this.currentTurn) {
+          // 等待中的 AI 也一直在想（大局觀）
+          el.textContent = '…';
+          el.className = 'think-badge ambient';
+          if (panel) { panel.classList.add('pondering'); panel.classList.remove('thinking'); }
+        } else {
+          el.textContent = '';
+          el.className = 'think-badge';
+          if (panel) panel.classList.remove('thinking', 'pondering');
+        }
+      });
     },
 
     showWinner(w) {
-      const isMe = w && w.isHuman;
+      this._clearThink();
+      const spec = this.spectator;
+      const isMe = !spec && w && w.isHuman;
       this.fb[isMe ? 'win' : 'lose']();
       const hand = (w && w.cards && w.cards.length)
         ? `<div class="win-sub">勝者手牌</div><div class="win-cards">${w.cards.map(c => this.cardEl(c, true, false)).join('')}</div>`
@@ -561,10 +663,11 @@
       const report = this.reportText ||
         (this.game && typeof this.game.buildReport === 'function' ? this.game.buildReport() : '');
       const reportBtn = report ? `<button class="pbtn copy-report" id="copyReportBtn">📋 複製完整戰報</button>` : '';
+      const title = spec ? '🏁 對戰結束' : (isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了');
       this.els.overlay.innerHTML =
-        `<div class="win-box ${isMe ? 'win' : 'lose'}">
+        `<div class="win-box ${spec ? 'win' : (isMe ? 'win' : 'lose')}">
           <button class="win-close" aria-label="關閉以回看過程">✕</button>
-          <div class="win-title">${isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了'}</div>
+          <div class="win-title">${title}</div>
           <div class="win-sub">勝者：${w ? w.name : '無'}</div>
           ${hand}
           <button id="againBtn" class="pbtn act">再來一局</button>

@@ -118,6 +118,35 @@
       return clamp(base * (0.8 + Math.random() * 0.5), 0.3, 2.8);
     }
 
+    // 擬真思考時間（毫秒）：像真人決牌時的長考。約 7~30 秒，因人因局而異——
+    // 思考越深/局面越難 → 想越久；果斷者(高膽識/直覺型)偶爾「早想好了」秒答；
+    // 會吹牛者偶爾故意拖很久裝模作樣。思考時間長＝可能在深算，也可能在裝。
+    thinkTime(game, kind, info) {
+      const me = game.players[this.id];
+      const MIN = 7000, MAX = 30000;
+      // 決策難度 0..1
+      let hard;
+      if (kind === 'action') {
+        const opps = game.players.filter(p => p && p.alive && p.id !== this.id);
+        hard = 0.32
+          + (me && me.coins >= 6 ? 0.18 : 0)        // 接近政變門檻，抉擇變重
+          + (opps.length >= 3 ? 0.15 : 0)           // 目標多 → 更難挑
+          + (me && me.cards && me.cards.length === 1 ? 0.18 : 0) // 殘血，步步驚心
+          + this.deceit * 0.18;                     // 會詐者要盤算要不要裝
+      } else { // react：質疑 / 反制
+        const sus = (info && info.suspicion) || 0;
+        hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
+      }
+      hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
+      let t = MIN + (MAX - MIN) * clamp(this.depth * 0.5 + hard * 0.6, 0, 1);
+      // 果斷秒答：高膽識/淺思考、且局面不難 → 製造「他早就想好了」的對比
+      const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
+      if (hard < 0.5 && Math.random() < decisive * 0.4) t = 2400 + Math.random() * 3600;
+      // 裝模作樣：會吹牛者偶爾刻意拖很久（即使簡單）→ 長考未必真在想
+      else if (kind === 'action' && Math.random() < this.deceit * 0.16) t = MAX * 0.82 + Math.random() * MAX * 0.18;
+      return Math.round(t);
+    }
+
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
     estimateOpponentHas(game, targetId, character) {
       const me = game.players[this.id];

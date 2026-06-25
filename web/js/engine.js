@@ -85,7 +85,8 @@
         onLog: noop,      // (msg) => void     寫入日誌
         onTurn: noop,     // (playerId) => void
         onGameOver: noop, // (winner) => void
-        pause: resolved   // () => Promise     AI 節奏延遲
+        pause: resolved,   // () => Promise     AI 節奏延遲
+        onThink: resolved  // (playerId, ms, kind) => Promise  AI 思考（可見倒數）；-1=全桌一起想
       }, hooks || {});
 
       this.players = playerConfigs.map((c, i) => ({
@@ -168,14 +169,36 @@
       this.hooks.onState();
     }
 
-    // AI 思考停頓：依該 AI 的思考型態/深度拉長「沉吟」時間（真人不延遲）。
-    // kind: 'action'(主要決策) / 'react'(臨場反應)
-    async aiThink(playerId, kind) {
+    // AI 思考停頓：像真人長考，依該 AI 思考型態/深度/局面難度算出秒數，經 onThink
+    // 呈現可見倒數（真人不延遲）。kind: 'action'(主要決策) / 'react'(臨場反應)
+    async aiThink(playerId, kind, info) {
       const p = this.players[playerId];
       if (!p || p.isHuman) return;
       const a = this.agents[playerId];
-      const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
-      await this.hooks.pause(scale);
+      if (a && typeof a.thinkTime === 'function') {
+        const ms = a.thinkTime(this, kind || 'action', info || {});
+        await this.hooks.onThink(playerId, ms, kind || 'action');
+      } else {
+        // 後備（無 thinkTime 的代理，如連線真人）：沿用既有節奏
+        const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
+        await this.hooks.pause(scale);
+      }
+    }
+
+    // 全桌一起「考慮要不要質疑」的同步思考窗（營造張力；取最深者的時間、設上限）
+    async tableThink(eligibleIds) {
+      const thinkers = (eligibleIds || []).filter(id => {
+        const p = this.players[id];
+        return p && p.alive && !p.isHuman;
+      });
+      if (!thinkers.length) return;
+      let ms = 0;
+      thinkers.forEach(id => {
+        const a = this.agents[id];
+        if (a && typeof a.thinkTime === 'function') ms = Math.max(ms, a.thinkTime(this, 'react', {}));
+      });
+      ms = Math.min(ms, 9000);
+      if (ms > 0) await this.hooks.onThink(-1, ms, 'table');
     }
 
     // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
@@ -432,6 +455,7 @@
         const allow = new Set(eligible);
         order = order.filter(id => allow.has(id));
       }
+      await this.tableThink(order); // 全桌一起考慮要不要質疑（同步思考窗）
       for (const pid of order) {
         const p = this.players[pid];
         if (!p.alive) continue;
@@ -512,6 +536,7 @@
         return false;
       }
 
+      await this.tableThink(blockerIds); // 可反制者一起考慮要不要舉盾
       for (const bid of blockerIds) {
         const b = this.players[bid];
         if (!b || !b.alive) continue;
