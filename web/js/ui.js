@@ -15,9 +15,13 @@
     Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
     Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
-    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' } // 亡國模式：公爵變體
+    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' }, // 公爵變體
+    Bandit:     { zh: '強盜', en: 'Bandit',     arcana: '死神·盜 The Bandit',    roman: 'XIII★',sym: '🗡' }, // 刺客變體
+    Queen:      { zh: '皇后', en: 'Queen',      arcana: '女皇·后 The Queen',     roman: 'III★', sym: '👸' }  // 夫人變體
   };
-  const imgRole = ch => (ch === 'King' ? 'Duke' : ch); // 國王沿用公爵畫像（疊王冠標記）
+  // 變體沿用原角色畫像（疊專屬標記）
+  const VARIANT_BASE = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa' };
+  const imgRole = ch => VARIANT_BASE[ch] || ch;
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
@@ -386,7 +390,7 @@
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(King|Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Bandit|Queen|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -428,9 +432,14 @@
         return '<div class="card back"><div class="back-orn">✦</div></div>';
       }
       const a = ARCANA[ch] || ARCANA.Duke;
+      const bandit = (this.game && this.game.banditCoins) || 0;
+      const badge =
+        ch === 'King'   ? '<div class="variant-badge king">👑 國王</div>' :
+        ch === 'Bandit' ? `<div class="variant-badge bandit">🗡 強盜 💰${bandit}</div>` :
+        ch === 'Queen'  ? '<div class="variant-badge queen">👸 皇后</div>' : '';
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
         <img class="card-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
-        ${ch === 'King' ? '<div class="king-crown">👑 國王</div>' : ''}
+        ${badge}
         ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
@@ -439,9 +448,10 @@
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
       const a = ARCANA[ch] || ARCANA.Duke;
+      const mark = VARIANT_BASE[ch] ? `<span class="mini-crown">${ARCANA[ch].sym}</span>` : '';
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
         <img class="mini-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
-        ${ch === 'King' ? '<span class="mini-crown">👑</span>' : ''}
+        ${mark}
         <span class="mini-x">✕</span></div>`;
     },
 
