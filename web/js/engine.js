@@ -17,19 +17,23 @@
   const ZH = {
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
     Ambassador: '大使', Contessa: '夫人',
-    King: '國王',   // 亡國模式：公爵的特殊變體
-    Bandit: '強盜', // 亡國模式：刺客的特殊變體
-    Queen: '皇后'   // 亡國模式：夫人的特殊變體
+    King: '國王',     // 亡國模式：公爵的特殊變體
+    Bandit: '強盜',   // 亡國模式：刺客的特殊變體
+    Queen: '皇后',    // 亡國模式：夫人的特殊變體
+    Mole: '內奸',     // 亡國模式：大使的特殊變體
+    Commander: '司令' // 亡國模式：隊長的特殊變體
   };
   Coup.ZH = ZH;
 
-  // 角色變體對應：國王＝公爵、強盜＝刺客、皇后＝夫人
+  // 亡國模式：每個原角色 → 其特殊變體（牌庫中以變體替換 1 張）
+  const VARIANTS = { Duke: 'King', Assassin: 'Bandit', Contessa: 'Queen', Ambassador: 'Mole', Captain: 'Commander' };
+  Coup.VARIANTS = VARIANTS;
+  const VARIANT_OF = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
+
+  // 角色變體對應：變體在所有判定上等同其原角色
   function roleMatches(card, character) {
     if (card === character) return true;
-    if (character === 'Duke' && card === 'King') return true;
-    if (character === 'Assassin' && card === 'Bandit') return true;
-    if (character === 'Contessa' && card === 'Queen') return true;
-    return false;
+    return VARIANT_OF[card] === character;
   }
   // 玩家手牌是否「持有可宣示 character 的牌」（含變體）
   function holdsRole(cards, character) {
@@ -110,10 +114,8 @@
       const deck = [];
       this.banditCoins = 0;
       CHARACTERS.forEach(ch => {
-        // 亡國模式：每種特殊角色把其中 1 張替換為變體
-        if (this.mode === 'kingdom' && ch === 'Duke') deck.push('King', 'Duke', 'Duke');
-        else if (this.mode === 'kingdom' && ch === 'Assassin') deck.push('Bandit', 'Assassin', 'Assassin');
-        else if (this.mode === 'kingdom' && ch === 'Contessa') deck.push('Queen', 'Contessa', 'Contessa');
+        // 亡國模式：每種角色把其中 1 張替換為變體（2 原角色 + 1 變體）
+        if (this.mode === 'kingdom' && VARIANTS[ch]) deck.push(VARIANTS[ch], ch, ch);
         else deck.push(ch, ch, ch);
       });
       shuffle(deck);
@@ -291,7 +293,9 @@
     pickRevealCard(claimant, character) {
       const c = claimant.cards;
       if (character === 'Duke' && c.includes('King')) return 'King';
-      if (character === 'Contessa' && c.includes('Queen')) return 'Queen'; // 皇后額外抽牌恆有利 → 一律攤
+      if (character === 'Contessa' && c.includes('Queen')) return 'Queen';     // 皇后額外抽牌恆有利
+      if (character === 'Ambassador' && c.includes('Mole')) return 'Mole';     // 內奸奪牌恆有利
+      if (character === 'Captain' && c.includes('Commander')) return 'Commander'; // 司令抽牌恆有利
       if (character === 'Assassin' && c.includes('Bandit')) {
         // 強盜：卡上有錢可兌現、或別無普通刺客時攤強盜；否則攤普通刺客保留強盜
         if ((this.banditCoins || 0) > 0 || !c.includes('Assassin')) return 'Bandit';
@@ -307,6 +311,49 @@
       this.log(`🗡️ 強盜現身！${bandit.name} 收取強盜卡上累積的 ${got} 金幣`);
       this.hooks.onState();
       if (got > 0) await this.hooks.pause();
+    }
+
+    // 🕵 內奸：與質疑者換牌——質疑者交一張給內奸者、內奸者把內奸交給質疑者；質疑者再失 1 影響力
+    async moleSwap(claimant, challenger) {
+      // 1. 質疑者交一張牌（自選；只剩一張則強制）
+      let giveIdx = 0;
+      if (challenger.cards.length > 1) {
+        const a = this.agents[challenger.id];
+        if (a && typeof a.chooseCardToGive === 'function') {
+          giveIdx = await a.chooseCardToGive(this, challenger.id);
+        }
+        if (typeof giveIdx !== 'number' || giveIdx < 0 || giveIdx >= challenger.cards.length) giveIdx = 0;
+      }
+      const given = challenger.cards.splice(giveIdx, 1)[0];
+      // 2. 內奸者收下該牌、把內奸交給質疑者
+      const mi = claimant.cards.indexOf('Mole');
+      if (mi >= 0) claimant.cards.splice(mi, 1);
+      claimant.cards.push(given);
+      challenger.cards.push('Mole');
+      this.log(`🕵️ 內奸現身！${claimant.name} 奪走 ${challenger.name} 一張牌，並把內奸塞給對方`);
+      if (claimant.isHuman) this.notifyPrivate(claimant.id, `🕵️ 你奪得 ${challenger.name} 的【${ZH[given]} ${given}】，並把內奸交給他`);
+      this.hooks.onState();
+      await this.hooks.pause();
+      // 3. 質疑者質疑失敗 → 失 1 影響力（從含內奸的手牌中自選一張公開）
+      await this.loseInfluence(challenger);
+      this.hooks.onState();
+    }
+
+    // 🎖 司令：抽 1 張，從（手牌＋1）中保留原影響力張數（N+1 選 N），其餘洗回（重新隱藏身分）
+    async commanderExchange(player) {
+      const keepCount = player.cards.length;
+      this.shuffleDeck();
+      const drawn = this.drawRandom();
+      if (drawn == null) return;
+      player.cards.push(drawn);
+      player.originalInfluence = keepCount;
+      let kept = await this.agents[player.id].chooseExchange(this, player.id, [drawn]);
+      if (!Array.isArray(kept)) kept = player.cards.slice(0, keepCount);
+      this.applyExchange(player, kept);
+      delete player.originalInfluence;
+      this.record({ k: 'exch', who: player.id, drawn: [drawn], kept: player.cards.slice() });
+      this.log(`🎖️ 司令調度！${player.name} 抽 1 張，${keepCount + 1} 選 ${keepCount} 重整手牌`);
+      this.hooks.onState();
     }
 
     // 👸 皇后「恩典」：額外抽一張牌（手牌可超過上限 → 等同多一條命）
@@ -366,9 +413,28 @@
           // 亡國模式：決定攤出的牌（手握變體則攤變體以發動特殊能力）
           const revealed = this.pickRevealCard(claimant, character);
           this.log(`✅ ${claimant.name} 亮出真正的【${ZH[revealed]} ${revealed}】，命運審判了質疑者！`);
-          await this.loseInfluence(p);
+
+          // 🕵 內奸：不洗回，改為與質疑者換牌（質疑者失影響力含在內）
+          if (revealed === 'Mole') {
+            await this.moleSwap(claimant, p);
+            this.record({ k: 'swap', who: claimantId, ret: 'Mole', got: null });
+            this.notifySwap(claimantId, character); this.notifySwap(p.id, character);
+            this.hooks.onState();
+            return { challenged: true, success: false, challenger: pid };
+          }
+
+          await this.loseInfluence(p); // 質疑者失 1 影響力
           if (revealed === 'King') await this.kingLevy(claimant, p);     // 👑 強制徵收
           if (revealed === 'Bandit') await this.banditCashIn(claimant);  // 🗡️ 強盜兌現
+
+          // 🎖 司令：以「抽 1、N+1 選 N」迷你交換取代普通洗回換牌（同樣重新隱藏身分）
+          if (revealed === 'Commander') {
+            this.notifySwap(claimantId, character);
+            await this.commanderExchange(claimant);
+            this.hooks.onState();
+            return { challenged: true, success: false, challenger: pid };
+          }
+
           const fresh = this.swapCard(claimant, revealed); // 換新牌，身分重新隱藏
           this.record({ k: 'swap', who: claimantId, ret: revealed, got: fresh });
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率

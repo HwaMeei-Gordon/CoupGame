@@ -17,10 +17,12 @@
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
     King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' }, // 公爵變體
     Bandit:     { zh: '強盜', en: 'Bandit',     arcana: '死神·盜 The Bandit',    roman: 'XIII★',sym: '🗡' }, // 刺客變體
-    Queen:      { zh: '皇后', en: 'Queen',      arcana: '女皇·后 The Queen',     roman: 'III★', sym: '👸' }  // 夫人變體
+    Queen:      { zh: '皇后', en: 'Queen',      arcana: '女皇·后 The Queen',     roman: 'III★', sym: '👸' }, // 夫人變體
+    Mole:       { zh: '內奸', en: 'Mole',       arcana: '女祭司·奸 The Mole',    roman: 'II★',  sym: '🕵' }, // 大使變體
+    Commander:  { zh: '司令', en: 'Commander',  arcana: '戰車·令 The Commander', roman: 'VII★', sym: '🎖' }  // 隊長變體
   };
   // 變體沿用原角色畫像（疊專屬標記）
-  const VARIANT_BASE = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa' };
+  const VARIANT_BASE = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
   const imgRole = ch => VARIANT_BASE[ch] || ch;
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
@@ -390,7 +392,7 @@
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(King|Bandit|Queen|Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Bandit|Queen|Mole|Commander|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -434,9 +436,11 @@
       const a = ARCANA[ch] || ARCANA.Duke;
       const bandit = (this.game && this.game.banditCoins) || 0;
       const badge =
-        ch === 'King'   ? '<div class="variant-badge king">👑 國王</div>' :
-        ch === 'Bandit' ? `<div class="variant-badge bandit">🗡 強盜 💰${bandit}</div>` :
-        ch === 'Queen'  ? '<div class="variant-badge queen">👸 皇后</div>' : '';
+        ch === 'King'      ? '<div class="variant-badge king">👑 國王</div>' :
+        ch === 'Bandit'    ? `<div class="variant-badge bandit">🗡 強盜 💰${bandit}</div>` :
+        ch === 'Queen'     ? '<div class="variant-badge queen">👸 皇后</div>' :
+        ch === 'Mole'      ? '<div class="variant-badge mole">🕵 內奸</div>' :
+        ch === 'Commander' ? '<div class="variant-badge commander">🎖 司令</div>' : '';
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
         <img class="card-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
         ${badge}
@@ -733,6 +737,14 @@
         label: `攤開 ${ZH[c]} ${c}`, value: i, cls: c
       }));
       return this.prompt('你失去一張影響力，選擇要攤開哪一張：', buttons);
+    },
+
+    chooseCardToGive(game, playerId) {
+      const me = game.players[playerId];
+      const buttons = me.cards.map((c, i) => ({
+        label: `交出 ${ZH[c]} ${c}`, value: i, cls: c
+      }));
+      return this.prompt('🕵 內奸奪牌：選一張牌交給對方（你會換得內奸）：', buttons);
     },
 
     chooseExchange(game, playerId, drawn) {

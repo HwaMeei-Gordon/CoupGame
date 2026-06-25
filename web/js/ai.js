@@ -12,7 +12,7 @@
   const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
   const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4, Mole: 5, Commander: 5 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
@@ -192,8 +192,8 @@
       }
 
       if (action.type === 'steal') {
-        if (me.cards.includes('Captain')) return { block: true, character: 'Captain' };
-        if (me.cards.includes('Ambassador')) return { block: true, character: 'Ambassador' };
+        if (holdsRole(me.cards, 'Captain')) return { block: true, character: 'Captain' };
+        if (holdsRole(me.cards, 'Ambassador')) return { block: true, character: 'Ambassador' };
         const pr = Math.min(0.85, (0.12 + this.deceit * 0.40) * (0.5 + 0.7 * this.nerve));
         if (Math.random() < pr) return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
         return { block: false };
@@ -218,6 +218,11 @@
         if (v < min) { min = v; idx = i; }
       });
       return idx;
+    }
+
+    // 被內奸奪牌：交出最不值錢的一張（留下好牌）
+    chooseCardToGive(game, playerId) {
+      return this.chooseCardToLose(game, playerId);
     }
 
     chooseExchange(game, playerId, drawn) {
@@ -308,7 +313,7 @@
         return { type: 'assassinate', targetId: target.id };
       }
       // 真 Captain 偷竊 — 被某人擋過「一次」就別再撞同一面盾（智商越高越果斷），改攢錢
-      if (me.cards.includes('Captain')) {
+      if (holdsRole(me.cards, 'Captain')) {
         const t = this.stealTarget(opps);
         if (t) {
           const blk = (this.blockedBy[t.id] && this.blockedBy[t.id].steal) || 0;
@@ -319,7 +324,7 @@
       // 真 Duke 課稅
       if (holdsRole(me.cards, 'Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
-      if (me.cards.includes('Ambassador')) {
+      if (holdsRole(me.cards, 'Ambassador')) {
         const weak = !holdsRole(me.cards, 'Duke') && !holdsRole(me.cards, 'Contessa');
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
