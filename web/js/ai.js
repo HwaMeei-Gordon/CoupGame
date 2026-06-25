@@ -14,6 +14,9 @@
 
   const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Devil: 6, Queen: 4, Mole: 5, Commander: 5 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
+  // 思考型態：直覺(快/憑感覺)、思考(慢/精算)、計謀(深/善詐善看破)、賭博(中/愛拚)
+  const THINK = ['intuition', 'analysis', 'scheme', 'gamble'];
+  const THINK_DEPTH = { intuition: 0.20, analysis: 0.95, scheme: 0.74, gamble: 0.46 }; // 思考深度基準
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -32,6 +35,7 @@
         this.vengeance = clamp(jit(persona.vengeance, 0.08), 0, 1);
         this.nerve     = clamp(jit(persona.nerve, 0.08), 0, 1);
         this.style     = persona.style;
+        this.think     = persona.think || THINK[Math.floor(Math.random() * THINK.length)];
       } else {
         // 無具名：每維獨立隨機（測試/後備用）
         this.iq        = rnd(0.15, 1.0); // 智商：機率判讀精準度、應變、少犯蠢、認得套路
@@ -41,8 +45,12 @@
         this.vengeance = rnd(0.0, 1.0);  // 報復程度：優先攻擊傷害過自己的人
         this.nerve     = rnd(0.0, 1.0);  // 膽識：壓力下/殘血時敢不敢賭一把
         this.style     = STYLES[Math.floor(Math.random() * STYLES.length)]; // 進攻取向
+        this.think     = THINK[Math.floor(Math.random() * THINK.length)];   // 思考型態
         this.personaName = this._dominantTrait();
       }
+      // 思考深度（0~1）：思考型態基準 × 智商加權；越深 → 推理越細、思考越久、隨機越少
+      this.depth = clamp(THINK_DEPTH[this.think] * 0.6 + this.iq * 0.4, 0.1, 1);
+      this.focusId = null; // 策略規劃：鎖定中的施壓目標（思考/計謀型會跨回合維持）
       this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain'; // 固定假身分，前後一致
 
       this.model = {};     // id -> { claims:{char:count}, lostSeen }  宣示建模
@@ -103,6 +111,13 @@
       return Math.max(0, distinct - influence);
     }
 
+    // 思考時間倍率（引擎在 AI 決策前以此乘上基礎節奏）：思考越深 → 停頓越久；
+    // 直覺型幾乎即答、思考型沉吟良久。kind: 'action'(主要決策) / 'react'(臨場反應)
+    thinkScale(kind) {
+      const base = kind === 'action' ? 0.55 + this.depth * 1.75 : 0.4 + this.depth * 0.8;
+      return clamp(base * (0.8 + Math.random() * 0.5), 0.3, 2.8);
+    }
+
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
     estimateOpponentHas(game, targetId, character) {
       const me = game.players[this.id];
@@ -159,7 +174,16 @@
       if (me.coins >= 7) threshold -= 0.08;
       // 我是「故意拿外援逼問公爵」的 → 既然來試探，就跟進質疑這個擋來驗證真偽（邏輯自洽）
       if (this.probing && character === 'Duke') { threshold += 0.24; this.probing = false; }
-      threshold += (Math.random() - 0.5) * 0.10 * (1.4 - this.iq);     // 智商低 → 更隨機
+
+      // 思考型態：計謀者善看破綻、賭徒愛拚、思考者沒把握不出手、直覺者憑感覺
+      if (this.think === 'scheme') threshold += sus * 0.10 + 0.03;
+      else if (this.think === 'gamble') threshold += 0.07 * (0.5 + this.nerve);
+      else if (this.think === 'analysis') threshold -= 0.04;
+      // 亡國模式規則認知：各變體都讓「錯誤質疑」更慘（被多收金幣／奪牌／被換牌），更謹慎
+      if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.depth);
+
+      // 思考越深 → 越少憑運氣（隨機幅度小）；直覺/低智商 → 更隨機
+      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.5 - this.iq * 0.7 - this.depth * 0.6, 0.25, 1.4);
       return truth < threshold;
     }
 
@@ -295,16 +319,28 @@
     chooseAction(game) {
       const me = game.players[this.id];
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
-      const target = this.pickTarget(game);
+      let target = this.pickTarget(game);
       this.probing = false; // 每回合重置試探旗標
-      if (!target) return { type: 'income' };
+      if (!target) { this.focusId = null; return { type: 'income' }; }
+
+      // 策略規劃：思考／計謀型「鎖定目標」跨回合持續施壓，不每回合亂換——
+      // 但若有殘血（1 張）可直接清，仍優先了結（除非鎖定的就是他）。
+      if ((this.think === 'analysis' || this.think === 'scheme') && this.focusId != null) {
+        const f = game.players[this.focusId];
+        if (f && f.alive && f.id !== this.id) {
+          const finishable = opps.find(o => o.cards.length === 1);
+          if (!finishable || finishable.id === f.id) target = f;
+        }
+      }
+      this.focusId = target.id;
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
       // 8+ 幾乎必政變：囤金幣只會被白白政變掉，且 10 就強制（修正觀察到的「囤到 11 反而送頭」）
       if (me.coins >= 8) return { type: 'coup', targetId: target.id };
-      // 7：殘血必收，否則依野心決定政變或續攢
-      const coupUrge = 0.30 + this.ambition * 0.60;
+      // 7：殘血必收，否則依野心決定政變或續攢（賭徒更急著動手、思考者更願再等一拍）
+      const coupUrge = 0.30 + this.ambition * 0.60
+        + (this.think === 'gamble' ? 0.15 : 0) - (this.think === 'analysis' ? 0.08 : 0);
       if (me.coins >= 7 && (target.cards.length === 1 || Math.random() < coupUrge))
         return { type: 'coup', targetId: target.id };
 
@@ -329,22 +365,26 @@
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 
-      // 攢錢取向：聰明且有野心者在 4~6 金幣時更傾向穩定累積，衝向 7 政變（不空轉）
-      const wantBank = me.coins >= 4 && me.coins < 7 && (this.iq * 0.5 + this.ambition * 0.5) > 0.5;
+      // 攢錢取向：聰明且有野心者在 4~6 金幣時更傾向穩定累積，衝向 7 政變（思考型尤甚）
+      const wantBank = me.coins >= 4 && me.coins < 7 &&
+        ((this.iq * 0.5 + this.ambition * 0.5) > 0.5 || this.think === 'analysis');
 
       // === 吹牛 / 累積 ===
       const r = Math.random();
       const dec = this.deceit;
+      // 思考型態調節詐唬頻率：計謀／賭徒更愛吹牛、思考型謹慎少詐、直覺型居中
+      const bluffMul = this.think === 'scheme' ? 1.25 : this.think === 'gamble' ? 1.35
+        : this.think === 'analysis' ? 0.7 : 1.0;
       // 吹牛暗殺（有錢、夠敢）
-      if (me.coins >= 3 && r < 0.10 * dec * (0.5 + this.ambition)) {
+      if (me.coins >= 3 && r < 0.10 * dec * bluffMul * (0.5 + this.ambition)) {
         return { type: 'assassinate', targetId: target.id };
       }
       const dukeBias = this.bluffRole === 'Duke' ? 0.18 : 0;
       const capBias = this.bluffRole === 'Captain' ? 0.18 : 0;
       // 吹牛課稅（宣稱 Duke）— 攢錢取向更愛
-      if (r < 0.22 + dukeBias + 0.26 * dec + (wantBank ? 0.15 : 0)) return { type: 'tax' };
+      if (r < 0.22 + dukeBias + 0.26 * dec * bluffMul + (wantBank ? 0.15 : 0)) return { type: 'tax' };
       // 吹牛偷竊（宣稱 Captain）
-      if (r < 0.38 + capBias + 0.20 * dec) {
+      if (r < 0.38 + capBias + 0.20 * dec * bluffMul) {
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
@@ -364,16 +404,16 @@
   // 10 位具名角色：性格相對固定（每場僅微浮動），各有鮮明風格。
   // 參數 0~1：iq 智商、trust 信任、deceit 詐術、ambition 野心、vengeance 仇恨傾向、nerve 膽識。
   AIAgent.PERSONAS = [
-    { name: '老謀子', iq: 0.92, trust: 0.30, deceit: 0.70, ambition: 0.55, vengeance: 0.45, nerve: 0.70, style: 'random' }, // 老練謀士，難捉摸
-    { name: '鐵衛',   iq: 0.85, trust: 0.80, deceit: 0.20, ambition: 0.55, vengeance: 0.25, nerve: 0.50, style: 'even'   }, // 正直穩健
-    { name: '血手',   iq: 0.55, trust: 0.25, deceit: 0.45, ambition: 0.90, vengeance: 0.85, nerve: 0.85, style: 'leader' }, // 兇悍記仇
-    { name: '影后',   iq: 0.88, trust: 0.45, deceit: 0.92, ambition: 0.55, vengeance: 0.30, nerve: 0.80, style: 'rich'   }, // 詐術大師
-    { name: '賭徒',   iq: 0.50, trust: 0.50, deceit: 0.75, ambition: 0.80, vengeance: 0.50, nerve: 0.95, style: 'random' }, // 豪賭莽撞
-    { name: '修士',   iq: 0.86, trust: 0.85, deceit: 0.12, ambition: 0.35, vengeance: 0.15, nerve: 0.30, style: 'even'   }, // 清心寡慾、誠實被動
-    { name: '屠夫',   iq: 0.45, trust: 0.30, deceit: 0.40, ambition: 0.95, vengeance: 0.80, nerve: 0.80, style: 'finish' }, // 嗜殺、專收殘血
-    { name: '狐',     iq: 0.96, trust: 0.30, deceit: 0.78, ambition: 0.55, vengeance: 0.45, nerve: 0.55, style: 'rich'   }, // 極聰明的機會主義者
-    { name: '雛鳥',   iq: 0.25, trust: 0.85, deceit: 0.25, ambition: 0.45, vengeance: 0.25, nerve: 0.30, style: 'random' }, // 生澀好騙（較弱）
-    { name: '暴君',   iq: 0.78, trust: 0.25, deceit: 0.50, ambition: 0.95, vengeance: 0.92, nerve: 0.85, style: 'leader' }  // 強勢、睚眥必報
+    { name: '老謀子', iq: 0.92, trust: 0.30, deceit: 0.70, ambition: 0.55, vengeance: 0.45, nerve: 0.70, style: 'random', think: 'scheme'    }, // 老練謀士，深算難捉摸
+    { name: '鐵衛',   iq: 0.85, trust: 0.80, deceit: 0.20, ambition: 0.55, vengeance: 0.25, nerve: 0.50, style: 'even',   think: 'analysis'  }, // 正直穩健、沉著精算
+    { name: '血手',   iq: 0.55, trust: 0.25, deceit: 0.45, ambition: 0.90, vengeance: 0.85, nerve: 0.85, style: 'leader', think: 'gamble'    }, // 兇悍記仇、敢拚
+    { name: '影后',   iq: 0.88, trust: 0.45, deceit: 0.92, ambition: 0.55, vengeance: 0.30, nerve: 0.80, style: 'rich',   think: 'scheme'    }, // 詐術大師、機關算盡
+    { name: '賭徒',   iq: 0.50, trust: 0.50, deceit: 0.75, ambition: 0.80, vengeance: 0.50, nerve: 0.95, style: 'random', think: 'gamble'    }, // 豪賭莽撞
+    { name: '修士',   iq: 0.86, trust: 0.85, deceit: 0.12, ambition: 0.35, vengeance: 0.15, nerve: 0.30, style: 'even',   think: 'analysis'  }, // 清心寡慾、誠實被動、深思
+    { name: '屠夫',   iq: 0.45, trust: 0.30, deceit: 0.40, ambition: 0.95, vengeance: 0.80, nerve: 0.80, style: 'finish', think: 'intuition' }, // 嗜殺、憑直覺專收殘血
+    { name: '狐',     iq: 0.96, trust: 0.30, deceit: 0.78, ambition: 0.55, vengeance: 0.45, nerve: 0.55, style: 'rich',   think: 'analysis'  }, // 極聰明的機會主義者
+    { name: '雛鳥',   iq: 0.25, trust: 0.85, deceit: 0.25, ambition: 0.45, vengeance: 0.25, nerve: 0.30, style: 'random', think: 'intuition' }, // 生澀好騙、憑感覺（較弱）
+    { name: '暴君',   iq: 0.78, trust: 0.25, deceit: 0.50, ambition: 0.95, vengeance: 0.92, nerve: 0.85, style: 'leader', think: 'scheme'    }  // 強勢、睚眥必報、城府深
   ];
 
   // 抽 n 位「不重複」的具名角色（每場開局由外層呼叫，隨機配發）

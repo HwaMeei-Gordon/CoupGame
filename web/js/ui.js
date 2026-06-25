@@ -347,7 +347,8 @@
         onState: () => this.render(),
         onTurn: (id) => { this.currentTurn = id; this.render(); },
         onGameOver: (w) => this.showWinner(w),
-        pause: () => new Promise(r => setTimeout(r, this.speed))
+        // scale：AI 思考深度倍率（思考型沉吟更久；真人決策不經此延遲）
+        pause: (scale) => new Promise(r => setTimeout(r, this.speed * (scale || 1)))
       }, { mode: this.mode });
       game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
       for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);

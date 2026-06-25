@@ -168,6 +168,16 @@
       this.hooks.onState();
     }
 
+    // AI 思考停頓：依該 AI 的思考型態/深度拉長「沉吟」時間（真人不延遲）。
+    // kind: 'action'(主要決策) / 'react'(臨場反應)
+    async aiThink(playerId, kind) {
+      const p = this.players[playerId];
+      if (!p || p.isHuman) return;
+      const a = this.agents[playerId];
+      const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
+      await this.hooks.pause(scale);
+    }
+
     // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
     shuffleDeck() { for (let pass = 0; pass < 3; pass++) shuffle(this.deck); }
     // 從牌庫隨機位置抽一張（避免任何位置慣性）
@@ -741,6 +751,8 @@
         await this.hooks.pause();
         if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
 
+        await this.aiThink(actor.id, 'action'); // AI 依思考深度沉吟（真人即時）
+        if (this.cancelled) return null;
         let action = await this.agents[actor.id].chooseAction(this);
         if (this.cancelled) return null;
         action = this.sanitizeAction(actor, action);

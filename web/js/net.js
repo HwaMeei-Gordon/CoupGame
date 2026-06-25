@@ -215,7 +215,7 @@
         onState: () => { UI.render(); self._broadcastState(game); },
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
         onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
-        pause: () => new Promise(r => setTimeout(r, self.speed))
+        pause: (scale) => new Promise(r => setTimeout(r, self.speed * (scale || 1)))
       }, { mode: this.mode });
 
       game.agents[0] = UI; UI.mode = this.mode; // 房主用本地 UI
