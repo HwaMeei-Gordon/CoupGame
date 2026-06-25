@@ -1,13 +1,14 @@
 /* 初始化、開新局串接、連線對戰大廳 */
 (function (root) {
   'use strict';
+  const SPEEDS = { fast: 260, normal: 620, slow: 1100 };
   const Main = root.CoupMain = {
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
-      const speedMap = { fast: 260, normal: 620, slow: 1100 };
-      const speed = speedMap[document.getElementById('speed').value] || 800;
-      // 不再有難度——每個 AI 每場隨機性格
-      root.Coup.UI.newGame(n, null, speed);
+      const speed = SPEEDS[document.getElementById('speed').value] || 800;
+      const modeEl = document.getElementById('mode');
+      const mode = modeEl ? modeEl.value : 'normal';
+      root.Coup.UI.newGame(n, speed, mode);
     }
   };
 
@@ -76,7 +77,11 @@
       ov().querySelector('#lbCopy').onclick = () => {
         try { navigator.clipboard.writeText(code); msg('已複製房號 ' + code); } catch (e) { msg('房號：' + code); }
       };
-      ov().querySelector('#lbStart').onclick = () => { Net.startGame(parseInt(ov().querySelector('#lbTotal').value, 10), speedVal()); close(); };
+      ov().querySelector('#lbStart').onclick = () => {
+        const modeEl = document.getElementById('mode');
+        Net.startGame(parseInt(ov().querySelector('#lbTotal').value, 10), speedVal(), modeEl ? modeEl.value : 'normal');
+        close();
+      };
     }
 
     function guestFlow(code, name) {
@@ -137,6 +142,37 @@
       try { localStorage.setItem('coupTheme', themeSel.value); } catch (e) {}
     };
 
-    Main.start(); // 一進場就開一局（單機）
+    // ---------- 首頁 ----------
+    const home = document.getElementById('home');
+    const homeModes = home.querySelectorAll('.mode-opt');
+    homeModes.forEach(btn => {
+      btn.onclick = () => { homeModes.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
+    });
+    const selectedMode = () => {
+      const sel = home.querySelector('.mode-opt.selected');
+      return sel ? sel.getAttribute('data-mode') : 'normal';
+    };
+    const showHome = () => {
+      if (root.Coup.UI.game) root.Coup.UI.game.cancel(); // 停掉背景對局
+      home.style.display = 'flex';
+    };
+    const enterGame = () => {
+      // 把首頁選擇同步到遊戲內設定，套用主題，開始
+      const mode = selectedMode();
+      document.getElementById('numPlayers').value = document.getElementById('homeNum').value;
+      document.getElementById('speed').value = document.getElementById('homeSpeed').value;
+      const t = document.getElementById('homeTheme').value;
+      document.getElementById('theme').value = t; applyTheme(t);
+      try { localStorage.setItem('coupTheme', t); } catch (e) {}
+      document.getElementById('mode').value = mode;
+      home.style.display = 'none';
+      Main.start();
+    };
+    document.getElementById('homeStart').onclick = enterGame;
+    document.getElementById('homeOnline').onclick = () => { home.style.display = 'none'; lobby.open(); };
+    document.getElementById('homeBtn').onclick = () => { setup.classList.remove('open'); showHome(); };
+    // 套用首頁記憶的主題（與遊戲內一致）
+    if (saved) { try { document.getElementById('homeTheme').value = saved; } catch (e) {} }
+    // 進場停在首頁（不自動開局）
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);

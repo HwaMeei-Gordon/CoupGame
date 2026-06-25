@@ -67,6 +67,53 @@ body {
   background-attachment: fixed;
 }
 
+/* ---------- 首頁（進入前選模式與設定） ---------- */
+#home {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: center; padding: 18px;
+  overflow-y: auto;
+}
+.home-card {
+  width: 360px; max-width: 94vw; text-align: center;
+  background: linear-gradient(180deg, var(--panel2), var(--panel));
+  border: 1px solid var(--gold); border-radius: 18px; padding: 26px 20px 20px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+.home-title { font-family: var(--font); font-weight: 700; font-size: clamp(30px, 9vw, 40px); color: var(--gold-lt); letter-spacing: 2px; margin-bottom: 2px; }
+.home-title span { font-size: .62em; opacity: .85; }
+.home-tagline { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+.home-label { text-align: left; color: var(--muted); font-size: 12px; margin: 0 0 7px 2px; }
+.home-modes { display: flex; gap: 10px; margin-bottom: 16px; }
+.mode-opt {
+  flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: var(--field-bg); border: 1.5px solid var(--line); border-radius: 12px;
+  padding: 12px 8px; cursor: pointer; font-family: inherit; color: var(--ink); transition: all .15s ease;
+}
+.mode-opt .mode-ic { font-size: 24px; }
+.mode-opt .mode-name { font-weight: 700; font-size: 15px; }
+.mode-opt .mode-desc { font-size: 10.5px; color: var(--muted); line-height: 1.3; }
+.mode-opt.selected { border-color: var(--gold-lt); background: rgba(166,132,31,.16); box-shadow: 0 0 0 2px rgba(166,132,31,.25) inset; }
+.mode-opt:active { transform: scale(.97); }
+.home-settings { display: flex; gap: 8px; margin-bottom: 18px; }
+.home-settings label { flex: 1 1 0; display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.home-settings select {
+  font: inherit; font-size: 14px; padding: 8px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--field-bg); color: var(--ink);
+}
+.home-start {
+  width: 100%; min-height: 50px; margin-bottom: 9px;
+  background: linear-gradient(180deg, var(--gold-lt), var(--gold)); color: #2a1d05; border: none; border-radius: 12px;
+  font-size: 17px; font-weight: 700; font-family: var(--font); letter-spacing: 2px; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+.home-start:active { filter: brightness(1.08); }
+.home-online {
+  width: 100%; min-height: 42px;
+  background: linear-gradient(180deg, #3a5db0, #28407e); color: #eaf0ff; border: none; border-radius: 11px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
+}
+.home-online:active { filter: brightness(1.1); }
+
 /* App = 滿版直欄,固定不整頁捲動;只有日誌與行動列內部捲動 */
 #app {
   max-width: 560px; margin: 0 auto;
@@ -274,6 +321,7 @@ header h1 span { color: var(--ink); font-size: .55em; letter-spacing: 4px; margi
 }
 .sb-deck { color: var(--muted); }
 .sb-turn { color: var(--gold-lt); font-weight: 700; }
+.sb-mode { color: var(--gold-lt); font-weight: 700; }
 #log {
   flex: 1 1 auto; min-height: 0; overflow-y: auto;
   padding: 6px 12px; font-size: 11.5px; line-height: 1.5;
@@ -651,6 +699,52 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 </style>
 </head>
 <body>
+  <div id="home">
+    <div class="home-card">
+      <h1 class="home-title">Coup <span>政變</span></h1>
+      <div class="home-tagline">古典塔羅・宮廷權謀・人機對戰</div>
+      <div class="home-label">選擇模式</div>
+      <div class="home-modes">
+        <button class="mode-opt selected" data-mode="normal">
+          <span class="mode-ic">⚔</span>
+          <span class="mode-name">一般模式</span>
+          <span class="mode-desc">經典 5 角色政變對局</span>
+        </button>
+        <button class="mode-opt" data-mode="kingdom">
+          <span class="mode-ic">👑</span>
+          <span class="mode-name">王國模式</span>
+          <span class="mode-desc">額外特殊角色與能力 · 開發中</span>
+        </button>
+      </div>
+      <div class="home-settings">
+        <label>人數
+          <select id="homeNum">
+            <option value="2">2 人</option>
+            <option value="3">3 人</option>
+            <option value="4" selected>4 人</option>
+            <option value="5">5 人</option>
+            <option value="6">6 人</option>
+          </select>
+        </label>
+        <label>速度
+          <select id="homeSpeed">
+            <option value="fast">快</option>
+            <option value="normal" selected>普通</option>
+            <option value="slow">慢</option>
+          </select>
+        </label>
+        <label>風格
+          <select id="homeTheme">
+            <option value="tarot" selected>塔羅</option>
+            <option value="minimal">簡約</option>
+          </select>
+        </label>
+      </div>
+      <button id="homeStart" class="home-start">進入遊戲</button>
+      <button id="homeOnline" class="home-online">🌐 連線對戰（和朋友）</button>
+    </div>
+  </div>
+
   <div id="app">
     <header>
       <h1>Coup <span>政變</span></h1>
@@ -662,6 +756,12 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     <div id="setup">
       <div class="setup-row">
+        <label>模式
+          <select id="mode">
+            <option value="normal" selected>一般</option>
+            <option value="kingdom">王國</option>
+          </select>
+        </label>
         <label>人數
           <select id="numPlayers">
             <option value="2">2 人</option>
@@ -687,6 +787,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       </div>
       <button id="newGame">開新局</button>
       <button id="onlineBtn" class="online-entry">🌐 連線對戰（和朋友）</button>
+      <button id="homeBtn" class="online-entry" style="background:linear-gradient(180deg,#6a5a3a,#4a3d28)">🏠 回首頁</button>
       <div class="legend">
         <h4>角色速查</h4>
         <ul>
@@ -785,7 +886,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const resolved = () => Promise.resolve();
 
   class GameController {
-    constructor(playerConfigs, hooks) {
+    constructor(playerConfigs, hooks, options) {
+      options = options || {};
+      this.mode = options.mode === 'kingdom' ? 'kingdom' : 'normal'; // 一般 / 王國（特殊角色，後續實作）
       this.hooks = Object.assign({
         onState: noop,    // () => void        重新渲染
         onLog: noop,      // (msg) => void     寫入日誌
@@ -2021,10 +2124,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     },
 
     // ---------- 開新局 ----------
-    newGame(numPlayers, difficulty, speed) {
+    newGame(numPlayers, speed, mode) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
       this.myId = 0; // 單機：你是 player 0
       this.reportText = ''; // 清除上一局戰報
+      this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
       this.speed = speed;
       this.els.log.innerHTML = '';
       this.els.prompt.innerHTML = '';
@@ -2045,7 +2149,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         onTurn: (id) => { this.currentTurn = id; this.render(); },
         onGameOver: (w) => this.showWinner(w),
         pause: () => new Promise(r => setTimeout(r, this.speed))
-      });
+      }, { mode: this.mode });
       game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
       for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
 
@@ -2233,6 +2337,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 王國' : '⚔ 一般'}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
     },
@@ -2497,6 +2602,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   function serializeView(game, viewerId) {
     return {
       myId: viewerId,
+      mode: game.mode || 'normal',
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,
@@ -2663,10 +2769,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     },
 
     // 房主開始遊戲：humanSeats = 已入座客人；可加 AI 補到 numPlayers
-    startGame(numPlayers, speed) {
+    startGame(numPlayers, speed, mode) {
       const humans = this.seats.slice();
       const total = Math.max(2, Math.min(6, numPlayers || (1 + humans.length)));
       this.speed = speed || 800;
+      this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
 
       const configs = [{ name: this.hostName, isHuman: true }];
       humans.forEach(s => configs.push({ name: s.name, isHuman: true }));
@@ -2691,9 +2798,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
         onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
         pause: () => new Promise(r => setTimeout(r, self.speed))
-      });
+      }, { mode: this.mode });
 
-      game.agents[0] = UI; // 房主用本地 UI
+      game.agents[0] = UI; UI.mode = this.mode; // 房主用本地 UI
       // 已入座客人 → RemoteAgent（座位 1..n）；其餘 → AI
       humans.forEach(s => {
         const agent = new RemoteAgent(s.seat, s.conn, { fallback: new Coup.AIAgent(s.seat) });
@@ -2824,13 +2931,14 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 /* 初始化、開新局串接、連線對戰大廳 */
 (function (root) {
   'use strict';
+  const SPEEDS = { fast: 260, normal: 620, slow: 1100 };
   const Main = root.CoupMain = {
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
-      const speedMap = { fast: 260, normal: 620, slow: 1100 };
-      const speed = speedMap[document.getElementById('speed').value] || 800;
-      // 不再有難度——每個 AI 每場隨機性格
-      root.Coup.UI.newGame(n, null, speed);
+      const speed = SPEEDS[document.getElementById('speed').value] || 800;
+      const modeEl = document.getElementById('mode');
+      const mode = modeEl ? modeEl.value : 'normal';
+      root.Coup.UI.newGame(n, speed, mode);
     }
   };
 
@@ -2899,7 +3007,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       ov().querySelector('#lbCopy').onclick = () => {
         try { navigator.clipboard.writeText(code); msg('已複製房號 ' + code); } catch (e) { msg('房號：' + code); }
       };
-      ov().querySelector('#lbStart').onclick = () => { Net.startGame(parseInt(ov().querySelector('#lbTotal').value, 10), speedVal()); close(); };
+      ov().querySelector('#lbStart').onclick = () => {
+        const modeEl = document.getElementById('mode');
+        Net.startGame(parseInt(ov().querySelector('#lbTotal').value, 10), speedVal(), modeEl ? modeEl.value : 'normal');
+        close();
+      };
     }
 
     function guestFlow(code, name) {
@@ -2960,7 +3072,38 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       try { localStorage.setItem('coupTheme', themeSel.value); } catch (e) {}
     };
 
-    Main.start(); // 一進場就開一局（單機）
+    // ---------- 首頁 ----------
+    const home = document.getElementById('home');
+    const homeModes = home.querySelectorAll('.mode-opt');
+    homeModes.forEach(btn => {
+      btn.onclick = () => { homeModes.forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
+    });
+    const selectedMode = () => {
+      const sel = home.querySelector('.mode-opt.selected');
+      return sel ? sel.getAttribute('data-mode') : 'normal';
+    };
+    const showHome = () => {
+      if (root.Coup.UI.game) root.Coup.UI.game.cancel(); // 停掉背景對局
+      home.style.display = 'flex';
+    };
+    const enterGame = () => {
+      // 把首頁選擇同步到遊戲內設定，套用主題，開始
+      const mode = selectedMode();
+      document.getElementById('numPlayers').value = document.getElementById('homeNum').value;
+      document.getElementById('speed').value = document.getElementById('homeSpeed').value;
+      const t = document.getElementById('homeTheme').value;
+      document.getElementById('theme').value = t; applyTheme(t);
+      try { localStorage.setItem('coupTheme', t); } catch (e) {}
+      document.getElementById('mode').value = mode;
+      home.style.display = 'none';
+      Main.start();
+    };
+    document.getElementById('homeStart').onclick = enterGame;
+    document.getElementById('homeOnline').onclick = () => { home.style.display = 'none'; lobby.open(); };
+    document.getElementById('homeBtn').onclick = () => { setup.classList.remove('open'); showHome(); };
+    // 套用首頁記憶的主題（與遊戲內一致）
+    if (saved) { try { document.getElementById('homeTheme').value = saved; } catch (e) {} }
+    // 進場停在首頁（不自動開局）
   });
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
