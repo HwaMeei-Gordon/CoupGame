@@ -158,11 +158,17 @@
         }
         this.buzz(big ? [10, 20] : 8);
       },
+      // 洗牌：連續的短促摩擦聲（牌的洗動感）
+      shuffle() {
+        for (let i = 0; i < 5; i++) setTimeout(() => this.noise(0.05, { type: 'bandpass', from: 2600 + Math.random() * 1400, to: 900, q: 1.4, gain: 0.03 }), i * 45);
+        this.buzz(12);
+      },
       fromLog(m) {
         if (m.indexOf('🗡️') >= 0) this.slash();              // 暗殺命中 → 刀砍
         else if (m.indexOf('🎯') >= 0) this.shatter();        // 政變 → 裂開
         else if (m.indexOf('💥') >= 0 || m.indexOf('☠️') >= 0) this.death();
         else if (m.indexOf('❓') >= 0 || m.indexOf('🛡️') >= 0) this.challenge();
+        else if (m.indexOf('洗回命運之輪') >= 0 || m.indexOf('換上新的面孔') >= 0) this.shuffle(); // 洗牌
         if (m.indexOf('💰') >= 0) this.coins(m.indexOf('+1（') < 0); // 拿到錢 → 金幣碰撞(收入單聲,其餘多聲)
       }
     },
@@ -318,8 +324,13 @@
       this.els.overlay.classList.remove('show');
       this.els.overlay.innerHTML = '';
 
+      // 每場隨機配發不重複的具名角色給 AI 座位（名稱即玩家名）
+      const personas = Coup.AIAgent.drawPersonas(numPlayers - 1);
       const configs = [{ name: '你', isHuman: true }];
-      for (let i = 1; i < numPlayers; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+      for (let i = 1; i < numPlayers; i++) {
+        const pa = personas[i - 1];
+        configs.push({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false });
+      }
 
       const game = new Coup.GameController(configs, {
         onLog: (m) => this.log(m),
@@ -329,7 +340,7 @@
         pause: () => new Promise(r => setTimeout(r, this.speed))
       });
       game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
-      for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, difficulty);
+      for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
 
       this.game = game;
       this.currentTurn = 0;

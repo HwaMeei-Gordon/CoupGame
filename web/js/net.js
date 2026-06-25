@@ -192,7 +192,13 @@
 
       const configs = [{ name: this.hostName, isHuman: true }];
       humans.forEach(s => configs.push({ name: s.name, isHuman: true }));
-      for (let i = configs.length; i < total; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+      const aiCount = total - configs.length;
+      const personas = Coup.AIAgent.drawPersonas(aiCount); // AI 補位用具名角色
+      for (let k = 0; k < aiCount; k++) {
+        const pa = personas[k];
+        configs.push({ name: (pa && pa.name) || ('電腦 ' + (configs.length)), isHuman: false });
+      }
+      this._aiPersonas = personas;
 
       const UI = Coup.UI;
       if (UI.game) UI.game.cancel();
@@ -216,8 +222,9 @@
         s.agent = agent;
         game.agents[s.seat] = agent;
       });
+      let pi = 0;
       for (let i = 0; i < total; i++) {
-        if (!game.agents[i]) game.agents[i] = new Coup.AIAgent(i);
+        if (!game.agents[i]) game.agents[i] = new Coup.AIAgent(i, (this._aiPersonas && this._aiPersonas[pi++]) || undefined);
       }
 
       this.game = game;

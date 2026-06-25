@@ -14,26 +14,38 @@
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const jit = (base, amt) => base + (Math.random() * 2 - 1) * amt; // 微微浮動
 
   class AIAgent {
-    constructor(id, difficulty) {
+    constructor(id, persona) {
       this.id = id;
-      this.difficulty = difficulty || 'normal'; // 保留簽名相容；不再造成難度差異
-
-      // —— 多維隨機性格（每場每人獨立隨機、可重複、隱藏）。每個維度都影響決策 ——
-      this.iq        = rnd(0.15, 1.0); // 智商：機率判讀精準度、應變、少犯蠢、認得套路
-      this.trust     = rnd(0.0, 1.0);  // 對他人信任度：越高越少質疑、越信任宣示
-      this.deceit    = rnd(0.0, 1.0);  // 說謊能力：吹牛行動與假反制的頻率
-      this.ambition  = rnd(0.2, 1.0);  // 勝利渴望：進攻、政變時機、衝向致命金幣
-      this.vengeance = rnd(0.0, 1.0);  // 報復程度：優先攻擊傷害過自己的人
-      this.nerve     = rnd(0.0, 1.0);  // 膽識：壓力下/殘血時敢不敢賭一把
-      this.style     = STYLES[Math.floor(Math.random() * STYLES.length)]; // 進攻取向
+      if (persona && typeof persona === 'object') {
+        // 具名角色：性格相對固定，每場僅微微浮動（±0.08）
+        this.personaName = persona.name;
+        this.iq        = clamp(jit(persona.iq, 0.08), 0.1, 1);
+        this.trust     = clamp(jit(persona.trust, 0.08), 0, 1);
+        this.deceit    = clamp(jit(persona.deceit, 0.08), 0, 1);
+        this.ambition  = clamp(jit(persona.ambition, 0.08), 0.2, 1);
+        this.vengeance = clamp(jit(persona.vengeance, 0.08), 0, 1);
+        this.nerve     = clamp(jit(persona.nerve, 0.08), 0, 1);
+        this.style     = persona.style;
+      } else {
+        // 無具名：每維獨立隨機（測試/後備用）
+        this.iq        = rnd(0.15, 1.0); // 智商：機率判讀精準度、應變、少犯蠢、認得套路
+        this.trust     = rnd(0.0, 1.0);  // 對他人信任度：越高越少質疑、越信任宣示
+        this.deceit    = rnd(0.0, 1.0);  // 說謊能力：吹牛行動與假反制的頻率
+        this.ambition  = rnd(0.2, 1.0);  // 勝利渴望：進攻、政變時機、衝向致命金幣
+        this.vengeance = rnd(0.0, 1.0);  // 報復程度：優先攻擊傷害過自己的人
+        this.nerve     = rnd(0.0, 1.0);  // 膽識：壓力下/殘血時敢不敢賭一把
+        this.style     = STYLES[Math.floor(Math.random() * STYLES.length)]; // 進攻取向
+        this.personaName = this._dominantTrait();
+      }
       this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain'; // 固定假身分，前後一致
-      this.personaName = this._dominantTrait(); // 隱藏的性格標籤（內部/除錯）
 
       this.model = {};     // id -> { claims:{char:count}, lostSeen }  宣示建模
       this.blockedBy = {}; // blockerId -> { actionType: count }       我的行動被誰擋過幾次
-      this.grudge = {};    // id -> 仇恨值（被其攻擊累積）              報復目標依據
+      this.grudge = {};    // id -> 仇恨值（被攻擊/針對累積）           報復目標依據
       this.probing = false; // 本回合是否「故意拿外援去逼問公爵」（→ 之後更願意質疑該反制）
     }
 
@@ -341,6 +353,31 @@
       return Math.random() < 0.7 ? { type: 'foreign_aid' } : { type: 'income' };
     }
   }
+
+  // 10 位具名角色：性格相對固定（每場僅微浮動），各有鮮明風格。
+  // 參數 0~1：iq 智商、trust 信任、deceit 詐術、ambition 野心、vengeance 仇恨傾向、nerve 膽識。
+  AIAgent.PERSONAS = [
+    { name: '老謀子', iq: 0.92, trust: 0.30, deceit: 0.70, ambition: 0.55, vengeance: 0.45, nerve: 0.70, style: 'random' }, // 老練謀士，難捉摸
+    { name: '鐵衛',   iq: 0.85, trust: 0.80, deceit: 0.20, ambition: 0.55, vengeance: 0.25, nerve: 0.50, style: 'even'   }, // 正直穩健
+    { name: '血手',   iq: 0.55, trust: 0.25, deceit: 0.45, ambition: 0.90, vengeance: 0.85, nerve: 0.85, style: 'leader' }, // 兇悍記仇
+    { name: '影后',   iq: 0.88, trust: 0.45, deceit: 0.92, ambition: 0.55, vengeance: 0.30, nerve: 0.80, style: 'rich'   }, // 詐術大師
+    { name: '賭徒',   iq: 0.50, trust: 0.50, deceit: 0.75, ambition: 0.80, vengeance: 0.50, nerve: 0.95, style: 'random' }, // 豪賭莽撞
+    { name: '修士',   iq: 0.86, trust: 0.85, deceit: 0.12, ambition: 0.35, vengeance: 0.15, nerve: 0.30, style: 'even'   }, // 清心寡慾、誠實被動
+    { name: '屠夫',   iq: 0.45, trust: 0.30, deceit: 0.40, ambition: 0.95, vengeance: 0.80, nerve: 0.80, style: 'finish' }, // 嗜殺、專收殘血
+    { name: '狐',     iq: 0.96, trust: 0.30, deceit: 0.78, ambition: 0.55, vengeance: 0.45, nerve: 0.55, style: 'rich'   }, // 極聰明的機會主義者
+    { name: '雛鳥',   iq: 0.25, trust: 0.85, deceit: 0.25, ambition: 0.45, vengeance: 0.25, nerve: 0.30, style: 'random' }, // 生澀好騙（較弱）
+    { name: '暴君',   iq: 0.78, trust: 0.25, deceit: 0.50, ambition: 0.95, vengeance: 0.92, nerve: 0.85, style: 'leader' }  // 強勢、睚眥必報
+  ];
+
+  // 抽 n 位「不重複」的具名角色（每場開局由外層呼叫，隨機配發）
+  AIAgent.drawPersonas = function (n) {
+    const pool = AIAgent.PERSONAS.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, Math.max(0, n));
+  };
 
   Coup.AIAgent = AIAgent;
 

@@ -140,13 +140,22 @@
       this.hooks.onState();
     }
 
-    // 誠實者被質疑後：攤示真牌 → 洗回牌庫 → 抽新牌替換
+    // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
+    shuffleDeck() { for (let pass = 0; pass < 3; pass++) shuffle(this.deck); }
+    // 從牌庫隨機位置抽一張（避免任何位置慣性）
+    drawRandom() {
+      if (!this.deck.length) return null;
+      const j = Math.floor(Math.random() * this.deck.length);
+      return this.deck.splice(j, 1)[0];
+    }
+
+    // 誠實者被質疑後：攤示真牌 → 洗回牌庫 → 徹底洗牌 → 從隨機位置抽新牌替換
     swapCard(player, character) {
       const i = player.cards.indexOf(character);
       if (i < 0) return null;
-      this.deck.push(player.cards[i]);
-      shuffle(this.deck);
-      player.cards[i] = this.deck.pop();
+      this.deck.push(player.cards[i]); // 把證明的牌放回牌庫
+      this.shuffleDeck();              // 明確、徹底地洗牌
+      player.cards[i] = this.drawRandom();
       return player.cards[i];
     }
 
@@ -355,12 +364,13 @@
         if (i >= 0) leftover.splice(i, 1);
       });
       leftover.forEach(c => this.deck.push(c));
-      shuffle(this.deck);
+      this.shuffleDeck();
     }
 
     async doExchange(actor) {
       const keepCount = actor.cards.length;
-      const drawn = [this.deck.pop(), this.deck.pop()].filter(Boolean);
+      this.shuffleDeck(); // 抽牌前先徹底洗牌
+      const drawn = [this.drawRandom(), this.drawRandom()].filter(Boolean);
       this.log(`🔄 ${actor.name} 自命運之輪抽出 ${drawn.length} 張,審視更迭`);
       actor.originalInfluence = keepCount;
       actor.cards = actor.cards.concat(drawn); // 暫時併入牌池
