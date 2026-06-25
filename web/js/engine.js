@@ -16,9 +16,23 @@
   // 角色中文名（顯示用）
   const ZH = {
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
-    Ambassador: '大使', Contessa: '夫人'
+    Ambassador: '大使', Contessa: '夫人',
+    King: '國王' // 亡國模式：公爵的特殊變體
   };
   Coup.ZH = ZH;
+
+  // 角色變體對應：國王在所有判定上等同公爵
+  function roleMatches(card, character) {
+    if (card === character) return true;
+    if (character === 'Duke' && card === 'King') return true;
+    return false;
+  }
+  // 玩家手牌是否「持有可宣示 character 的牌」（含變體）
+  function holdsRole(cards, character) {
+    return (cards || []).some(c => roleMatches(c, character));
+  }
+  Coup.roleMatches = roleMatches;
+  Coup.holdsRole = holdsRole;
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -89,7 +103,11 @@
 
     setup() {
       const deck = [];
-      CHARACTERS.forEach(ch => deck.push(ch, ch, ch)); // 每角色 3 張，共 15
+      CHARACTERS.forEach(ch => {
+        // 亡國模式：3 張公爵 → 2 公爵 + 1 國王（其餘角色不變）
+        if (this.mode === 'kingdom' && ch === 'Duke') deck.push('King', 'Duke', 'Duke');
+        else deck.push(ch, ch, ch);
+      });
       shuffle(deck);
       this.players.forEach(p => {
         p.cards = [deck.pop(), deck.pop()];
@@ -234,7 +252,7 @@
           let s = `${n}. ${nameOf(e.actor)} ${actLabel[e.type] || e.type}`;
           if (e.target != null) s += ` → ${nameOf(e.target)}`;
           if (e.claim) {
-            const truth = (e.hand || []).includes(e.claim) ? '真' : '詐唬';
+            const truth = holdsRole(e.hand, e.claim) ? '真' : '詐唬';
             s += `（宣稱 ${ZH[e.claim]}；手牌[${cards(e.hand)}]→${truth}）`;
           }
           lines.push(s);
@@ -260,6 +278,24 @@
       return lines.join('\n');
     }
 
+    // 👑 國王「強制徵收」：質疑者額外被收 2 金幣，質疑者的下家再被收 1 金幣（下家為國王本人則略過）
+    async kingLevy(king, challenger) {
+      const t1 = Math.min(2, challenger.coins);
+      challenger.coins -= t1; king.coins += t1;
+      this.log(`👑 國王【強制徵收】：${king.name} 向質疑者 ${challenger.name} 索取 ${t1} 金幣`);
+      this.hooks.onState();
+      await this.hooks.pause();
+      const order = this.aliveOrderFrom(challenger.id); // 質疑者之後的存活玩家（座位順序）
+      const nextId = order.length ? order[0] : null;
+      if (nextId != null && nextId !== king.id) {
+        const nxt = this.players[nextId];
+        const t2 = Math.min(1, nxt.coins);
+        nxt.coins -= t2; king.coins += t2;
+        this.log(`👑 國王續徵：${king.name} 再向其下家 ${nxt.name} 索取 ${t2} 金幣`);
+        this.hooks.onState();
+      }
+    }
+
     // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
     // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
@@ -281,17 +317,20 @@
         this.hooks.onState();
         await this.hooks.pause();
 
-        const truthful = claimant.cards.includes(character);
+        const truthful = holdsRole(claimant.cards, character);
         this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
         if (truthful) {
-          this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
+          // 亡國模式：公爵宣示且手握國王 → 攤國王（觸發強制徵收）
+          const revealed = (character === 'Duke' && claimant.cards.includes('King')) ? 'King' : character;
+          this.log(`✅ ${claimant.name} 亮出真正的【${ZH[revealed]} ${revealed}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
-          const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
-          this.record({ k: 'swap', who: claimantId, ret: character, got: fresh });
+          if (revealed === 'King') await this.kingLevy(claimant, p); // 👑 強制徵收
+          const fresh = this.swapCard(claimant, revealed); // 換新牌，身分重新隱藏
+          this.record({ k: 'swap', who: claimantId, ret: revealed, got: fresh });
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
-          this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
+          this.log(`🔀 ${claimant.name} 將證明的【${ZH[revealed]} ${revealed}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
           // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
-          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[character]} ${character}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
+          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[revealed]} ${revealed}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {

@@ -9,8 +9,10 @@
   'use strict';
   const Coup = root.Coup = root.Coup || {};
   const comb = Coup.comb;
+  const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
+  const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
@@ -105,11 +107,11 @@
     estimateOpponentHas(game, targetId, character) {
       const me = game.players[this.id];
       let seen = 0;
-      me.cards.forEach(c => { if (c === character) seen++; });
+      me.cards.forEach(c => { if (roleMatches(c, character)) seen++; }); // 國王算公爵
       let totalLost = 0;
       game.players.forEach(p => p.lost.forEach(c => {
         totalLost++;
-        if (c === character) seen++;
+        if (roleMatches(c, character)) seen++;
       }));
       const unknownTotal = 15 - me.cards.length - totalLost;
       const copies = 3 - seen;
@@ -171,7 +173,7 @@
       const myInf = me.cards.length;
 
       if (action.type === 'foreign_aid') {
-        const haveDuke = me.cards.includes('Duke');
+        const haveDuke = holdsRole(me.cards, 'Duke');
         const after = actor.coins + 2;
         const nearLethal = after >= 7;                 // 拿了這 +2 下一步就能政變
         const leftTwo = game.alive().length <= 2;
@@ -315,10 +317,10 @@
         }
       }
       // 真 Duke 課稅
-      if (me.cards.includes('Duke')) return { type: 'tax' };
+      if (holdsRole(me.cards, 'Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
       if (me.cards.includes('Ambassador')) {
-        const weak = !me.cards.includes('Duke') && !me.cards.includes('Contessa');
+        const weak = !holdsRole(me.cards, 'Duke') && !me.cards.includes('Contessa');
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 

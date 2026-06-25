@@ -6,6 +6,7 @@
   'use strict';
   const Coup = root.Coup = root.Coup || {};
   const ZH = Coup.ZH;
+  const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
 
   // 將 Coup 角色對應到古典塔羅大阿爾克那（羅馬數字 + 象徵）
   const ARCANA = {
@@ -13,8 +14,10 @@
     Assassin:   { zh: '刺客', en: 'Assassin',   arcana: '死神 Death',           roman: 'XIII', sym: '⚔' },
     Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
     Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
-    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
+    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
+    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' } // 亡國模式：公爵變體
   };
+  const imgRole = ch => (ch === 'King' ? 'Duke' : ch); // 國王沿用公爵畫像（疊王冠標記）
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
@@ -383,7 +386,7 @@
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -424,9 +427,10 @@
       if (!faceUp) {
         return '<div class="card back"><div class="back-orn">✦</div></div>';
       }
-      const a = ARCANA[ch];
+      const a = ARCANA[ch] || ARCANA.Duke;
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
-        <img class="card-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <img class="card-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        ${ch === 'King' ? '<div class="king-crown">👑 國王</div>' : ''}
         ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
@@ -434,9 +438,10 @@
     // 對手小卡（牌背 / 已攤開的死牌——用與玩家相同的塔羅插畫，方便辨識）
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
-      const a = ARCANA[ch];
+      const a = ARCANA[ch] || ARCANA.Duke;
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
-        <img class="mini-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <img class="mini-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        ${ch === 'King' ? '<span class="mini-crown">👑</span>' : ''}
         <span class="mini-x">✕</span></div>`;
     },
 
@@ -527,7 +532,7 @@
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
-        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 王國' : '⚔ 一般'}</span>` +
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
     },
@@ -678,7 +683,7 @@
       const actor = game.players[action.actorId];
 
       if (action.type === 'foreign_aid') {
-        const hasDuke = me.cards.includes('Duke');
+        const hasDuke = holdsRole(me.cards, 'Duke');
         const title = hasDuke
           ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
           : `${actor.name} 想拿外援。要宣稱【公爵 Duke】阻擋嗎？` +

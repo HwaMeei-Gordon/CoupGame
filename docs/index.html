@@ -371,6 +371,17 @@ body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,25
   background: #efe6cf; user-select: none; padding: 0;
 }
 .card-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+/* 國王（亡國模式）：公爵畫像疊上王冠標記 */
+.king-crown {
+  position: absolute; top: 5px; left: 50%; transform: translateX(-50%); z-index: 3;
+  background: linear-gradient(180deg, #f6da55, #c8920e); color: #3a2a05;
+  font-weight: 900; font-size: 10px; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 10px; border: 1px solid #fff3c4;
+  box-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: nowrap;
+}
+.card.King { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
+.mini.lost.King { border-color: #f0c64a; }
+.mini-crown { position: absolute; top: 0; right: 0; z-index: 3; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
 /* 死牌：黑白灰燼 + DECEASED 印記 */
 .card.lost { filter: grayscale(1) brightness(.7) contrast(1.04); transform: rotate(-3deg); }
 .card.lost .card-img { opacity: .9; }
@@ -712,8 +723,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         </button>
         <button class="mode-opt" data-mode="kingdom">
           <span class="mode-ic">👑</span>
-          <span class="mode-name">王國模式</span>
-          <span class="mode-desc">額外特殊角色與能力 · 開發中</span>
+          <span class="mode-name">亡國模式</span>
+          <span class="mode-desc">亡國降臨——公爵變國王等特殊角色</span>
         </button>
       </div>
       <div class="home-settings">
@@ -759,7 +770,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         <label>模式
           <select id="mode">
             <option value="normal" selected>一般</option>
-            <option value="kingdom">王國</option>
+            <option value="kingdom">亡國</option>
           </select>
         </label>
         <label>人數
@@ -847,9 +858,23 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   // 角色中文名（顯示用）
   const ZH = {
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
-    Ambassador: '大使', Contessa: '夫人'
+    Ambassador: '大使', Contessa: '夫人',
+    King: '國王' // 亡國模式：公爵的特殊變體
   };
   Coup.ZH = ZH;
+
+  // 角色變體對應：國王在所有判定上等同公爵
+  function roleMatches(card, character) {
+    if (card === character) return true;
+    if (character === 'Duke' && card === 'King') return true;
+    return false;
+  }
+  // 玩家手牌是否「持有可宣示 character 的牌」（含變體）
+  function holdsRole(cards, character) {
+    return (cards || []).some(c => roleMatches(c, character));
+  }
+  Coup.roleMatches = roleMatches;
+  Coup.holdsRole = holdsRole;
 
   function shuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
@@ -920,7 +945,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     setup() {
       const deck = [];
-      CHARACTERS.forEach(ch => deck.push(ch, ch, ch)); // 每角色 3 張，共 15
+      CHARACTERS.forEach(ch => {
+        // 亡國模式：3 張公爵 → 2 公爵 + 1 國王（其餘角色不變）
+        if (this.mode === 'kingdom' && ch === 'Duke') deck.push('King', 'Duke', 'Duke');
+        else deck.push(ch, ch, ch);
+      });
       shuffle(deck);
       this.players.forEach(p => {
         p.cards = [deck.pop(), deck.pop()];
@@ -1065,7 +1094,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           let s = `${n}. ${nameOf(e.actor)} ${actLabel[e.type] || e.type}`;
           if (e.target != null) s += ` → ${nameOf(e.target)}`;
           if (e.claim) {
-            const truth = (e.hand || []).includes(e.claim) ? '真' : '詐唬';
+            const truth = holdsRole(e.hand, e.claim) ? '真' : '詐唬';
             s += `（宣稱 ${ZH[e.claim]}；手牌[${cards(e.hand)}]→${truth}）`;
           }
           lines.push(s);
@@ -1091,6 +1120,24 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return lines.join('\n');
     }
 
+    // 👑 國王「強制徵收」：質疑者額外被收 2 金幣，質疑者的下家再被收 1 金幣（下家為國王本人則略過）
+    async kingLevy(king, challenger) {
+      const t1 = Math.min(2, challenger.coins);
+      challenger.coins -= t1; king.coins += t1;
+      this.log(`👑 國王【強制徵收】：${king.name} 向質疑者 ${challenger.name} 索取 ${t1} 金幣`);
+      this.hooks.onState();
+      await this.hooks.pause();
+      const order = this.aliveOrderFrom(challenger.id); // 質疑者之後的存活玩家（座位順序）
+      const nextId = order.length ? order[0] : null;
+      if (nextId != null && nextId !== king.id) {
+        const nxt = this.players[nextId];
+        const t2 = Math.min(1, nxt.coins);
+        nxt.coins -= t2; king.coins += t2;
+        this.log(`👑 國王續徵：${king.name} 再向其下家 ${nxt.name} 索取 ${t2} 金幣`);
+        this.hooks.onState();
+      }
+    }
+
     // 質疑窗口：詢問可質疑者是否質疑 claimant 的 character 宣稱
     // eligible（可選）：限定哪些玩家可質疑（兩人之間的私下對抗時用）；省略=所有人
     // 回傳 { challenged, success }；success = 質疑成功（宣稱者在吹牛）
@@ -1112,17 +1159,20 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.hooks.onState();
         await this.hooks.pause();
 
-        const truthful = claimant.cards.includes(character);
+        const truthful = holdsRole(claimant.cards, character);
         this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
         if (truthful) {
-          this.log(`✅ ${claimant.name} 亮出真正的【${ZH[character]} ${character}】，命運審判了質疑者！`);
+          // 亡國模式：公爵宣示且手握國王 → 攤國王（觸發強制徵收）
+          const revealed = (character === 'Duke' && claimant.cards.includes('King')) ? 'King' : character;
+          this.log(`✅ ${claimant.name} 亮出真正的【${ZH[revealed]} ${revealed}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
-          const fresh = this.swapCard(claimant, character); // 換新牌，身分重新隱藏
-          this.record({ k: 'swap', who: claimantId, ret: character, got: fresh });
+          if (revealed === 'King') await this.kingLevy(claimant, p); // 👑 強制徵收
+          const fresh = this.swapCard(claimant, revealed); // 換新牌，身分重新隱藏
+          this.record({ k: 'swap', who: claimantId, ret: revealed, got: fresh });
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
-          this.log(`🔀 ${claimant.name} 將證明的【${ZH[character]} ${character}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
+          this.log(`🔀 ${claimant.name} 將證明的【${ZH[revealed]} ${revealed}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
           // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
-          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[character]} ${character}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
+          if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[revealed]} ${revealed}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
@@ -1429,8 +1479,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   'use strict';
   const Coup = root.Coup = root.Coup || {};
   const comb = Coup.comb;
+  const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
+  const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
@@ -1525,11 +1577,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     estimateOpponentHas(game, targetId, character) {
       const me = game.players[this.id];
       let seen = 0;
-      me.cards.forEach(c => { if (c === character) seen++; });
+      me.cards.forEach(c => { if (roleMatches(c, character)) seen++; }); // 國王算公爵
       let totalLost = 0;
       game.players.forEach(p => p.lost.forEach(c => {
         totalLost++;
-        if (c === character) seen++;
+        if (roleMatches(c, character)) seen++;
       }));
       const unknownTotal = 15 - me.cards.length - totalLost;
       const copies = 3 - seen;
@@ -1591,7 +1643,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const myInf = me.cards.length;
 
       if (action.type === 'foreign_aid') {
-        const haveDuke = me.cards.includes('Duke');
+        const haveDuke = holdsRole(me.cards, 'Duke');
         const after = actor.coins + 2;
         const nearLethal = after >= 7;                 // 拿了這 +2 下一步就能政變
         const leftTwo = game.alive().length <= 2;
@@ -1735,10 +1787,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         }
       }
       // 真 Duke 課稅
-      if (me.cards.includes('Duke')) return { type: 'tax' };
+      if (holdsRole(me.cards, 'Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
       if (me.cards.includes('Ambassador')) {
-        const weak = !me.cards.includes('Duke') && !me.cards.includes('Contessa');
+        const weak = !holdsRole(me.cards, 'Duke') && !me.cards.includes('Contessa');
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 
@@ -1816,6 +1868,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   'use strict';
   const Coup = root.Coup = root.Coup || {};
   const ZH = Coup.ZH;
+  const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
 
   // 將 Coup 角色對應到古典塔羅大阿爾克那（羅馬數字 + 象徵）
   const ARCANA = {
@@ -1823,8 +1876,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     Assassin:   { zh: '刺客', en: 'Assassin',   arcana: '死神 Death',           roman: 'XIII', sym: '⚔' },
     Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
     Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
-    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' }
+    Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
+    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' } // 亡國模式：公爵變體
   };
+  const imgRole = ch => (ch === 'King' ? 'Duke' : ch); // 國王沿用公爵畫像（疊王冠標記）
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
@@ -2193,7 +2248,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -2234,9 +2289,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (!faceUp) {
         return '<div class="card back"><div class="back-orn">✦</div></div>';
       }
-      const a = ARCANA[ch];
+      const a = ARCANA[ch] || ARCANA.Duke;
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
-        <img class="card-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <img class="card-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        ${ch === 'King' ? '<div class="king-crown">👑 國王</div>' : ''}
         ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
@@ -2244,9 +2300,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 對手小卡（牌背 / 已攤開的死牌——用與玩家相同的塔羅插畫，方便辨識）
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
-      const a = ARCANA[ch];
+      const a = ARCANA[ch] || ARCANA.Duke;
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
-        <img class="mini-img" src="cards/${ch}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        <img class="mini-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
+        ${ch === 'King' ? '<span class="mini-crown">👑</span>' : ''}
         <span class="mini-x">✕</span></div>`;
     },
 
@@ -2337,7 +2394,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
-        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 王國' : '⚔ 一般'}</span>` +
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
     },
@@ -2488,7 +2545,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const actor = game.players[action.actorId];
 
       if (action.type === 'foreign_aid') {
-        const hasDuke = me.cards.includes('Duke');
+        const hasDuke = holdsRole(me.cards, 'Duke');
         const title = hasDuke
           ? `${actor.name} 想拿外援，要用【公爵 Duke】阻擋嗎？`
           : `${actor.name} 想拿外援。要宣稱【公爵 Duke】阻擋嗎？` +

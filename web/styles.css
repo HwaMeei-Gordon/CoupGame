@@ -348,6 +348,17 @@ body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,25
   background: #efe6cf; user-select: none; padding: 0;
 }
 .card-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
+/* 國王（亡國模式）：公爵畫像疊上王冠標記 */
+.king-crown {
+  position: absolute; top: 5px; left: 50%; transform: translateX(-50%); z-index: 3;
+  background: linear-gradient(180deg, #f6da55, #c8920e); color: #3a2a05;
+  font-weight: 900; font-size: 10px; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 10px; border: 1px solid #fff3c4;
+  box-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: nowrap;
+}
+.card.King { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
+.mini.lost.King { border-color: #f0c64a; }
+.mini-crown { position: absolute; top: 0; right: 0; z-index: 3; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
 /* 死牌：黑白灰燼 + DECEASED 印記 */
 .card.lost { filter: grayscale(1) brightness(.7) contrast(1.04); transform: rotate(-3deg); }
 .card.lost .card-img { opacity: .9; }
