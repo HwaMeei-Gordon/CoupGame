@@ -20,7 +20,6 @@
     return {
       myId: viewerId,
       mode: game.mode || 'normal',
-      banditCoins: game.banditCoins || 0, // 強盜卡累積金幣（持有者卡面顯示用）
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,
@@ -206,6 +205,8 @@
 
       const UI = Coup.UI;
       if (UI.game) UI.game.cancel();
+      if (typeof UI._clearThink === 'function') UI._clearThink();
+      UI.spectator = false; UI.viewId = 0;
       UI.myId = 0; // 房主座位
       UI.els.log.innerHTML = ''; UI.els.prompt.innerHTML = '';
       UI.els.overlay.classList.remove('show'); UI.els.overlay.innerHTML = '';
@@ -216,7 +217,8 @@
         onState: () => { UI.render(); self._broadcastState(game); },
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
         onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
-        pause: () => new Promise(r => setTimeout(r, self.speed))
+        pause: (scale) => new Promise(r => setTimeout(r, self.speed * (scale || 1))),
+        onThink: (id, ms, kind) => UI.onThink(id, ms, kind)
       }, { mode: this.mode });
 
       game.agents[0] = UI; UI.mode = this.mode; // 房主用本地 UI

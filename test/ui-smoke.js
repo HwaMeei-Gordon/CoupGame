@@ -38,6 +38,7 @@ UI.chooseExchange = (game, playerId) => {
 };
 
 async function runOne(np) {
+  UI.spectator = false; UI.viewId = 0;
   const configs = [{ name: '你', isHuman: true }];
   for (let i = 1; i < np; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
 
@@ -58,6 +59,30 @@ async function runOne(np) {
   return { winner, renders };
 }
 
+// 旁觀者模式：全員 AI、無人類；onThink 即時 resolve（不實際等待）。驗證視角渲染/切換不丟例外。
+async function runSpectator(np) {
+  UI.spectator = true; UI.viewId = 0;
+  const configs = [];
+  for (let i = 0; i < np; i++) configs.push({ name: '電腦 ' + i, isHuman: false });
+
+  let renders = 0, thinks = 0, err = null;
+  const game = new Coup.GameController(configs, {
+    onLog: () => {},
+    onState: () => { try { UI.game = game; UI.render(); renders++; } catch (e) { err = e; } },
+    onTurn: (id) => { UI.currentTurn = id; try { UI.setView((id + 1) % np); } catch (e) { err = e; } }, // 邊跑邊切視角
+    onGameOver: (w) => { try { UI.game = game; UI.showWinner(w); } catch (e) { err = e; } },
+    pause: () => Promise.resolve(),
+    onThink: (id, ms, kind) => { thinks++; try { UI._think = { id, kind, start: Date.now(), dur: ms }; UI._renderThink(); } catch (e) { err = e; } return Promise.resolve(); }
+  }, { mode: np % 2 ? 'kingdom' : 'normal' });
+  for (let i = 0; i < np; i++) game.agents[i] = new Coup.AIAgent(i, Coup.AIAgent.PERSONAS[i]);
+  UI.game = game; UI.currentTurn = 0;
+
+  const winner = await game.play();
+  UI.spectator = false; UI.viewId = 0; UI._think = null;
+  if (err) throw err;
+  return { winner, renders, thinks };
+}
+
 (async () => {
   let ok = 0, fail = 0;
   for (let i = 0; i < 50; i++) {
@@ -69,6 +94,17 @@ async function runOne(np) {
       ok++;
     } catch (e) { fail++; console.error(`UI 煙霧第 ${i + 1} 局（${np}人）失敗:`, e.message, '\n', e.stack); }
   }
+  // 旁觀者模式煙霧（含視角切換 + 思考徽章渲染）
+  for (let i = 0; i < 12; i++) {
+    const np = 3 + (i % 4); // 3..6
+    try {
+      const { winner, thinks } = await runSpectator(np);
+      if (!winner) throw new Error('旁觀局無勝者');
+      if (thinks < 1) throw new Error('旁觀局 onThink 未被呼叫');
+      ok++;
+    } catch (e) { fail++; console.error(`旁觀煙霧第 ${i + 1} 局（${np}人）失敗:`, e.message, '\n', e.stack); }
+  }
+
   console.log(`\nUI 煙霧測試：通過 ${ok} / 失敗 ${fail}`);
   process.exit(fail === 0 ? 0 : 1);
 })();

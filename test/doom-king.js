@@ -34,7 +34,7 @@ function challenger(id, willChallenge) {
   const cnt = c => all.filter(x => x === c).length;
   ok(all.length === 15, '總牌數 15');
   ok(cnt('King') === 1 && cnt('Duke') === 2, '國王 1 + 公爵 2');
-  ok(cnt('Bandit') === 1 && cnt('Assassin') === 2, '強盜 1 + 刺客 2');
+  ok(cnt('Devil') === 1 && cnt('Assassin') === 2, '惡魔 1 + 刺客 2');
   ok(cnt('Queen') === 1 && cnt('Contessa') === 2, '皇后 1 + 夫人 2');
   ok(cnt('Mole') === 1 && cnt('Ambassador') === 2, '內奸 1 + 大使 2');
   ok(cnt('Commander') === 1 && cnt('Captain') === 2, '司令 1 + 隊長 2');
@@ -77,37 +77,40 @@ ok(holdsRole(['Captain'], 'Duke') === false, 'holdsRole：沒公爵就是沒有'
   ok(g2.players[1].coins === 0, '2人局：P1 仍被收 2 金幣');
   ok(g2.players[0].coins === 2 + 2 + 3, '2人局：下家是國王本人→只收質疑者2，國王 = 2+2+3 = 7（無下家1金）');
 
-  // ---- 5) 強盜：成功暗殺累積金幣、被質疑兌現；被擋不累積 ----
+  // ---- 5) 惡魔：宣示刺客被質疑 → 攤惡魔 → 質疑者攤出的牌直接入惡魔者手牌（公開）、
+  //         惡魔洗回補抽、再進行暗殺；持有者由 2 張變 3 張 ----
+  // (a) 質疑者有 2 張牌（也是暗殺目標）
   const gb = new GameController([{ name: 'P0' }, { name: 'P1' }, { name: 'P2' }], {
     onLog: () => {}, onState: () => {}, pause: () => Promise.resolve()
   }, { mode: 'kingdom' });
-  gb.players[0].cards = ['Bandit', 'Captain']; gb.players[0].coins = 12;
+  gb.players[0].cards = ['Devil', 'Contessa']; gb.players[0].coins = 12;
   gb.players[1].cards = ['Captain', 'Captain']; gb.players[1].coins = 2;
   gb.players[2].cards = ['Captain', 'Captain']; gb.players[2].coins = 2;
   gb.agents[0] = challenger(0, false);
-  gb.agents[1] = challenger(1, false); // 不質疑、不擋
-  gb.agents[2] = challenger(2, false);
-  await gb.resolveAction({ type: 'assassinate', actorId: 0, targetId: 1 });
-  ok(gb.banditCoins === 1, '強盜成功暗殺 → 卡累積 1 金幣');
+  gb.agents[1] = challenger(1, false);
+  gb.agents[2] = challenger(2, true); // P2 質疑暗殺（也是目標）
+  const lostBefore = gb.players[2].lost.length;
   await gb.resolveAction({ type: 'assassinate', actorId: 0, targetId: 2 });
-  ok(gb.banditCoins === 2, '再次成功暗殺 → 累積 2 金幣');
-  // 被夫人擋下 → 不累積
-  gb.players[1].cards = ['Contessa', 'Captain'];
-  gb.agents[1] = { id: 1, decideChallenge: () => false, decideChallengeBlock: () => false,
-    decideBlock: (g, a) => (a.type === 'assassinate' ? { block: true, character: 'Contessa' } : { block: false }),
-    chooseCardToLose: () => 0, chooseExchange: (g, pid) => g.players[pid].cards.slice(0, g.players[pid].originalInfluence),
-    observe() {}, onSwap() {}, observeOutcome() {}, privateNote() {} };
-  await gb.resolveAction({ type: 'assassinate', actorId: 0, targetId: 1 });
-  ok(gb.banditCoins === 2, '被夫人擋下＝未成功 → 不累積（仍 2）');
+  ok(gb.players[0].cards.length === 3, '惡魔者由 2 張變 3 張（奪 1 + 補抽 1）');
+  ok(gb.players[0].cards.includes('Captain'), '惡魔者公開奪得質疑者攤出的【隊長】');
+  ok(gb.players[2].alive === false && gb.players[2].cards.length === 0, 'P2 攤一張給惡魔 + 再被暗殺一張 → 出局');
+  ok(gb.players[2].lost.length === lostBefore + 1, 'P2 棄牌堆只 +1（被奪那張不入棄牌堆，僅暗殺那張）');
+  ok(gb.players[0].coins === 12 - 3, '暗殺照常付 3 金幣、質疑失敗不退費');
+  // 註：惡魔洗回後補抽可能隨機重抽到惡魔,屬合法隨機結果,故不檢查「惡魔不在手上」
 
-  // 兌現：P0 暗殺 P2、P2 質疑 → 攤強盜（卡上 2 金幣）→ P2 失影響力 + P0 收 2 金幣、卡歸零
-  gb.banditCoins = 2;
-  const coinsBefore = gb.players[0].coins;
-  gb.agents[2] = challenger(2, true); // P2 質疑暗殺
-  await gb.resolveAction({ type: 'assassinate', actorId: 0, targetId: 2 });
-  ok(gb.banditCoins === 0, '強盜被質疑兌現後卡歸零');
-  ok(gb.players[0].coins === coinsBefore - 3 + 2, 'P0 兌現得 2 金幣（扣暗殺3 + 兌現2）');
-  // 註：強盜洗回後可能被隨機重抽回手上,屬合法隨機結果,故不檢查「不在手上」
+  // (b) 質疑者只剩 1 張牌 → 那張仍被奪入惡魔者手牌、質疑者立即出局
+  const gd = new GameController([{ name: 'P0' }, { name: 'P1' }], {
+    onLog: () => {}, onState: () => {}, pause: () => Promise.resolve()
+  }, { mode: 'kingdom' });
+  gd.players[0].cards = ['Devil', 'Contessa']; gd.players[0].coins = 6;
+  gd.players[1].cards = ['Captain']; gd.players[1].coins = 2; // 只剩 1 張
+  gd.agents[0] = challenger(0, false);
+  gd.agents[1] = challenger(1, true); // P1 質疑暗殺
+  await gd.resolveAction({ type: 'assassinate', actorId: 0, targetId: 1 });
+  ok(gd.players[1].alive === false, '質疑者只剩 1 張 → 那張被奪後立即出局');
+  ok(gd.players[0].cards.includes('Captain'), '惡魔者奪得質疑者最後的【隊長】');
+  ok(gd.players[0].cards.length === 3, '惡魔者仍由 2 張變 3 張');
+  ok(gd.players[1].lost.length === 0, '質疑者最後一張被奪入手、不進棄牌堆');
 
   // ---- 6) 皇后：被質疑夫人反制 → 額外抽牌（手牌可達 3）----
   const gq = new GameController([{ name: 'P0' }, { name: 'P1' }], {

@@ -90,6 +90,26 @@ body {
   font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
 }
 .home-online:active { filter: brightness(1.1); }
+.home-spectate {
+  width: 100%; min-height: 42px; margin-bottom: 9px;
+  background: linear-gradient(180deg, #5a3f86, #3c2860); color: #f0e8ff; border: none; border-radius: 11px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
+}
+.home-spectate:active { filter: brightness(1.12); }
+
+/* AI 思考徽章：當前思考者顯示倒數秒數（越久＝在深算或在裝）；等待者持續「盤算中」 */
+.think-badge { font-size: 11px; font-weight: 700; white-space: nowrap; letter-spacing: .5px; }
+.think-badge.on { color: #ffd86b; text-shadow: 0 0 8px rgba(255,200,70,.7); }
+.think-badge.ambient { color: rgba(180,170,210,.55); }
+.opp.thinking, .me-inner.thinking {
+  box-shadow: 0 0 0 2px rgba(255,200,70,.55), 0 0 16px rgba(255,200,70,.35);
+  animation: think-pulse 1.1s ease-in-out infinite;
+}
+.opp.pondering, .me-inner.pondering { box-shadow: 0 0 0 1px rgba(150,130,200,.35); }
+@keyframes think-pulse {
+  0%,100% { box-shadow: 0 0 0 2px rgba(255,200,70,.40), 0 0 12px rgba(255,200,70,.25); }
+  50%     { box-shadow: 0 0 0 2px rgba(255,200,70,.75), 0 0 20px rgba(255,200,70,.50); }
+}
 
 /* App = 滿版直欄,固定不整頁捲動;只有日誌與行動列內部捲動 */
 #app {
@@ -356,16 +376,16 @@ body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,25
   box-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: nowrap;
 }
 .variant-badge.king   { background: linear-gradient(180deg, #f6da55, #c8920e); }
-.variant-badge.bandit { background: linear-gradient(180deg, #e2a33c, #9c5b14); color: #2a1605; }
+.variant-badge.devil  { background: linear-gradient(180deg, #c0392b, #6a0d0d); color: #ffdede; }
 .variant-badge.queen  { background: linear-gradient(180deg, #f0a6c6, #c54f86); color: #3a0820; }
 .variant-badge.mole      { background: linear-gradient(180deg, #7fd4a8, #2f8a5c); color: #06301c; }
 .variant-badge.commander { background: linear-gradient(180deg, #7bc0ef, #2f6f9e); color: #06243a; }
 .card.King   { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
-.card.Bandit { border-color: #d99536; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(217,149,54,.5), 0 5px 13px rgba(0,0,0,.5); }
+.card.Devil  { border-color: #c0392b; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(192,57,43,.6), 0 5px 13px rgba(0,0,0,.5); }
 .card.Queen  { border-color: #e58bb4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(229,139,180,.5), 0 5px 13px rgba(0,0,0,.5); }
 .card.Mole      { border-color: #4fb585; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(79,181,133,.5), 0 5px 13px rgba(0,0,0,.5); }
 .card.Commander { border-color: #4f9ad4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(79,154,212,.5), 0 5px 13px rgba(0,0,0,.5); }
-.mini.lost.King { border-color: #f0c64a; } .mini.lost.Bandit { border-color: #d99536; } .mini.lost.Queen { border-color: #e58bb4; }
+.mini.lost.King { border-color: #f0c64a; } .mini.lost.Devil { border-color: #c0392b; } .mini.lost.Queen { border-color: #e58bb4; }
 .mini.lost.Mole { border-color: #4fb585; } .mini.lost.Commander { border-color: #4f9ad4; }
 .mini-crown { position: absolute; top: 0; right: 0; z-index: 3; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
 /* 死牌：黑白灰燼 + DECEASED 印記 */

@@ -113,6 +113,26 @@ body {
   font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
 }
 .home-online:active { filter: brightness(1.1); }
+.home-spectate {
+  width: 100%; min-height: 42px; margin-bottom: 9px;
+  background: linear-gradient(180deg, #5a3f86, #3c2860); color: #f0e8ff; border: none; border-radius: 11px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
+}
+.home-spectate:active { filter: brightness(1.12); }
+
+/* AI 思考徽章：當前思考者顯示倒數秒數（越久＝在深算或在裝）；等待者持續「盤算中」 */
+.think-badge { font-size: 11px; font-weight: 700; white-space: nowrap; letter-spacing: .5px; }
+.think-badge.on { color: #ffd86b; text-shadow: 0 0 8px rgba(255,200,70,.7); }
+.think-badge.ambient { color: rgba(180,170,210,.55); }
+.opp.thinking, .me-inner.thinking {
+  box-shadow: 0 0 0 2px rgba(255,200,70,.55), 0 0 16px rgba(255,200,70,.35);
+  animation: think-pulse 1.1s ease-in-out infinite;
+}
+.opp.pondering, .me-inner.pondering { box-shadow: 0 0 0 1px rgba(150,130,200,.35); }
+@keyframes think-pulse {
+  0%,100% { box-shadow: 0 0 0 2px rgba(255,200,70,.40), 0 0 12px rgba(255,200,70,.25); }
+  50%     { box-shadow: 0 0 0 2px rgba(255,200,70,.75), 0 0 20px rgba(255,200,70,.50); }
+}
 
 /* App = 滿版直欄,固定不整頁捲動;只有日誌與行動列內部捲動 */
 #app {
@@ -379,16 +399,16 @@ body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,25
   box-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: nowrap;
 }
 .variant-badge.king   { background: linear-gradient(180deg, #f6da55, #c8920e); }
-.variant-badge.bandit { background: linear-gradient(180deg, #e2a33c, #9c5b14); color: #2a1605; }
+.variant-badge.devil  { background: linear-gradient(180deg, #c0392b, #6a0d0d); color: #ffdede; }
 .variant-badge.queen  { background: linear-gradient(180deg, #f0a6c6, #c54f86); color: #3a0820; }
 .variant-badge.mole      { background: linear-gradient(180deg, #7fd4a8, #2f8a5c); color: #06301c; }
 .variant-badge.commander { background: linear-gradient(180deg, #7bc0ef, #2f6f9e); color: #06243a; }
 .card.King   { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
-.card.Bandit { border-color: #d99536; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(217,149,54,.5), 0 5px 13px rgba(0,0,0,.5); }
+.card.Devil  { border-color: #c0392b; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(192,57,43,.6), 0 5px 13px rgba(0,0,0,.5); }
 .card.Queen  { border-color: #e58bb4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(229,139,180,.5), 0 5px 13px rgba(0,0,0,.5); }
 .card.Mole      { border-color: #4fb585; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(79,181,133,.5), 0 5px 13px rgba(0,0,0,.5); }
 .card.Commander { border-color: #4f9ad4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(79,154,212,.5), 0 5px 13px rgba(0,0,0,.5); }
-.mini.lost.King { border-color: #f0c64a; } .mini.lost.Bandit { border-color: #d99536; } .mini.lost.Queen { border-color: #e58bb4; }
+.mini.lost.King { border-color: #f0c64a; } .mini.lost.Devil { border-color: #c0392b; } .mini.lost.Queen { border-color: #e58bb4; }
 .mini.lost.Mole { border-color: #4fb585; } .mini.lost.Commander { border-color: #4f9ad4; }
 .mini-crown { position: absolute; top: 0; right: 0; z-index: 3; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
 /* 死牌：黑白灰燼 + DECEASED 印記 */
@@ -761,6 +781,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         </label>
       </div>
       <button id="homeStart" class="home-start">進入遊戲</button>
+      <button id="homeSpectate" class="home-spectate">👁 旁觀者模式（看 AI 對戰）</button>
       <button id="homeOnline" class="home-online">🌐 連線對戰（和朋友）</button>
     </div>
   </div>
@@ -869,7 +890,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
     Ambassador: '大使', Contessa: '夫人',
     King: '國王',     // 亡國模式：公爵的特殊變體
-    Bandit: '強盜',   // 亡國模式：刺客的特殊變體
+    Devil: '惡魔',    // 亡國模式：刺客的特殊變體
     Queen: '皇后',    // 亡國模式：夫人的特殊變體
     Mole: '內奸',     // 亡國模式：大使的特殊變體
     Commander: '司令' // 亡國模式：隊長的特殊變體
@@ -877,9 +898,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   Coup.ZH = ZH;
 
   // 亡國模式：每個原角色 → 其特殊變體（牌庫中以變體替換 1 張）
-  const VARIANTS = { Duke: 'King', Assassin: 'Bandit', Contessa: 'Queen', Ambassador: 'Mole', Captain: 'Commander' };
+  const VARIANTS = { Duke: 'King', Assassin: 'Devil', Contessa: 'Queen', Ambassador: 'Mole', Captain: 'Commander' };
   Coup.VARIANTS = VARIANTS;
-  const VARIANT_OF = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
+  const VARIANT_OF = { King: 'Duke', Devil: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
 
   // 角色變體對應：變體在所有判定上等同其原角色
   function roleMatches(card, character) {
@@ -936,7 +957,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         onLog: noop,      // (msg) => void     寫入日誌
         onTurn: noop,     // (playerId) => void
         onGameOver: noop, // (winner) => void
-        pause: resolved   // () => Promise     AI 節奏延遲
+        pause: resolved,   // () => Promise     AI 節奏延遲
+        onThink: resolved  // (playerId, ms, kind) => Promise  AI 思考（可見倒數）；-1=全桌一起想
       }, hooks || {});
 
       this.players = playerConfigs.map((c, i) => ({
@@ -957,13 +979,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
       this.winner = null;
       this.history = []; // 完整戰報（上帝視角：含隱藏手牌，供結束後複製回顧）
-      this.banditCoins = 0; // 亡國模式：強盜卡上累積的金幣（全場單張）
       this.setup();
     }
 
     setup() {
       const deck = [];
-      this.banditCoins = 0;
       CHARACTERS.forEach(ch => {
         // 亡國模式：每種角色把其中 1 張替換為變體（2 原角色 + 1 變體）
         if (this.mode === 'kingdom' && VARIANTS[ch]) deck.push(VARIANTS[ch], ch, ch);
@@ -1011,7 +1031,6 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
-      if (card === 'Bandit') this.banditCoins = 0; // 強盜陣亡 → 卡上累積金幣隨之消滅
       this.record({ k: 'lose', who: player.id, card });
       this.log(`💥 ${player.name} 的一名隨從墮入深淵，攤開【${ZH[card]} ${card}】（永久消逝，不可再用）`);
       if (player.cards.length === 0) {
@@ -1020,6 +1039,38 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.log(`☠️ ${player.name} 的最後一絲影響力殞落，黯然退場！`);
       }
       this.hooks.onState();
+    }
+
+    // AI 思考停頓：像真人長考，依該 AI 思考型態/深度/局面難度算出秒數，經 onThink
+    // 呈現可見倒數（真人不延遲）。kind: 'action'(主要決策) / 'react'(臨場反應)
+    async aiThink(playerId, kind, info) {
+      const p = this.players[playerId];
+      if (!p || p.isHuman) return;
+      const a = this.agents[playerId];
+      if (a && typeof a.thinkTime === 'function') {
+        const ms = a.thinkTime(this, kind || 'action', info || {});
+        await this.hooks.onThink(playerId, ms, kind || 'action');
+      } else {
+        // 後備（無 thinkTime 的代理，如連線真人）：沿用既有節奏
+        const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
+        await this.hooks.pause(scale);
+      }
+    }
+
+    // 全桌一起「考慮要不要質疑」的同步思考窗（營造張力；取最深者的時間、設上限）
+    async tableThink(eligibleIds) {
+      const thinkers = (eligibleIds || []).filter(id => {
+        const p = this.players[id];
+        return p && p.alive && !p.isHuman;
+      });
+      if (!thinkers.length) return;
+      let ms = 0;
+      thinkers.forEach(id => {
+        const a = this.agents[id];
+        if (a && typeof a.thinkTime === 'function') ms = Math.max(ms, a.thinkTime(this, 'react', {}));
+      });
+      ms = Math.min(ms, 9000);
+      if (ms > 0) await this.hooks.onThink(-1, ms, 'table');
     }
 
     // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
@@ -1078,6 +1129,17 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
     }
 
+    // 通知所有代理人：一場質疑的結果（誰質疑誰、成功與否），供 AI 過程中學習調整
+    // （自己的吹牛被抓 → 收斂；自己質疑猜錯 → 更謹慎；也可建模對手的質疑傾向）
+    notifyChallenge(ev) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observeChallenge === 'function') {
+          try { a.observeChallenge(this, ev); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
     // 私密通知：只送給「該玩家自己」的代理人（人類本機顯示；連線時只送該客人；AI 不會收到）。
     // 用於起手牌、大使換牌抽到/保留、被質疑後改抽到的牌——這些不可進共享歷程、不可廣播。
     notifyPrivate(playerId, msg) {
@@ -1126,6 +1188,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           lines.push(`　🔀 ${nameOf(e.who)} 將【${ZH[e.ret]}】洗回，改抽到【${ZH[e.got]}】`);
         } else if (e.k === 'exch') {
           lines.push(`　☽ ${nameOf(e.who)} 抽到[${cards(e.drawn)}]，保留[${cards(e.kept)}]`);
+        } else if (e.k === 'devil') {
+          lines.push(`　😈 ${nameOf(e.who)} 以惡魔奪走 ${nameOf(e.from)} 攤出的【${ZH[e.card]}】（公開入手）`);
         } else if (e.k === 'lose') {
           lines.push(`　💥 ${nameOf(e.who)} 失去【${ZH[e.card]}】`);
         } else if (e.k === 'out') {
@@ -1147,21 +1211,47 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (character === 'Contessa' && c.includes('Queen')) return 'Queen';     // 皇后額外抽牌恆有利
       if (character === 'Ambassador' && c.includes('Mole')) return 'Mole';     // 內奸奪牌恆有利
       if (character === 'Captain' && c.includes('Commander')) return 'Commander'; // 司令抽牌恆有利
-      if (character === 'Assassin' && c.includes('Bandit')) {
-        // 強盜：卡上有錢可兌現、或別無普通刺客時攤強盜；否則攤普通刺客保留強盜
-        if ((this.banditCoins || 0) > 0 || !c.includes('Assassin')) return 'Bandit';
-      }
+      // 惡魔：宣示刺客被質疑時攤惡魔以發動奪牌（恆有利 → 優先攤惡魔）
+      if (character === 'Assassin' && c.includes('Devil')) return 'Devil';
       return character;
     }
 
-    // 🗡️ 強盜「兌現」：持有者收取強盜卡累積的全部金幣，卡上歸零
-    async banditCashIn(bandit) {
-      const got = this.banditCoins || 0;
-      this.banditCoins = 0;
-      bandit.coins += got;
-      this.log(`🗡️ 強盜現身！${bandit.name} 收取強盜卡上累積的 ${got} 金幣`);
+    // 😈 惡魔：質疑者攤出的牌不入棄牌堆，而是直接成為惡魔持有者的手牌（公開可見）；
+    // 惡魔本身洗回牌庫並補抽一張替換。質疑者若因此失去最後一張牌則出局。
+    async devilSteal(claimant, challenger) {
+      // 1. 質疑者選一張牌攤出（只剩一張則強制那張）
+      let giveIdx = 0;
+      if (challenger.cards.length > 1) {
+        const a = this.agents[challenger.id];
+        if (a && typeof a.chooseCardToLose === 'function') {
+          giveIdx = await a.chooseCardToLose(this, challenger.id);
+        }
+        if (typeof giveIdx !== 'number' || giveIdx < 0 || giveIdx >= challenger.cards.length) giveIdx = 0;
+      }
+      const taken = challenger.cards.splice(giveIdx, 1)[0];
+      // 2. 惡魔本身洗回牌庫、徹底洗牌、補抽一張替換（身分重新隱藏）
+      const di = claimant.cards.indexOf('Devil');
+      if (di >= 0) {
+        this.deck.push(claimant.cards.splice(di, 1)[0]);
+        this.shuffleDeck();
+        const fresh = this.drawRandom();
+        if (fresh) claimant.cards.push(fresh);
+        if (claimant.isHuman && fresh) this.notifyPrivate(claimant.id, `😈 你把惡魔洗回牌庫，改抽到【${ZH[fresh]} ${fresh}】`);
+      }
+      // 3. 質疑者攤出的牌直接成為惡魔持有者的手牌（眾人皆見）
+      claimant.cards.push(taken);
+      this.record({ k: 'devil', who: claimant.id, from: challenger.id, card: taken });
+      this.log(`😈 惡魔現身！${challenger.name} 攤出的【${ZH[taken]} ${taken}】被 ${claimant.name} 攫入手中（眾人皆見其多了此牌），${claimant.name} 另補抽一張取代惡魔`);
+      if (claimant.isHuman) this.notifyPrivate(claimant.id, `😈 你奪得 ${challenger.name} 攤出的【${ZH[taken]} ${taken}】（公開），現有 ${claimant.cards.length} 張手牌`);
+      this.notifySwap(claimant.id, 'Assassin'); // 惡魔者手牌已變，AI 重新評估
+      // 4. 質疑者若已無牌則出局
+      if (challenger.cards.length === 0) {
+        challenger.alive = false;
+        this.record({ k: 'out', who: challenger.id });
+        this.log(`☠️ ${challenger.name} 的最後一絲影響力被惡魔攫取，黯然退場！`);
+      }
       this.hooks.onState();
-      if (got > 0) await this.hooks.pause();
+      await this.hooks.pause();
     }
 
     // 🕵 內奸：與質疑者換牌——質疑者交一張給內奸者、內奸者把內奸交給質疑者；質疑者再失 1 影響力
@@ -1248,6 +1338,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         const allow = new Set(eligible);
         order = order.filter(id => allow.has(id));
       }
+      await this.tableThink(order); // 全桌一起考慮要不要質疑（同步思考窗）
       for (const pid of order) {
         const p = this.players[pid];
         if (!p.alive) continue;
@@ -1260,6 +1351,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
         const truthful = holdsRole(claimant.cards, character);
         this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
+        this.notifyChallenge({ by: pid, of: claimantId, character, success: !truthful });
         if (truthful) {
           // 亡國模式：決定攤出的牌（手握變體則攤變體以發動特殊能力）
           const revealed = this.pickRevealCard(claimant, character);
@@ -1274,9 +1366,16 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
             return { challenged: true, success: false, challenger: pid };
           }
 
+          // 😈 惡魔：質疑者攤出的牌不入棄牌堆，而是被惡魔者奪入手牌；惡魔洗回補抽
+          if (revealed === 'Devil') {
+            await this.devilSteal(claimant, p);
+            this.notifySwap(claimantId, character);
+            this.hooks.onState();
+            return { challenged: true, success: false, challenger: pid };
+          }
+
           await this.loseInfluence(p); // 質疑者失 1 影響力
           if (revealed === 'King') await this.kingLevy(claimant, p);     // 👑 強制徵收
-          if (revealed === 'Bandit') await this.banditCashIn(claimant);  // 🗡️ 強盜兌現
 
           // 🎖 司令：以「抽 1、N+1 選 N」迷你交換取代普通洗回換牌（同樣重新隱藏身分）
           if (revealed === 'Commander') {
@@ -1321,6 +1420,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         return false;
       }
 
+      await this.tableThink(blockerIds); // 可反制者一起考慮要不要舉盾
       for (const bid of blockerIds) {
         const b = this.players[bid];
         if (!b || !b.alive) continue;
@@ -1507,14 +1607,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         case 'assassinate': {
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
           this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
-          const before = target.cards.length;
           await this.loseInfluence(target);
-          const killed = target.cards.length < before; // 匕首真的造成影響力損失才算「成功」
-          // 亡國模式：持強盜者「成功」暗殺 → 強盜卡累積 1 金幣
-          if (killed && this.mode === 'kingdom' && actor.cards.includes('Bandit')) {
-            this.banditCoins = (this.banditCoins || 0) + 1;
-            this.notifyPrivate(actor.id, `🗡️ 強盜得手！你的強盜卡已累積 ${this.banditCoins} 金幣（被質疑攤牌時收取）`);
-          }
           break;
         }
         case 'exchange':
@@ -1567,6 +1660,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         await this.hooks.pause();
         if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
 
+        await this.aiThink(actor.id, 'action'); // AI 依思考深度沉吟（真人即時）
+        if (this.cancelled) return null;
         let action = await this.agents[actor.id].chooseAction(this);
         if (this.cancelled) return null;
         action = this.sanitizeAction(actor, action);
@@ -1610,8 +1705,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
   const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4, Mole: 5, Commander: 5 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Devil: 6, Queen: 4, Mole: 5, Commander: 5 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
+  // 思考型態：直覺(快/憑感覺)、思考(慢/精算)、計謀(深/善詐善看破)、賭博(中/愛拚)
+  const THINK = ['intuition', 'analysis', 'scheme', 'gamble'];
+  const THINK_DEPTH = { intuition: 0.20, analysis: 0.95, scheme: 0.88, gamble: 0.52 }; // 思考深度基準（計謀＝深算、賭博＝憑直覺搏命）
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -1630,6 +1728,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.vengeance = clamp(jit(persona.vengeance, 0.08), 0, 1);
         this.nerve     = clamp(jit(persona.nerve, 0.08), 0, 1);
         this.style     = persona.style;
+        this.think     = persona.think || THINK[Math.floor(Math.random() * THINK.length)];
       } else {
         // 無具名：每維獨立隨機（測試/後備用）
         this.iq        = rnd(0.15, 1.0); // 智商：機率判讀精準度、應變、少犯蠢、認得套路
@@ -1639,14 +1738,23 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         this.vengeance = rnd(0.0, 1.0);  // 報復程度：優先攻擊傷害過自己的人
         this.nerve     = rnd(0.0, 1.0);  // 膽識：壓力下/殘血時敢不敢賭一把
         this.style     = STYLES[Math.floor(Math.random() * STYLES.length)]; // 進攻取向
+        this.think     = THINK[Math.floor(Math.random() * THINK.length)];   // 思考型態
         this.personaName = this._dominantTrait();
       }
+      // 思考「深度」現在只決定【思考時間長短】的表演（直覺型答得快、思考型沉吟久）
+      this.depth = clamp(THINK_DEPTH[this.think] * 0.6 + this.iq * 0.4, 0.1, 1);
+      // 「技術」與深度脫鉤：每個人都很厲害（都會算 EV、看公開牌、質疑精準），
+      // 只隨智商微幅高低。風格(冒險/詐術/穩健)才是差異所在，技術一律在線。
+      this.skill = clamp(0.82 + this.iq * 0.16, 0.6, 1);
+      this.focusId = null; // 策略規劃：鎖定中的施壓目標（思考/計謀型會跨回合維持）
       this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain'; // 固定假身分，前後一致
 
       this.model = {};     // id -> { claims:{char:count}, lostSeen }  宣示建模
       this.blockedBy = {}; // blockerId -> { actionType: count }       我的行動被誰擋過幾次
       this.grudge = {};    // id -> 仇恨值（被攻擊/針對累積）           報復目標依據
       this.probing = false; // 本回合是否「故意拿外援去逼問公爵」（→ 之後更願意質疑該反制）
+      // 過程中的動態調整：基礎參數固定，這些隨「自己的表現」累積，邊打邊修正策略
+      this.adapt = { bluffsMade: 0, bluffsCaught: 0, challMade: 0, challWrong: 0 };
     }
 
     _dominantTrait() {
@@ -1693,12 +1801,93 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
     }
 
+    // 質疑結果回報（過程中學習）：自己的吹牛被抓 → 之後收斂；自己質疑猜錯 → 之後更謹慎
+    observeChallenge(game, ev) {
+      if (!ev) return;
+      if (ev.of === this.id && ev.success) this.adapt.bluffsCaught++;   // 我被拆穿
+      if (ev.by === this.id) { this.adapt.challMade++; if (!ev.success) this.adapt.challWrong++; } // 我質疑（猜錯=對方為真）
+    }
+
+    // 局勢評估：我相對全場的強弱（-1 落後 .. +1 領先），用影響力(權重高)+金幣
+    _standing(game) {
+      const me = game.players[this.id];
+      const alive = game.players.filter(p => p.alive);
+      if (!alive.length) return 0;
+      const pow = p => p.cards.length * 3 + p.coins * 0.5;
+      const avg = alive.reduce((s, p) => s + pow(p), 0) / alive.length;
+      return clamp((pow(me) - avg) / 6, -1, 1);
+    }
+    // 殘局程度：0=開局滿員 .. 1=只剩兩人決鬥
+    _phase(game) {
+      const total = game.players.length, alive = game.players.filter(p => p.alive).length;
+      return total <= 2 ? 1 : clamp((total - alive) / (total - 2), 0, 1);
+    }
+    // 動態參數：基礎性格 + 局勢(領先/落後/殘局) + 自己的表現(被抓/猜錯) → 即時調整
+    _dyn(game) {
+      const st = this._standing(game), ph = this._phase(game), a = this.adapt;
+      // 落後 → 更敢拚；領先 → 守成；殘局 → 整體更積極
+      const aggr = clamp(this.ambition + (st < 0 ? -st * 0.35 : -st * 0.20) + ph * 0.20, 0, 1.3);
+      const risk = clamp(this.nerve + (st < 0 ? -st * 0.30 : 0) + ph * 0.15, 0, 1.3);
+      // 吹牛被抓越多 → 越收斂；落後/殘局 → 略增搏一把
+      const caughtRate = a.bluffsMade ? a.bluffsCaught / a.bluffsMade : 0;
+      const bluffProp = clamp(1 - caughtRate * 0.6 + (st < 0 ? 0.15 : 0) + ph * 0.10, 0.25, 1.4);
+      // 質疑猜錯越多 → 越謹慎(threshold↓)。注意：落後不該「亂質疑」(那只會死更快)——
+      // 落後的搏命改由 bluffProp/aggr 表現(多詐唬、多攻擊)，質疑反而要更冷靜。
+      const wrongRate = a.challMade ? a.challWrong / a.challMade : 0;
+      const challBias = -wrongRate * 0.13 + ph * 0.04;
+      return { aggr, risk, bluffProp, challBias, st, ph };
+    }
+
     // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
     suspicion(claimantId, influence) {
       const m = this.model[claimantId];
       if (!m) return 0;
       const distinct = Object.keys(m.claims).length;
       return Math.max(0, distinct - influence);
+    }
+
+    // 思考時間倍率（引擎在 AI 決策前以此乘上基礎節奏）：思考越深 → 停頓越久；
+    // 直覺型幾乎即答、思考型沉吟良久。kind: 'action'(主要決策) / 'react'(臨場反應)
+    thinkScale(kind) {
+      const base = kind === 'action' ? 0.55 + this.depth * 1.75 : 0.4 + this.depth * 0.8;
+      return clamp(base * (0.8 + Math.random() * 0.5), 0.3, 2.8);
+    }
+
+    // 擬真思考時間（毫秒）：像真人決牌時的長考。約 7~30 秒，因人因局而異——
+    // 思考越深/局面越難 → 想越久；果斷者(高膽識/直覺型)偶爾「早想好了」秒答；
+    // 會吹牛者偶爾故意拖很久裝模作樣。思考時間長＝可能在深算，也可能在裝。
+    thinkTime(game, kind, info) {
+      const me = game.players[this.id];
+      const MIN = 7000, MAX = 30000;
+      // 本回合難度/重要性 hard：局面越關鍵，越值得（也越需要）多規劃
+      let hard;
+      if (kind === 'action') {
+        const opps = game.players.filter(p => p && p.alive && p.id !== this.id);
+        const maxOpp = opps.reduce((m, o) => Math.max(m, o.coins), 0);
+        hard = 0.26
+          + (me && me.coins >= 7 ? 0.20 : me && me.coins >= 6 ? 0.12 : 0) // 我能政變/接近 → 大抉擇
+          + (maxOpp >= 7 ? 0.16 : 0)                  // 有人能政變我 → 高風險，得想清楚
+          + (opps.length >= 3 ? 0.12 : 0)             // 目標多 → 更難挑
+          + (me && me.cards && me.cards.length === 1 ? 0.20 : 0) // 殘血，生死一線
+          + this.deceit * 0.12;                       // 會詐者要盤算要不要裝
+      } else { // react：質疑 / 反制
+        const sus = (info && info.suspicion) || 0;
+        hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
+      }
+      hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
+      // 本回合「規劃量」quality = 型態傾向(depth) + 局勢必要性(hard)。
+      // 這一輪想越多 → 想越久 + 算越多候選 + 噪音越小（＝這一手越聰明）。逐回合而定。
+      let quality = clamp(this.depth * 0.42 + hard * 0.58, 0, 1);
+      // 果斷秒答：高膽識/淺思考型、且局面不難 → 這一輪「沒多想」靠直覺 → quality 壓低（那手較可能非最佳）
+      const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
+      let feign = false;
+      if (hard < 0.45 && Math.random() < decisive * 0.45) quality = Math.min(quality, 0.16 + Math.random() * 0.16);
+      else if (kind === 'action' && Math.random() < this.deceit * 0.16) feign = true; // 裝：時間長但沒真想
+      // 思考時間：規劃越多想越久；裝模作樣＝時間長但真實聰明度(quality)不變（長考未必真在想）
+      let t = MIN + (MAX - MIN) * (feign ? Math.max(quality, 0.85) : quality);
+      if (quality < 0.2 && !feign) t = 2400 + Math.random() * 3600; // 秒答的視覺
+      if (kind === 'action') { this._deliberation = Math.round(2 + quality * 10); this._roundQuality = quality; }
+      return Math.round(t);
     }
 
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
@@ -1730,8 +1919,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const p = this.estimateOpponentHas(game, claimantId, character);
       if (p <= 0.0001) return true; // 牌面不可能 → 必抓
 
-      // 信任度 → 對「會宣稱者通常為真」的先驗；智商 → 更會用行為訊號
-      const honesty = 0.18 + this.trust * 0.30;            // 0.18~0.48
+      // 信任度 → 對「會宣稱者通常為真」的先驗（技術好＝懂得「沒鐵證別亂質疑」，
+      // 在大家都聰明少詐的盤面，宣稱多半為真 → 先驗拉高，減少亂質疑送頭）
+      const honesty = 0.30 + this.trust * 0.26;            // 0.30~0.56
       const truth = p + (1 - p) * honesty;
       const m = this.model[claimantId];
       const sus = this.suspicion(claimantId, claimant.cards.length); // 宣稱種類>手牌
@@ -1757,7 +1947,21 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (me.coins >= 7) threshold -= 0.08;
       // 我是「故意拿外援逼問公爵」的 → 既然來試探，就跟進質疑這個擋來驗證真偽（邏輯自洽）
       if (this.probing && character === 'Duke') { threshold += 0.24; this.probing = false; }
-      threshold += (Math.random() - 0.5) * 0.10 * (1.4 - this.iq);     // 智商低 → 更隨機
+
+      // 思考型態：計謀者善看破綻（重訊號、少亂拆）、賭徒愛拚但也看一點訊號、
+      // 思考者沒把握不出手、直覺者憑感覺
+      if (this.think === 'scheme') threshold += sus * 0.22 - 0.05;          // 讀牌：很選擇性、只在真有破綻才拆
+      else if (this.think === 'gamble') threshold += sus * 0.13 + 0.02 * (0.5 + this.nerve); // 敢拚但看訊號，不盲拆
+      else if (this.think === 'analysis') threshold -= 0.04;
+      // 亡國模式規則認知：各變體都讓「錯誤質疑」更慘（被多收金幣／奪牌／被換牌），更謹慎
+      if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.skill); // 懂規則：錯誤質疑在亡國更慘
+
+      // 過程中的動態調整：自己質疑常猜錯 → 更謹慎；殘局/落後 → 更願冒險質疑
+      threshold += this._dyn(game).challBias;
+
+      // 技術高 → 質疑少憑運氣（人人精準）；計謀型讀牌再精準（噪音再砍半）。風格差異在前面的加權。
+      const noiseMul = this.think === 'scheme' ? 0.5 : 1;
+      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.3 - this.skill * 1.1, 0.12, 0.9) * noiseMul;
       return truth < threshold;
     }
 
@@ -1782,26 +1986,34 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           return { block: Math.random() < Math.min(0.98, pr), character: 'Duke' };
         }
         // 沒公爵 → 詐唬擋。平時很少，但「對手逼近致命金幣／殘局」時野心+膽識會拚。
-        // （新規則下擋外援只有原行動者能質疑，詐唬更安全）
+        // 看公開牌：公爵若已大量死光，硬宣稱公爵會被拆穿 → 大幅降低（全死光則不擋）。
+        const credD = this._claimCredibility(game, 'Duke');
         let pr = 0.04 + this.deceit * 0.10;
         if (nearLethal) pr += (0.25 + 0.40 * this.ambition) * (0.4 + 0.6 * this.nerve);
         if (leftTwo) pr += 0.15 * this.ambition;       // 只剩兩人，不擋就被 farm 死
-        return { block: Math.random() < Math.min(0.9, pr), character: 'Duke' };
+        pr *= credD;                                   // 公爵越不可信 → 越不該詐唬擋
+        return { block: credD > 0 && Math.random() < Math.min(0.9, pr), character: 'Duke' };
       }
 
       if (action.type === 'steal') {
         if (holdsRole(me.cards, 'Captain')) return { block: true, character: 'Captain' };
         if (holdsRole(me.cards, 'Ambassador')) return { block: true, character: 'Ambassador' };
-        const pr = Math.min(0.85, (0.12 + this.deceit * 0.40) * (0.5 + 0.7 * this.nerve));
-        if (Math.random() < pr) return { block: true, character: Math.random() < 0.5 ? 'Captain' : 'Ambassador' };
+        // 詐唬擋：選「公開牌下較可信」的那張盾（隊長 vs 大使）
+        const credC = this._claimCredibility(game, 'Captain'), credA = this._claimCredibility(game, 'Ambassador');
+        const useCap = credC >= credA;
+        const cred = Math.max(credC, credA);
+        const pr = Math.min(0.85, (0.12 + this.deceit * 0.40) * (0.5 + 0.7 * this.nerve)) * cred;
+        if (cred > 0 && Math.random() < pr) return { block: true, character: useCap ? 'Captain' : 'Ambassador' };
         return { block: false };
       }
 
       if (action.type === 'assassinate') {
         if (holdsRole(me.cards, 'Contessa')) return { block: true, character: 'Contessa' };
+        // 詐唬夫人擋命：看公開牌——夫人若已全死光，硬宣稱必被拆 → 寧可不擋（白送一張）
+        const credCo = this._claimCredibility(game, 'Contessa');
         const wouldDie = myInf === 1; // 假夫人高風險（拆穿一次失兩張）；保命時更敢賭
-        const pr = Math.min(0.9, (wouldDie ? 0.55 : 0.18) * (0.4 + this.deceit + this.nerve * 0.5));
-        if (Math.random() < pr) return { block: true, character: 'Contessa' };
+        const pr = Math.min(0.9, (wouldDie ? 0.55 : 0.18) * (0.4 + this.deceit + this.nerve * 0.5)) * credCo;
+        if (credCo > 0 && Math.random() < pr) return { block: true, character: 'Contessa' };
         return { block: false };
       }
 
@@ -1890,19 +2102,34 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return threat;
     }
 
-    chooseAction(game) {
+    // 直覺策略（本能手）：快速、帶性格與隨機/吹牛。深思時會被當成候選之一再評估。
+    _basePolicy(game) {
       const me = game.players[this.id];
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
-      const target = this.pickTarget(game);
+      let target = this.pickTarget(game);
       this.probing = false; // 每回合重置試探旗標
-      if (!target) return { type: 'income' };
+      if (!target) { this.focusId = null; return { type: 'income' }; }
+
+      // 策略規劃：思考／計謀型「鎖定目標」跨回合持續施壓，不每回合亂換——
+      // 但若有殘血（1 張）可直接清，仍優先了結（除非鎖定的就是他）。
+      if ((this.think === 'analysis' || this.think === 'scheme') && this.focusId != null) {
+        const f = game.players[this.focusId];
+        if (f && f.alive && f.id !== this.id) {
+          const finishable = opps.find(o => o.cards.length === 1);
+          if (!finishable || finishable.id === f.id) target = f;
+        }
+      }
+      this.focusId = target.id;
 
       // 強制政變
       if (me.coins >= 10) return { type: 'coup', targetId: target.id };
       // 8+ 幾乎必政變：囤金幣只會被白白政變掉，且 10 就強制（修正觀察到的「囤到 11 反而送頭」）
       if (me.coins >= 8) return { type: 'coup', targetId: target.id };
-      // 7：殘血必收，否則依野心決定政變或續攢
-      const coupUrge = 0.30 + this.ambition * 0.60;
+      // 7：殘血必收，否則依野心決定政變或續攢（賭徒更急著動手、思考者更願再等一拍）
+      const dyn = this._dynCache || {};
+      const coupUrge = 0.30 + this.ambition * 0.60
+        + (this.think === 'gamble' ? 0.15 : 0) - (this.think === 'analysis' ? 0.08 : 0)
+        + (dyn.aggr != null ? (dyn.aggr - this.ambition) * 0.5 : 0); // 落後/殘局更急著動手
       if (me.coins >= 7 && (target.cards.length === 1 || Math.random() < coupUrge))
         return { type: 'coup', targetId: target.id };
 
@@ -1927,22 +2154,27 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 
-      // 攢錢取向：聰明且有野心者在 4~6 金幣時更傾向穩定累積，衝向 7 政變（不空轉）
-      const wantBank = me.coins >= 4 && me.coins < 7 && (this.iq * 0.5 + this.ambition * 0.5) > 0.5;
+      // 攢錢取向：聰明且有野心者在 4~6 金幣時更傾向穩定累積，衝向 7 政變（思考型尤甚）
+      const wantBank = me.coins >= 4 && me.coins < 7 &&
+        ((this.iq * 0.5 + this.ambition * 0.5) > 0.5 || this.think === 'analysis');
 
       // === 吹牛 / 累積 ===
       const r = Math.random();
       const dec = this.deceit;
+      // 思考型態調節詐唬頻率（保留鮮明個性！計謀＝大膽詐術、賭徒＝高頻搏命、
+      // 思考型謹慎少詐、直覺型居中）。再乘上動態調整：吹牛常被抓 → 收斂；落後/殘局 → 略增
+      const bluffMul = (this.think === 'scheme' ? 1.28 : this.think === 'gamble' ? 1.32
+        : this.think === 'analysis' ? 0.7 : 1.0) * (dyn.bluffProp != null ? dyn.bluffProp : 1);
       // 吹牛暗殺（有錢、夠敢）
-      if (me.coins >= 3 && r < 0.10 * dec * (0.5 + this.ambition)) {
+      if (me.coins >= 3 && r < 0.10 * dec * bluffMul * (0.5 + this.ambition)) {
         return { type: 'assassinate', targetId: target.id };
       }
       const dukeBias = this.bluffRole === 'Duke' ? 0.18 : 0;
       const capBias = this.bluffRole === 'Captain' ? 0.18 : 0;
       // 吹牛課稅（宣稱 Duke）— 攢錢取向更愛
-      if (r < 0.22 + dukeBias + 0.26 * dec + (wantBank ? 0.15 : 0)) return { type: 'tax' };
+      if (r < 0.22 + dukeBias + 0.26 * dec * bluffMul + (wantBank ? 0.15 : 0)) return { type: 'tax' };
       // 吹牛偷竊（宣稱 Captain）
-      if (r < 0.38 + capBias + 0.20 * dec) {
+      if (r < 0.38 + capBias + 0.20 * dec * bluffMul) {
         const t = this.stealTarget(opps);
         if (t) return { type: 'steal', targetId: t.id };
       }
@@ -1957,21 +2189,180 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       // 無公爵威脅：正常多半拿外援(+2 優於收入)
       return Math.random() < 0.7 ? { type: 'foreign_aid' } : { type: 'income' };
     }
+
+    // 列舉當前合法且有意義的候選行動（供深思評估）
+    _candidates(game) {
+      const me = game.players[this.id];
+      const opps = game.players.filter(p => p.alive && p.id !== this.id);
+      const out = [{ type: 'income' }, { type: 'tax' }, { type: 'exchange' }];
+      if (me.coins < 10) out.push({ type: 'foreign_aid' });
+      const tgt = this.pickTarget(game);
+      const st = this.stealTarget(opps);
+      if (st) out.push({ type: 'steal', targetId: st.id });
+      if (me.coins >= 3 && tgt) out.push({ type: 'assassinate', targetId: tgt.id });
+      if (me.coins >= 7 && tgt) out.push({ type: 'coup', targetId: tgt.id });
+      return out;
+    }
+
+    // 某角色「至少一名（指定）對手持有」的機率（不指定＝任一對手）
+    _pAnyHas(game, character, onlyId) {
+      const ids = onlyId != null ? [onlyId]
+        : game.players.filter(p => p.alive && p.id !== this.id).map(p => p.id);
+      let pNo = 1;
+      ids.forEach(id => { pNo *= (1 - this.estimateOpponentHas(game, id, character)); });
+      return 1 - pNo;
+    }
+
+    // 詐唬（宣稱沒有的角色）被抓機率：對手越多、我牌越少（宣稱越誇張）越危險；擅詐者較不易露餡
+    // 公開牌可信度：依「場上已亮出的死牌」推算宣稱 role 還有多可信（含變體）。
+    // 1=完全可信(三張都還沒現身)；0=根本不可能(三張全死光，硬騙必被拆穿)。
+    _claimCredibility(game, role) {
+      let dead = 0;
+      game.players.forEach(p => (p.lost || []).forEach(c => { if (roleMatches(c, role)) dead++; }));
+      return Math.max(0, 3 - dead) / 3; // 1, 0.67, 0.33, 0
+    }
+
+    // 詐唬「宣稱 role」被拆穿的機率：對手越多越危險；公開死牌顯示越不可信 → 越易被抓；
+    // 全部死光 → 幾乎必被拆。擅詐者(deceit)演技好，略降（但壓不過鐵證）。
+    _bluffRisk(game, role) {
+      const me = game.players[this.id];
+      const n = game.players.filter(p => p.alive && p.id !== this.id).length;
+      const cred = role ? this._claimCredibility(game, role) : 1;
+      let pc = clamp(0.10 * n + (me.cards.length === 1 ? 0.10 : 0), 0.05, 0.72);
+      pc += (1 - cred) * 0.5;          // 看公開牌：越不可信 → 被抓率大增
+      pc *= (1 - this.deceit * 0.30);  // 演技
+      if (cred <= 0) pc = 0.95;        // 該角色全死光：再會演也沒用
+      return clamp(pc, 0.02, 0.95);
+    }
+
+    // 行動的期望價值評估（深思的核心）：含經濟/影響力收益、被質疑/反制風險、性格權重。
+    // 單位約以「金幣當量」計；一張影響力 ≈ 7。深思者據此挑出高 EV 手，直覺者噪音大常憑本能。
+    evalAction(game, a) {
+      if (!a) return -Infinity;
+      const me = game.players[this.id];
+      const INF = 7, GAINC = 0.9, COSTC = 0.7;
+      const tgt = a.targetId != null ? game.players[a.targetId] : null;
+      const has = r => holdsRole(me.cards, r);
+      const dyn = this._dynCache || {};
+      const aggrRew = 1; // EV 一律「老實估」，不灌水——人人技術都在線（風格改由選擇時加權，見 _styleBonus）
+      const riskTol = 1 - (dyn.risk != null ? dyn.risk : this.nerve) * 0.15; // 膽識/落後 略降風險感（但不無視）
+      // 詐唬被抓機率（看公開牌算可信度，逐角色）；被抓多 → 更怕(↑)；落後/殘局 → 略降(↓)
+      const bpropMul = dyn.bluffProp != null ? clamp(dyn.bluffProp, 0.4, 1.4) : 1;
+      const bpc = role => clamp(this._bluffRisk(game, role) * riskTol / bpropMul, 0.02, 0.97);
+      const grudgeB = (tgt && this.grudge[tgt.id]) ? Math.min(3, this.grudge[tgt.id]) * this.vengeance * 0.6 : 0;
+      switch (a.type) {
+        case 'income': return 1 * GAINC + 0.2;               // 穩、無風險
+        case 'foreign_aid': {
+          const pB = Math.max(this.dukeBlockThreat(game), 0.6 * this._pAnyHas(game, 'Duke'));
+          return 2 * GAINC * (1 - pB);
+        }
+        case 'tax': {
+          if (has('Duke')) return 3 * GAINC + 0.4;           // 真公爵，被質疑反害對方
+          const pc = bpc('Duke');
+          return 3 * GAINC * (1 - pc) - pc * INF * riskTol;  // 吹牛課稅（公爵全死光→pc 飆高→不騙）
+        }
+        case 'steal': {
+          if (!tgt) return -1;
+          const amt = Math.min(2, tgt.coins);
+          const pB = 0.7 * (1 - (1 - this.estimateOpponentHas(game, tgt.id, 'Captain')) *
+                                 (1 - this.estimateOpponentHas(game, tgt.id, 'Ambassador')));
+          const base = (amt * GAINC * (1 - pB) + grudgeB) * aggrRew;
+          if (has('Captain')) return base + 0.3;
+          const pc = bpc('Captain');
+          return base * (1 - pc) - pc * INF * riskTol;
+        }
+        case 'assassinate': {
+          if (!tgt) return -1;
+          const killV = INF * (tgt.cards.length === 1 ? 1.35 : 1.0) * (1 + this.ambition * 0.25) * aggrRew + grudgeB * 1.5;
+          const pB = 0.8 * this.estimateOpponentHas(game, tgt.id, 'Contessa');
+          const ev = killV * (1 - pB) - 3 * COSTC;
+          if (has('Assassin')) return ev;
+          const pc = bpc('Assassin');
+          return ev * (1 - pc) - pc * INF * riskTol;          // 吹牛暗殺被質疑掉一張
+        }
+        case 'exchange': {
+          const weak = !has('Duke') && !has('Contessa') && !has('Assassin');
+          const v = (weak ? 1.8 : 0.8) + (me.cards.length === 1 ? 0.5 : 0);
+          if (has('Ambassador')) return v;
+          const pc = bpc('Ambassador');
+          return v * (1 - pc) - pc * INF * riskTol;
+        }
+        case 'coup': {
+          if (!tgt) return -1;
+          const killV = INF * (tgt.cards.length === 1 ? 1.4 : 1.0) * (1 + this.ambition * 0.3) * aggrRew + grudgeB * 1.5;
+          return killV - 7 * COSTC + Math.max(0, me.coins - 7) * 0.6; // 不可擋/不可質疑；囤太多金幣→催促動手
+        }
+      }
+      return 0;
+    }
+
+    // 風格偏好（在「老實 EV」之上的小幅加權）：人人技術都在線、決策都合理，
+    // 風格只決定「在差不多好的選項裡偏愛哪種」——賭徒偏高變異攻擊、計謀偏詐術操作、
+    // 思考偏穩健累積。幅度小，不會讓人去選明顯虧的手（所以大家都厲害，只是味道不同）。
+    _styleBonus(type) {
+      const t = this.think;
+      if (t === 'gamble') return (type === 'coup' || type === 'assassinate' || type === 'steal') ? 0.45
+        : (type === 'tax' || type === 'exchange') ? 0.22 : 0;         // 愛搏命攻擊、敢下注
+      if (t === 'scheme') return (type === 'tax' || type === 'steal' || type === 'assassinate' || type === 'exchange') ? 0.28 : 0; // 愛用角色牌操作
+      if (t === 'analysis') return (type === 'income' || type === 'foreign_aid') ? 0.3 : 0; // 偏穩健累積
+      return 0; // 直覺：中性、靠快與臨場
+    }
+
+    // 主決策：深思＝真的算更多。預算(budget)由 thinkTime 依思考深度/局面難度設定——
+    // 想越久 budget 越大 → 評估越多候選、噪音越小 → 決策品質越高（直覺型則少算、憑本能）。
+    chooseAction(game) {
+      const me = game.players[this.id];
+      this._dynCache = this._dyn(game); // 本回合的動態調整（_basePolicy / evalAction 取用）
+      const tgt = this.pickTarget(game);
+      this.probing = false;
+      if (!tgt) { this.focusId = null; return { type: 'income' }; }
+      if (me.coins >= 10) { this.focusId = tgt.id; return { type: 'coup', targetId: tgt.id }; } // 強制
+
+      const budget = this._deliberation || Math.round(2 + this.depth * 8);
+      const q = this._roundQuality != null ? this._roundQuality : 0.5; // 本回合規劃量
+      this._deliberation = 0; this._roundQuality = null; // 用完歸零（下次 thinkTime 再設）
+
+      // 候選池：多次取樣本能手（風格/詐術/性格） + 列舉理性候選
+      const pool = [];
+      const samples = clamp(Math.round(budget * 0.6), 1, 7);
+      for (let i = 0; i < samples; i++) pool.push(this._basePolicy(game));
+      this._candidates(game).forEach(a => pool.push(a));
+
+      // 技術高 → 認真評估全部候選、噪音小、挑得出最佳手（人人厲害；風格差異在 evalAction 權重）
+      const considered = budget <= 3 ? pool.slice(0, 3) : pool;
+      const noise = (1 - q) * 3.0;                  // 本回合規劃越多(想越久) → 噪音越小 → 這一手越聰明
+      let best = null, bestV = -Infinity;
+      considered.forEach(a => {
+        const v = this.evalAction(game, a) + this._styleBonus(a.type) + (Math.random() * 2 - 1) * noise;
+        if (v > bestV) { bestV = v; best = a; }
+      });
+      best = best || { type: 'income' };
+
+      // probing 只有最終確為 foreign_aid 時才保留（本能取樣時可能設過）
+      if (best.type !== 'foreign_aid') this.probing = false;
+      // 策略規劃：鎖定目標跨回合（思考/計謀型）
+      if (best.targetId != null) this.focusId = best.targetId;
+      // 過程中學習：記錄這次是否吹牛（之後 _dyn 用被抓率收斂詐唬）
+      const CLAIM = { tax: 'Duke', steal: 'Captain', assassinate: 'Assassin', exchange: 'Ambassador' };
+      const claim = CLAIM[best.type];
+      if (claim && !holdsRole(me.cards, claim)) this.adapt.bluffsMade++;
+      return best;
+    }
   }
 
   // 10 位具名角色：性格相對固定（每場僅微浮動），各有鮮明風格。
   // 參數 0~1：iq 智商、trust 信任、deceit 詐術、ambition 野心、vengeance 仇恨傾向、nerve 膽識。
   AIAgent.PERSONAS = [
-    { name: '老謀子', iq: 0.92, trust: 0.30, deceit: 0.70, ambition: 0.55, vengeance: 0.45, nerve: 0.70, style: 'random' }, // 老練謀士，難捉摸
-    { name: '鐵衛',   iq: 0.85, trust: 0.80, deceit: 0.20, ambition: 0.55, vengeance: 0.25, nerve: 0.50, style: 'even'   }, // 正直穩健
-    { name: '血手',   iq: 0.55, trust: 0.25, deceit: 0.45, ambition: 0.90, vengeance: 0.85, nerve: 0.85, style: 'leader' }, // 兇悍記仇
-    { name: '影后',   iq: 0.88, trust: 0.45, deceit: 0.92, ambition: 0.55, vengeance: 0.30, nerve: 0.80, style: 'rich'   }, // 詐術大師
-    { name: '賭徒',   iq: 0.50, trust: 0.50, deceit: 0.75, ambition: 0.80, vengeance: 0.50, nerve: 0.95, style: 'random' }, // 豪賭莽撞
-    { name: '修士',   iq: 0.86, trust: 0.85, deceit: 0.12, ambition: 0.35, vengeance: 0.15, nerve: 0.30, style: 'even'   }, // 清心寡慾、誠實被動
-    { name: '屠夫',   iq: 0.45, trust: 0.30, deceit: 0.40, ambition: 0.95, vengeance: 0.80, nerve: 0.80, style: 'finish' }, // 嗜殺、專收殘血
-    { name: '狐',     iq: 0.96, trust: 0.30, deceit: 0.78, ambition: 0.55, vengeance: 0.45, nerve: 0.55, style: 'rich'   }, // 極聰明的機會主義者
-    { name: '雛鳥',   iq: 0.25, trust: 0.85, deceit: 0.25, ambition: 0.45, vengeance: 0.25, nerve: 0.30, style: 'random' }, // 生澀好騙（較弱）
-    { name: '暴君',   iq: 0.78, trust: 0.25, deceit: 0.50, ambition: 0.95, vengeance: 0.92, nerve: 0.85, style: 'leader' }  // 強勢、睚眥必報
+    { name: '老謀子', iq: 0.92, trust: 0.30, deceit: 0.70, ambition: 0.55, vengeance: 0.45, nerve: 0.70, style: 'random', think: 'scheme'    }, // 老練謀士，深算難捉摸
+    { name: '鐵衛',   iq: 0.85, trust: 0.80, deceit: 0.20, ambition: 0.55, vengeance: 0.25, nerve: 0.50, style: 'even',   think: 'analysis'  }, // 正直穩健、沉著精算
+    { name: '血手',   iq: 0.55, trust: 0.25, deceit: 0.45, ambition: 0.90, vengeance: 0.85, nerve: 0.85, style: 'leader', think: 'gamble'    }, // 兇悍記仇、敢拚
+    { name: '影后',   iq: 0.88, trust: 0.45, deceit: 0.92, ambition: 0.55, vengeance: 0.30, nerve: 0.80, style: 'rich',   think: 'scheme'    }, // 詐術大師、機關算盡
+    { name: '賭徒',   iq: 0.50, trust: 0.50, deceit: 0.75, ambition: 0.80, vengeance: 0.50, nerve: 0.95, style: 'random', think: 'gamble'    }, // 豪賭莽撞
+    { name: '修士',   iq: 0.86, trust: 0.85, deceit: 0.12, ambition: 0.35, vengeance: 0.15, nerve: 0.30, style: 'even',   think: 'analysis'  }, // 清心寡慾、誠實被動、深思
+    { name: '屠夫',   iq: 0.45, trust: 0.30, deceit: 0.40, ambition: 0.95, vengeance: 0.80, nerve: 0.80, style: 'finish', think: 'intuition' }, // 嗜殺、憑直覺專收殘血
+    { name: '狐',     iq: 0.96, trust: 0.30, deceit: 0.78, ambition: 0.55, vengeance: 0.45, nerve: 0.55, style: 'rich',   think: 'analysis'  }, // 極聰明的機會主義者
+    { name: '雛鳥',   iq: 0.25, trust: 0.85, deceit: 0.25, ambition: 0.45, vengeance: 0.25, nerve: 0.30, style: 'random', think: 'intuition' }, // 生澀好騙、憑感覺（較弱）
+    { name: '暴君',   iq: 0.78, trust: 0.25, deceit: 0.50, ambition: 0.95, vengeance: 0.92, nerve: 0.85, style: 'leader', think: 'scheme'    }  // 強勢、睚眥必報、城府深
   ];
 
   // 抽 n 位「不重複」的具名角色（每場開局由外層呼叫，隨機配發）
@@ -2011,13 +2402,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
     King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' }, // 公爵變體
-    Bandit:     { zh: '強盜', en: 'Bandit',     arcana: '死神·盜 The Bandit',    roman: 'XIII★',sym: '🗡' }, // 刺客變體
+    Devil:      { zh: '惡魔', en: 'Devil',      arcana: '惡魔 The Devil',        roman: 'XV★',  sym: '😈' }, // 刺客變體
     Queen:      { zh: '皇后', en: 'Queen',      arcana: '女皇·后 The Queen',     roman: 'III★', sym: '👸' }, // 夫人變體
     Mole:       { zh: '內奸', en: 'Mole',       arcana: '女祭司·奸 The Mole',    roman: 'II★',  sym: '🕵' }, // 大使變體
     Commander:  { zh: '司令', en: 'Commander',  arcana: '戰車·令 The Commander', roman: 'VII★', sym: '🎖' }  // 隊長變體
   };
   // 變體沿用原角色畫像（疊專屬標記）
-  const VARIANT_BASE = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
+  const VARIANT_BASE = { King: 'Duke', Devil: 'Assassin', Queen: 'Contessa', Mole: 'Ambassador', Commander: 'Captain' };
   const imgRole = ch => VARIANT_BASE[ch] || ch;
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
@@ -2076,6 +2467,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     speed: 800,
     currentTurn: -1,
     myId: 0, // 「我」在這場的座位 id（單機=0；連線時房主=0、客人=各自座位）
+    spectator: false, // 旁觀者模式（全員 AI）
+    viewId: 0,        // 旁觀模式下：目前以哪位玩家的視角看牌
+    _think: null,     // 目前思考中狀態 { id, kind, start, dur }
 
     // 回饋層：Web Audio 合成音效（無需音檔）+ 手機觸覺震動
     fb: {
@@ -2318,8 +2712,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     },
 
     // ---------- 開新局 ----------
-    newGame(numPlayers, speed, mode) {
+    // spectate=true：旁觀者模式（全員 AI，你不參與，從某 AI 視角看牌局）
+    newGame(numPlayers, speed, mode, spectate) {
       if (this.game) this.game.cancel(); // 終止上一局，避免並行
+      this._clearThink();
+      this.spectator = !!spectate;
       this.myId = 0; // 單機：你是 player 0
       this.reportText = ''; // 清除上一局戰報
       this.mode = mode === 'kingdom' ? 'kingdom' : 'normal';
@@ -2329,28 +2726,51 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.els.overlay.classList.remove('show');
       this.els.overlay.innerHTML = '';
 
-      // 每場隨機配發不重複的具名角色給 AI 座位（名稱即玩家名）
-      const personas = Coup.AIAgent.drawPersonas(numPlayers - 1);
-      const configs = [{ name: '你', isHuman: true }];
-      for (let i = 1; i < numPlayers; i++) {
-        const pa = personas[i - 1];
-        configs.push({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false });
-      }
-
-      const game = new Coup.GameController(configs, {
+      const hooks = {
         onLog: (m) => this.log(m),
         onState: () => this.render(),
         onTurn: (id) => { this.currentTurn = id; this.render(); },
         onGameOver: (w) => this.showWinner(w),
-        pause: () => new Promise(r => setTimeout(r, this.speed))
-      }, { mode: this.mode });
-      game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
-      for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
+        // scale：AI 思考深度倍率（思考型沉吟更久；真人決策不經此延遲）
+        pause: (scale) => new Promise(r => setTimeout(r, this.speed * (scale || 1))),
+        // AI 長考：可見倒數（所有人都看得到，越久＝在深算或在裝）
+        onThink: (id, ms, kind) => this.onThink(id, ms, kind)
+      };
 
-      this.game = game;
+      if (this.spectator) {
+        // 旁觀：全員 AI，隨機配發不重複具名角色
+        const personas = Coup.AIAgent.drawPersonas(numPlayers);
+        const configs = personas.map((pa, i) => ({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false }));
+        const game = new Coup.GameController(configs, hooks, { mode: this.mode });
+        for (let i = 0; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i]);
+        this.viewId = 0; // 預設從第一位 AI 視角看，可隨時切換
+        this.game = game;
+      } else {
+        // 每場隨機配發不重複的具名角色給 AI 座位（名稱即玩家名）
+        const personas = Coup.AIAgent.drawPersonas(numPlayers - 1);
+        const configs = [{ name: '你', isHuman: true }];
+        for (let i = 1; i < numPlayers; i++) {
+          const pa = personas[i - 1];
+          configs.push({ name: (pa && pa.name) || ('電腦 ' + i), isHuman: false });
+        }
+        const game = new Coup.GameController(configs, hooks, { mode: this.mode });
+        game.agents[0] = this; // 人類 = 本 UI（實作 Agent 介面）
+        for (let i = 1; i < numPlayers; i++) game.agents[i] = new Coup.AIAgent(i, personas[i - 1]);
+        this.viewId = 0;
+        this.game = game;
+      }
+
       this.currentTurn = 0;
       this.render();
-      game.play();
+      this.game.play();
+    },
+
+    // 旁觀模式：切換到某玩家的視角（看他的手牌）
+    setView(pid) {
+      if (!this.spectator || !this.game || !this.game.players[pid]) return;
+      this.viewId = pid;
+      this.log(`👁 切換視角：改以【${this.game.players[pid].name}】的角度觀戰`);
+      this.render();
     },
 
     log(msg) {
@@ -2387,7 +2807,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(King|Bandit|Queen|Mole|Commander|Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Devil|Queen|Mole|Commander|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -2429,10 +2849,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         return '<div class="card back"><div class="back-orn">✦</div></div>';
       }
       const a = ARCANA[ch] || ARCANA.Duke;
-      const bandit = (this.game && this.game.banditCoins) || 0;
       const badge =
         ch === 'King'      ? '<div class="variant-badge king">👑 國王</div>' :
-        ch === 'Bandit'    ? `<div class="variant-badge bandit">🗡 強盜 💰${bandit}</div>` :
+        ch === 'Devil'     ? '<div class="variant-badge devil">😈 惡魔</div>' :
         ch === 'Queen'     ? '<div class="variant-badge queen">👸 皇后</div>' :
         ch === 'Mole'      ? '<div class="variant-badge mole">🕵 內奸</div>' :
         ch === 'Commander' ? '<div class="variant-badge commander">🎖 司令</div>' : '';
@@ -2464,6 +2883,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const n = (p.timeline || []).length;
       return `<div class="${cls.join(' ')}" data-pid="${p.id}" title="點擊查看 ${p.name} 的底細（宣示與換牌紀錄）">
         <div class="opp-head"><span class="opp-name">${p.name}</span>
+          <span class="think-badge" data-think="${p.id}"></span>
           <span class="opp-coin">🪙 ${p.coins}</span></div>
         <div class="opp-cards">${minis}</div>
         <div class="opp-inf"><span>${p.alive ? '影響 ' + p.cards.length : '出局'}</span><span class="opp-claims">🔍 紀錄 ${n}</span></div>
@@ -2509,18 +2929,19 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.els.overlay.onclick = (e) => { if (e.target === this.els.overlay) hide(); };
     },
 
-    // 人類手牌區（大牌 + 資訊）
+    // 視角手牌區（大牌 + 資訊）：單機=你；旁觀模式=所選 AI 視角
     meEl(p) {
       const cls = ['me-inner'];
-      if (this.currentTurn === 0 && p.alive) cls.push('current');
+      if (this.currentTurn === p.id && p.alive) cls.push('current');
       if (!p.alive) cls.push('dead');
       const hand = p.cards.map(c => this.cardEl(c, true, false)).join('') +
                    p.lost.map(c => this.cardEl(c, true, true)).join('');
       return `<div class="${cls.join(' ')}">
         <div class="me-foot">
-          <span class="me-name">你</span>
+          <span class="me-name">${this.spectator ? p.name + '（視角）' : '你'}</span>
           <span class="me-coin">🪙 <b>${p.coins}</b></span>
           <span class="me-inf">影響 ${p.cards.length}${p.alive ? '' : ' · 出局'}</span>
+          <span class="think-badge" data-think="${p.id}"></span>
         </div>
         <div class="me-cards">${hand}</div>
       </div>`;
@@ -2529,25 +2950,97 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     render() {
       if (!this.game) return;
       const g = this.game;
+      const view = this.spectator ? this.viewId : this.myId; // 下方手牌區呈現誰的視角
       this.els.opponents.innerHTML = g.players
-        .filter(p => !p.isHuman).map(p => this.oppEl(p)).join('');
-      // 對手卡可點:看宣示紀錄
+        .filter(p => p.id !== view).map(p => this.oppEl(p)).join('');
+      // 對手卡可點:看宣示紀錄（旁觀模式則切換到該玩家視角）
       if (typeof this.els.opponents.querySelectorAll === 'function') {
         this.els.opponents.querySelectorAll('.opp').forEach(el => {
-          el.onclick = () => this.showClaims(+el.dataset.pid);
+          el.onclick = () => {
+            if (this.spectator) this.setView(+el.dataset.pid);
+            else this.showClaims(+el.dataset.pid);
+          };
         });
       }
       this.els.me.innerHTML = g.players
-        .filter(p => p.isHuman).map(p => this.meEl(p)).join('');
+        .filter(p => p.id === view).map(p => this.meEl(p)).join('');
       const cur = g.players[this.currentTurn];
       this.els.statusbar.innerHTML =
-        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}</span>` +
+        `<span class="sb-mode">${g.mode === 'kingdom' ? '👑 亡國' : '⚔ 一般'}${this.spectator ? ' · 👁 旁觀' : ''}</span>` +
         `<span class="sb-deck">❖ 牌庫 ${g.deck.length}</span>` +
         `<span class="sb-turn">${g.over ? '🏁 遊戲結束' : '🎲 ' + (cur ? cur.name : '') + ' 的回合'}</span>`;
+      this._renderThink(); // 重繪後重新套用思考徽章
+    },
+
+    // ---------- AI 思考（可見倒數 + 等待者持續盤算）----------
+    // 速度→思考時間壓縮倍率：慢速=完整 7~30 秒體驗，越快越壓縮
+    thinkPace() { return ({ 1100: 1.0, 620: 1.0, 260: 0.42 })[this.speed] || 1.0; },
+
+    onThink(playerId, ms, kind) {
+      return new Promise(resolve => {
+        if (typeof document === 'undefined') { resolve(); return; }
+        const dur = Math.max(300, Math.round(ms * this.thinkPace()));
+        this._think = { id: playerId, kind, start: Date.now(), dur };
+        const finish = () => {
+          if (this._thinkIv) { clearInterval(this._thinkIv); this._thinkIv = null; }
+          if (this._thinkTo) { clearTimeout(this._thinkTo); this._thinkTo = null; }
+          this._thinkResolve = null;
+          this._think = null;
+          this._renderThink();
+          resolve();
+        };
+        this._thinkResolve = finish; // 讓 _clearThink 能提前結束並 resolve（避免取消時舊迴圈卡死）
+        this._renderThink();
+        this._thinkIv = setInterval(() => {
+          if (!this.game || this.game.cancelled) { finish(); return; }
+          this._renderThink();
+        }, 100);
+        this._thinkTo = setTimeout(finish, dur);
+      });
+    },
+
+    _clearThink() {
+      if (this._thinkResolve) { this._thinkResolve(); return; } // 結束待解的思考 promise
+      if (this._thinkIv) { clearInterval(this._thinkIv); this._thinkIv = null; }
+      if (this._thinkTo) { clearTimeout(this._thinkTo); this._thinkTo = null; }
+      this._think = null;
+    },
+
+    // 更新思考徽章：當前思考者顯示倒數秒數（越久＝在深算或在裝）；其餘存活 AI 持續「盤算中」
+    _renderThink() {
+      if (typeof document === 'undefined' || !this.game) return;
+      const t = this._think;
+      const activeIds = !t ? [] :
+        (t.id === -1
+          ? this.game.players.filter(p => p.alive && p.id !== this.currentTurn).map(p => p.id)
+          : [t.id]);
+      const secs = t ? ((Date.now() - t.start) / 1000).toFixed(1) : '0';
+      const badges = document.querySelectorAll ? document.querySelectorAll('.think-badge[data-think]') : [];
+      badges.forEach(el => {
+        const pid = +el.dataset.think;
+        const p = this.game.players[pid];
+        const panel = el.closest ? el.closest('.opp, .me-inner') : null;
+        if (activeIds.indexOf(pid) >= 0) {
+          el.textContent = '🤔 ' + secs + 's';
+          el.className = 'think-badge on';
+          if (panel) { panel.classList.add('thinking'); panel.classList.remove('pondering'); }
+        } else if (t && p && p.alive && pid !== this.currentTurn) {
+          // 等待中的 AI 也一直在想（大局觀）
+          el.textContent = '…';
+          el.className = 'think-badge ambient';
+          if (panel) { panel.classList.add('pondering'); panel.classList.remove('thinking'); }
+        } else {
+          el.textContent = '';
+          el.className = 'think-badge';
+          if (panel) panel.classList.remove('thinking', 'pondering');
+        }
+      });
     },
 
     showWinner(w) {
-      const isMe = w && w.isHuman;
+      this._clearThink();
+      const spec = this.spectator;
+      const isMe = !spec && w && w.isHuman;
       this.fb[isMe ? 'win' : 'lose']();
       const hand = (w && w.cards && w.cards.length)
         ? `<div class="win-sub">勝者手牌</div><div class="win-cards">${w.cards.map(c => this.cardEl(c, true, false)).join('')}</div>`
@@ -2556,10 +3049,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const report = this.reportText ||
         (this.game && typeof this.game.buildReport === 'function' ? this.game.buildReport() : '');
       const reportBtn = report ? `<button class="pbtn copy-report" id="copyReportBtn">📋 複製完整戰報</button>` : '';
+      const title = spec ? '🏁 對戰結束' : (isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了');
       this.els.overlay.innerHTML =
-        `<div class="win-box ${isMe ? 'win' : 'lose'}">
+        `<div class="win-box ${spec ? 'win' : (isMe ? 'win' : 'lose')}">
           <button class="win-close" aria-label="關閉以回看過程">✕</button>
-          <div class="win-title">${isMe ? '🎉 你獲勝了！' : '💀 你被淘汰了'}</div>
+          <div class="win-title">${title}</div>
           <div class="win-sub">勝者：${w ? w.name : '無'}</div>
           ${hand}
           <button id="againBtn" class="pbtn act">再來一局</button>
@@ -2815,7 +3309,6 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     return {
       myId: viewerId,
       mode: game.mode || 'normal',
-      banditCoins: game.banditCoins || 0, // 強盜卡累積金幣（持有者卡面顯示用）
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,
@@ -3001,6 +3494,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       const UI = Coup.UI;
       if (UI.game) UI.game.cancel();
+      if (typeof UI._clearThink === 'function') UI._clearThink();
+      UI.spectator = false; UI.viewId = 0;
       UI.myId = 0; // 房主座位
       UI.els.log.innerHTML = ''; UI.els.prompt.innerHTML = '';
       UI.els.overlay.classList.remove('show'); UI.els.overlay.innerHTML = '';
@@ -3011,7 +3506,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         onState: () => { UI.render(); self._broadcastState(game); },
         onTurn: id => { UI.currentTurn = id; UI.render(); self._broadcastState(game); },
         onGameOver: w => { UI.showWinner(w); self._broadcast({ t: 'over', winnerId: w ? w.id : null, report: game.buildReport() }); },
-        pause: () => new Promise(r => setTimeout(r, self.speed))
+        pause: (scale) => new Promise(r => setTimeout(r, self.speed * (scale || 1))),
+        onThink: (id, ms, kind) => UI.onThink(id, ms, kind)
       }, { mode: this.mode });
 
       game.agents[0] = UI; UI.mode = this.mode; // 房主用本地 UI
@@ -3147,12 +3643,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   'use strict';
   const SPEEDS = { fast: 260, normal: 620, slow: 1100 };
   const Main = root.CoupMain = {
+    _spectate: false,
     start() {
       const n = parseInt(document.getElementById('numPlayers').value, 10);
       const speed = SPEEDS[document.getElementById('speed').value] || 800;
       const modeEl = document.getElementById('mode');
       const mode = modeEl ? modeEl.value : 'normal';
-      root.Coup.UI.newGame(n, speed, mode);
+      root.Coup.UI.newGame(n, speed, mode, this._spectate);
     }
   };
 
@@ -3300,7 +3797,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (root.Coup.UI.game) root.Coup.UI.game.cancel(); // 停掉背景對局
       home.style.display = 'flex';
     };
-    const enterGame = () => {
+    const enterGame = (spectate) => {
       // 把首頁選擇同步到遊戲內設定，套用主題，開始
       const mode = selectedMode();
       document.getElementById('numPlayers').value = document.getElementById('homeNum').value;
@@ -3310,9 +3807,12 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       try { localStorage.setItem('coupTheme', t); } catch (e) {}
       document.getElementById('mode').value = mode;
       home.style.display = 'none';
+      Main._spectate = !!spectate;
       Main.start();
     };
-    document.getElementById('homeStart').onclick = enterGame;
+    document.getElementById('homeStart').onclick = () => enterGame(false);
+    const specBtn = document.getElementById('homeSpectate');
+    if (specBtn) specBtn.onclick = () => enterGame(true);
     document.getElementById('homeOnline').onclick = () => { home.style.display = 'none'; lobby.open(); };
     document.getElementById('homeBtn').onclick = () => { setup.classList.remove('open'); showHome(); };
     // 套用首頁記憶的主題（與遊戲內一致）
