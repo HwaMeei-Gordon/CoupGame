@@ -1709,7 +1709,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   // 思考型態：直覺(快/憑感覺)、思考(慢/精算)、計謀(深/善詐善看破)、賭博(中/愛拚)
   const THINK = ['intuition', 'analysis', 'scheme', 'gamble'];
-  const THINK_DEPTH = { intuition: 0.20, analysis: 0.95, scheme: 0.74, gamble: 0.46 }; // 思考深度基準
+  const THINK_DEPTH = { intuition: 0.20, analysis: 0.95, scheme: 0.88, gamble: 0.52 }; // 思考深度基準（計謀＝深算、賭博＝憑直覺搏命）
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -1939,9 +1939,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       // 我是「故意拿外援逼問公爵」的 → 既然來試探，就跟進質疑這個擋來驗證真偽（邏輯自洽）
       if (this.probing && character === 'Duke') { threshold += 0.24; this.probing = false; }
 
-      // 思考型態：計謀者善看破綻、賭徒愛拚、思考者沒把握不出手、直覺者憑感覺
-      if (this.think === 'scheme') threshold += sus * 0.10 + 0.03;
-      else if (this.think === 'gamble') threshold += 0.07 * (0.5 + this.nerve);
+      // 思考型態：計謀者善看破綻（重訊號、少亂拆）、賭徒愛拚但也看一點訊號、
+      // 思考者沒把握不出手、直覺者憑感覺
+      if (this.think === 'scheme') threshold += sus * 0.22 - 0.05;          // 讀牌：很選擇性、只在真有破綻才拆
+      else if (this.think === 'gamble') threshold += sus * 0.08 + 0.05 * (0.5 + this.nerve);
       else if (this.think === 'analysis') threshold -= 0.04;
       // 亡國模式規則認知：各變體都讓「錯誤質疑」更慘（被多收金幣／奪牌／被換牌），更謹慎
       if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.depth);
@@ -1949,8 +1950,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       // 過程中的動態調整：自己質疑常猜錯 → 更謹慎；殘局/落後 → 更願冒險質疑
       threshold += this._dyn(game).challBias;
 
-      // 思考越深 → 越少憑運氣（隨機幅度小）；直覺/低智商 → 更隨機
-      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.5 - this.iq * 0.7 - this.depth * 0.6, 0.25, 1.4);
+      // 思考越深 → 越少憑運氣（隨機幅度小）；直覺/低智商 → 更隨機；計謀型讀牌精準（噪音再砍半）
+      const noiseMul = this.think === 'scheme' ? 0.5 : 1;
+      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.5 - this.iq * 0.7 - this.depth * 0.6, 0.25, 1.4) * noiseMul;
       return truth < threshold;
     }
 
@@ -2142,9 +2144,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       // === 吹牛 / 累積 ===
       const r = Math.random();
       const dec = this.deceit;
-      // 思考型態調節詐唬頻率：計謀／賭徒更愛吹牛、思考型謹慎少詐、直覺型居中
-      // 再乘上動態調整：吹牛常被抓 → 收斂；落後/殘局 → 略增
-      const bluffMul = (this.think === 'scheme' ? 1.25 : this.think === 'gamble' ? 1.35
+      // 思考型態調節詐唬頻率（保留鮮明個性！計謀＝大膽詐術、賭徒＝高頻搏命、
+      // 思考型謹慎少詐、直覺型居中）。再乘上動態調整：吹牛常被抓 → 收斂；落後/殘局 → 略增
+      const bluffMul = (this.think === 'scheme' ? 1.28 : this.think === 'gamble' ? 1.32
         : this.think === 'analysis' ? 0.7 : 1.0) * (dyn.bluffProp != null ? dyn.bluffProp : 1);
       // 吹牛暗殺（有錢、夠敢）
       if (me.coins >= 3 && r < 0.10 * dec * bluffMul * (0.5 + this.ambition)) {
@@ -2212,6 +2214,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const tgt = a.targetId != null ? game.players[a.targetId] : null;
       const has = r => holdsRole(me.cards, r);
       const dyn = this._dynCache || {};
+      const aggrRew = this.think === 'gamble' ? 1.26 : 1; // 賭博型：賭對時收益更大（高風險高回報、滾雪球）
       const riskTol = 1 - (dyn.risk != null ? dyn.risk : this.nerve) * 0.35; // 膽識高/落後 → 風險罰則打折
       // 詐唬被抓多 → 主觀更怕被抓（風險感放大）；落後/殘局 → 略降
       const pc = this._bluffRisk(game) * riskTol / (dyn.bluffProp != null ? clamp(dyn.bluffProp, 0.4, 1.4) : 1);
@@ -2230,13 +2233,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           const amt = Math.min(2, tgt.coins);
           const pB = 0.7 * (1 - (1 - this.estimateOpponentHas(game, tgt.id, 'Captain')) *
                                  (1 - this.estimateOpponentHas(game, tgt.id, 'Ambassador')));
-          const base = amt * GAINC * (1 - pB) + grudgeB;
+          const base = (amt * GAINC * (1 - pB) + grudgeB) * aggrRew;
           if (has('Captain')) return base + 0.3;
           return base * (1 - pc) - pc * INF * riskTol;
         }
         case 'assassinate': {
           if (!tgt) return -1;
-          const killV = INF * (tgt.cards.length === 1 ? 1.35 : 1.0) * (1 + this.ambition * 0.25) + grudgeB * 1.5;
+          const killV = INF * (tgt.cards.length === 1 ? 1.35 : 1.0) * (1 + this.ambition * 0.25) * aggrRew + grudgeB * 1.5;
           const pB = 0.8 * this.estimateOpponentHas(game, tgt.id, 'Contessa');
           const ev = killV * (1 - pB) - 3 * COSTC;
           if (has('Assassin')) return ev;
@@ -2250,7 +2253,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         }
         case 'coup': {
           if (!tgt) return -1;
-          const killV = INF * (tgt.cards.length === 1 ? 1.4 : 1.0) * (1 + this.ambition * 0.3) + grudgeB * 1.5;
+          const killV = INF * (tgt.cards.length === 1 ? 1.4 : 1.0) * (1 + this.ambition * 0.3) * aggrRew + grudgeB * 1.5;
           return killV - 7 * COSTC + Math.max(0, me.coins - 7) * 0.6; // 不可擋/不可質疑；囤太多金幣→催促動手
         }
       }
