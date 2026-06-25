@@ -48,8 +48,11 @@
         this.think     = THINK[Math.floor(Math.random() * THINK.length)];   // 思考型態
         this.personaName = this._dominantTrait();
       }
-      // 思考深度（0~1）：思考型態基準 × 智商加權；越深 → 推理越細、思考越久、隨機越少
+      // 思考「深度」現在只決定【思考時間長短】的表演（直覺型答得快、思考型沉吟久）
       this.depth = clamp(THINK_DEPTH[this.think] * 0.6 + this.iq * 0.4, 0.1, 1);
+      // 「技術」與深度脫鉤：每個人都很厲害（都會算 EV、看公開牌、質疑精準），
+      // 只隨智商微幅高低。風格(冒險/詐術/穩健)才是差異所在，技術一律在線。
+      this.skill = clamp(0.82 + this.iq * 0.16, 0.6, 1);
       this.focusId = null; // 策略規劃：鎖定中的施壓目標（思考/計謀型會跨回合維持）
       this.bluffRole = Math.random() < 0.5 ? 'Duke' : 'Captain'; // 固定假身分，前後一致
 
@@ -135,9 +138,10 @@
       // 吹牛被抓越多 → 越收斂；落後/殘局 → 略增搏一把
       const caughtRate = a.bluffsMade ? a.bluffsCaught / a.bluffsMade : 0;
       const bluffProp = clamp(1 - caughtRate * 0.6 + (st < 0 ? 0.15 : 0) + ph * 0.10, 0.25, 1.4);
-      // 質疑猜錯越多 → 越謹慎(threshold↓)；殘局/落後 → 更願冒險質疑
+      // 質疑猜錯越多 → 越謹慎(threshold↓)。注意：落後不該「亂質疑」(那只會死更快)——
+      // 落後的搏命改由 bluffProp/aggr 表現(多詐唬、多攻擊)，質疑反而要更冷靜。
       const wrongRate = a.challMade ? a.challWrong / a.challMade : 0;
-      const challBias = -wrongRate * 0.12 + ph * 0.06 + (st < 0 ? 0.03 : 0);
+      const challBias = -wrongRate * 0.13 + ph * 0.04;
       return { aggr, risk, bluffProp, challBias, st, ph };
     }
 
@@ -176,16 +180,16 @@
         hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
       }
       hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
-      // 深思品質 quality → 決定 budget（真的算幾條候選）與思考秒數，兩者一致：想越久＝算越多
+      // 思考「時間」由深度+難度決定（純表演：直覺型快、思考型久）
       const quality = clamp(this.depth * 0.55 + hard * 0.5, 0, 1);
-      let budget = Math.round(2 + quality * 9);   // 2~11 條候選
       let t = MIN + (MAX - MIN) * quality;
-      // 果斷秒答：高膽識/淺思考、且局面不難 → 少算、靠本能（製造「他早想好了」對比）
+      // 「真的算幾條候選」只看技術——人人技術都高，所以人人都算很多、都很厲害（與時間脫鉤）
+      this._deliberation = Math.round(5 + this.skill * 7); // ≈ 11~12 條候選，全員適用
+      // 果斷秒答：高膽識/淺思考、局面不難 → 想得快（但仍是好決定，budget 不變）
       const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
-      if (hard < 0.5 && Math.random() < decisive * 0.4) { t = 2400 + Math.random() * 3600; budget = Math.max(1, Math.round(budget * 0.4)); }
-      // 裝模作樣：會吹牛者偶爾刻意拖很久（時間長但 budget 不變——長考未必真在想，可能在裝）
+      if (hard < 0.5 && Math.random() < decisive * 0.4) t = 2400 + Math.random() * 3600;
+      // 裝模作樣：會吹牛者偶爾刻意拖很久（時間長＝未必真在想，可能在裝）
       else if (kind === 'action' && Math.random() < this.deceit * 0.16) t = MAX * 0.82 + Math.random() * MAX * 0.18;
-      if (kind === 'action') this._deliberation = budget; // 供 chooseAction 取用
       return Math.round(t);
     }
 
@@ -218,8 +222,9 @@
       const p = this.estimateOpponentHas(game, claimantId, character);
       if (p <= 0.0001) return true; // 牌面不可能 → 必抓
 
-      // 信任度 → 對「會宣稱者通常為真」的先驗；智商 → 更會用行為訊號
-      const honesty = 0.18 + this.trust * 0.30;            // 0.18~0.48
+      // 信任度 → 對「會宣稱者通常為真」的先驗（技術好＝懂得「沒鐵證別亂質疑」，
+      // 在大家都聰明少詐的盤面，宣稱多半為真 → 先驗拉高，減少亂質疑送頭）
+      const honesty = 0.30 + this.trust * 0.26;            // 0.30~0.56
       const truth = p + (1 - p) * honesty;
       const m = this.model[claimantId];
       const sus = this.suspicion(claimantId, claimant.cards.length); // 宣稱種類>手牌
@@ -252,14 +257,14 @@
       else if (this.think === 'gamble') threshold += sus * 0.13 + 0.02 * (0.5 + this.nerve); // 敢拚但看訊號，不盲拆
       else if (this.think === 'analysis') threshold -= 0.04;
       // 亡國模式規則認知：各變體都讓「錯誤質疑」更慘（被多收金幣／奪牌／被換牌），更謹慎
-      if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.depth);
+      if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.skill); // 懂規則：錯誤質疑在亡國更慘
 
       // 過程中的動態調整：自己質疑常猜錯 → 更謹慎；殘局/落後 → 更願冒險質疑
       threshold += this._dyn(game).challBias;
 
-      // 思考越深 → 越少憑運氣（隨機幅度小）；直覺/低智商 → 更隨機；計謀型讀牌精準（噪音再砍半）
+      // 技術高 → 質疑少憑運氣（人人精準）；計謀型讀牌再精準（噪音再砍半）。風格差異在前面的加權。
       const noiseMul = this.think === 'scheme' ? 0.5 : 1;
-      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.5 - this.iq * 0.7 - this.depth * 0.6, 0.25, 1.4) * noiseMul;
+      threshold += (Math.random() - 0.5) * 0.10 * clamp(1.3 - this.skill * 1.1, 0.12, 0.9) * noiseMul;
       return truth < threshold;
     }
 
@@ -542,8 +547,8 @@
       const tgt = a.targetId != null ? game.players[a.targetId] : null;
       const has = r => holdsRole(me.cards, r);
       const dyn = this._dynCache || {};
-      const aggrRew = this.think === 'gamble' ? 1.3 : 1; // 賭博型：賭對時收益更大（高風險高回報、滾雪球）
-      const riskTol = 1 - (dyn.risk != null ? dyn.risk : this.nerve) * 0.35; // 膽識高/落後 → 風險罰則打折
+      const aggrRew = 1; // EV 一律「老實估」，不灌水——人人技術都在線（風格改由選擇時加權，見 _styleBonus）
+      const riskTol = 1 - (dyn.risk != null ? dyn.risk : this.nerve) * 0.15; // 膽識/落後 略降風險感（但不無視）
       // 詐唬被抓機率（看公開牌算可信度，逐角色）；被抓多 → 更怕(↑)；落後/殘局 → 略降(↓)
       const bpropMul = dyn.bluffProp != null ? clamp(dyn.bluffProp, 0.4, 1.4) : 1;
       const bpc = role => clamp(this._bluffRisk(game, role) * riskTol / bpropMul, 0.02, 0.97);
@@ -594,6 +599,18 @@
       return 0;
     }
 
+    // 風格偏好（在「老實 EV」之上的小幅加權）：人人技術都在線、決策都合理，
+    // 風格只決定「在差不多好的選項裡偏愛哪種」——賭徒偏高變異攻擊、計謀偏詐術操作、
+    // 思考偏穩健累積。幅度小，不會讓人去選明顯虧的手（所以大家都厲害，只是味道不同）。
+    _styleBonus(type) {
+      const t = this.think;
+      if (t === 'gamble') return (type === 'coup' || type === 'assassinate' || type === 'steal') ? 0.45
+        : (type === 'tax' || type === 'exchange') ? 0.22 : 0;         // 愛搏命攻擊、敢下注
+      if (t === 'scheme') return (type === 'tax' || type === 'steal' || type === 'assassinate' || type === 'exchange') ? 0.28 : 0; // 愛用角色牌操作
+      if (t === 'analysis') return (type === 'income' || type === 'foreign_aid') ? 0.3 : 0; // 偏穩健累積
+      return 0; // 直覺：中性、靠快與臨場
+    }
+
     // 主決策：深思＝真的算更多。預算(budget)由 thinkTime 依思考深度/局面難度設定——
     // 想越久 budget 越大 → 評估越多候選、噪音越小 → 決策品質越高（直覺型則少算、憑本能）。
     chooseAction(game) {
@@ -604,21 +621,21 @@
       if (!tgt) { this.focusId = null; return { type: 'income' }; }
       if (me.coins >= 10) { this.focusId = tgt.id; return { type: 'coup', targetId: tgt.id }; } // 強制
 
-      const budget = this._deliberation || Math.round(2 + this.depth * 7);
+      const budget = this._deliberation || Math.round(5 + this.skill * 7);
       this._deliberation = 0; // 用完歸零（下次 thinkTime 再設）
 
-      // 候選池：多次取樣本能手（隨機/吹牛/性格） + 列舉理性候選
+      // 候選池：多次取樣本能手（風格/詐術/性格） + 列舉理性候選
       const pool = [];
-      const samples = clamp(Math.round(budget * 0.6), 1, 6);
+      const samples = clamp(Math.round(budget * 0.6), 1, 7);
       for (let i = 0; i < samples; i++) pool.push(this._basePolicy(game));
       this._candidates(game).forEach(a => pool.push(a));
 
-      // 直覺/低預算：只認真看少數幾個（容易就跟著第一個本能走、偶爾漏掉好棋）
+      // 技術高 → 認真評估全部候選、噪音小、挑得出最佳手（人人厲害；風格差異在 evalAction 權重）
       const considered = budget <= 3 ? pool.slice(0, 3) : pool;
-      const noise = (1 - this.depth) * 3.5;        // 思考越深 → 評估噪音越小、越能挑出最佳
+      const noise = (1 - this.skill) * 2.2;        // 技術越高 → 評估噪音越小、越能挑出最佳
       let best = null, bestV = -Infinity;
       considered.forEach(a => {
-        const v = this.evalAction(game, a) + (Math.random() * 2 - 1) * noise;
+        const v = this.evalAction(game, a) + this._styleBonus(a.type) + (Math.random() * 2 - 1) * noise;
         if (v > bestV) { bestV = v; best = a; }
       });
       best = best || { type: 'income' };
