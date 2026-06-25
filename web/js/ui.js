@@ -628,14 +628,13 @@
         (t.id === -1
           ? this.game.players.filter(p => p.alive && p.id !== this.currentTurn).map(p => p.id)
           : [t.id]);
-      const secs = t ? ((Date.now() - t.start) / 1000).toFixed(1) : '0';
       const badges = document.querySelectorAll ? document.querySelectorAll('.think-badge[data-think]') : [];
       badges.forEach(el => {
         const pid = +el.dataset.think;
         const p = this.game.players[pid];
         const panel = el.closest ? el.closest('.opp, .me-inner') : null;
         if (activeIds.indexOf(pid) >= 0) {
-          el.textContent = '🤔 ' + secs + 's';
+          el.textContent = '🤔';                 // 思考中（不顯示秒數，由光暈持續時間自然透露想多久）
           el.className = 'think-badge on';
           if (panel) { panel.classList.add('thinking'); panel.classList.remove('pondering'); }
         } else if (t && p && p.alive && pid !== this.currentTurn) {

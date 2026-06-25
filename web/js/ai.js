@@ -557,22 +557,29 @@
       const bpropMul = dyn.bluffProp != null ? clamp(dyn.bluffProp, 0.4, 1.4) : 1;
       const bpc = role => clamp(this._bluffRisk(game, role) * riskTol / bpropMul, 0.02, 0.97);
       const grudgeB = (tgt && this.grudge[tgt.id]) ? Math.min(3, this.grudge[tgt.id]) * this.vengeance * 0.6 : 0;
+      const CERTAIN = 0.9; // 機率高過此值＝「肯定」→ 硬性禁止白費的行動（不肯定則照常評估，由智商/噪音決定）
+      const dead = role => this._claimCredibility(game, role) <= 0; // 該角色三張全公開死光＝宣稱必假
       switch (a.type) {
         case 'income': return 1 * GAINC + 0.2;               // 穩、無風險
         case 'foreign_aid': {
+          if (has('Duke')) return -Infinity;                 // 絕不合理：手握公爵就課稅(+3)，不拿外援(+2 還可能被擋)
           const pB = Math.max(this.dukeBlockThreat(game), 0.6 * this._pAnyHas(game, 'Duke'));
           return 2 * GAINC * (1 - pB);
         }
         case 'tax': {
           if (has('Duke')) return 3 * GAINC + 0.4;           // 真公爵，被質疑反害對方
+          if (dead('Duke')) return -Infinity;                // 絕不合理：公爵三張全死光還喊公爵
           const pc = bpc('Duke');
-          return 3 * GAINC * (1 - pc) - pc * INF * riskTol;  // 吹牛課稅（公爵全死光→pc 飆高→不騙）
+          return 3 * GAINC * (1 - pc) - pc * INF * riskTol;  // 吹牛課稅
         }
         case 'steal': {
           if (!tgt) return -1;
+          const eCap = this.estimateOpponentHas(game, tgt.id, 'Captain');
+          const eAmb = this.estimateOpponentHas(game, tgt.id, 'Ambassador');
+          if (eCap >= CERTAIN || eAmb >= CERTAIN) return -Infinity; // 絕不合理：肯定對方有隊長/大使可擋，偷了白偷
+          if (!has('Captain') && dead('Captain')) return -Infinity; // 絕不合理：隊長全死光還喊隊長偷
           const amt = Math.min(2, tgt.coins);
-          const pB = 0.7 * (1 - (1 - this.estimateOpponentHas(game, tgt.id, 'Captain')) *
-                                 (1 - this.estimateOpponentHas(game, tgt.id, 'Ambassador')));
+          const pB = 0.7 * (1 - (1 - eCap) * (1 - eAmb));
           const base = (amt * GAINC * (1 - pB) + grudgeB) * aggrRew;
           if (has('Captain')) return base + 0.3;
           const pc = bpc('Captain');
@@ -580,6 +587,8 @@
         }
         case 'assassinate': {
           if (!tgt) return -1;
+          if (this.estimateOpponentHas(game, tgt.id, 'Contessa') >= CERTAIN) return -Infinity; // 絕不合理：肯定對方有夫人擋，白花 3 金幣
+          if (!has('Assassin') && dead('Assassin')) return -Infinity; // 絕不合理：刺客全死光還喊暗殺
           const killV = INF * (tgt.cards.length === 1 ? 1.35 : 1.0) * (1 + this.ambition * 0.25) * aggrRew + grudgeB * 1.5;
           const pB = 0.8 * this.estimateOpponentHas(game, tgt.id, 'Contessa');
           const ev = killV * (1 - pB) - 3 * COSTC;
@@ -591,6 +600,7 @@
           const weak = !has('Duke') && !has('Contessa') && !has('Assassin');
           const v = (weak ? 1.8 : 0.8) + (me.cards.length === 1 ? 0.5 : 0);
           if (has('Ambassador')) return v;
+          if (dead('Ambassador')) return -Infinity;          // 絕不合理：大使全死光還喊大使換牌
           const pc = bpc('Ambassador');
           return v * (1 - pc) - pc * INF * riskTol;
         }
