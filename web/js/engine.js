@@ -257,6 +257,17 @@
       }
     }
 
+    // 通知所有代理人：一場質疑的結果（誰質疑誰、成功與否），供 AI 過程中學習調整
+    // （自己的吹牛被抓 → 收斂；自己質疑猜錯 → 更謹慎；也可建模對手的質疑傾向）
+    notifyChallenge(ev) {
+      for (const id in this.agents) {
+        const a = this.agents[id];
+        if (a && typeof a.observeChallenge === 'function') {
+          try { a.observeChallenge(this, ev); } catch (e) { /* 觀察失敗不影響流程 */ }
+        }
+      }
+    }
+
     // 私密通知：只送給「該玩家自己」的代理人（人類本機顯示；連線時只送該客人；AI 不會收到）。
     // 用於起手牌、大使換牌抽到/保留、被質疑後改抽到的牌——這些不可進共享歷程、不可廣播。
     notifyPrivate(playerId, msg) {
@@ -468,6 +479,7 @@
 
         const truthful = holdsRole(claimant.cards, character);
         this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
+        this.notifyChallenge({ by: pid, of: claimantId, character, success: !truthful });
         if (truthful) {
           // 亡國模式：決定攤出的牌（手握變體則攤變體以發動特殊能力）
           const revealed = this.pickRevealCard(claimant, character);

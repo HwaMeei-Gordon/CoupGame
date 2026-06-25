@@ -57,6 +57,8 @@
       this.blockedBy = {}; // blockerId -> { actionType: count }       我的行動被誰擋過幾次
       this.grudge = {};    // id -> 仇恨值（被攻擊/針對累積）           報復目標依據
       this.probing = false; // 本回合是否「故意拿外援去逼問公爵」（→ 之後更願意質疑該反制）
+      // 過程中的動態調整：基礎參數固定，這些隨「自己的表現」累積，邊打邊修正策略
+      this.adapt = { bluffsMade: 0, bluffsCaught: 0, challMade: 0, challWrong: 0 };
     }
 
     _dominantTrait() {
@@ -101,6 +103,42 @@
         const w = (ev.type === 'coup' || ev.type === 'assassinate') ? 3 : 1;
         this.grudge[ev.actorId] = (this.grudge[ev.actorId] || 0) + w;
       }
+    }
+
+    // 質疑結果回報（過程中學習）：自己的吹牛被抓 → 之後收斂；自己質疑猜錯 → 之後更謹慎
+    observeChallenge(game, ev) {
+      if (!ev) return;
+      if (ev.of === this.id && ev.success) this.adapt.bluffsCaught++;   // 我被拆穿
+      if (ev.by === this.id) { this.adapt.challMade++; if (!ev.success) this.adapt.challWrong++; } // 我質疑（猜錯=對方為真）
+    }
+
+    // 局勢評估：我相對全場的強弱（-1 落後 .. +1 領先），用影響力(權重高)+金幣
+    _standing(game) {
+      const me = game.players[this.id];
+      const alive = game.players.filter(p => p.alive);
+      if (!alive.length) return 0;
+      const pow = p => p.cards.length * 3 + p.coins * 0.5;
+      const avg = alive.reduce((s, p) => s + pow(p), 0) / alive.length;
+      return clamp((pow(me) - avg) / 6, -1, 1);
+    }
+    // 殘局程度：0=開局滿員 .. 1=只剩兩人決鬥
+    _phase(game) {
+      const total = game.players.length, alive = game.players.filter(p => p.alive).length;
+      return total <= 2 ? 1 : clamp((total - alive) / (total - 2), 0, 1);
+    }
+    // 動態參數：基礎性格 + 局勢(領先/落後/殘局) + 自己的表現(被抓/猜錯) → 即時調整
+    _dyn(game) {
+      const st = this._standing(game), ph = this._phase(game), a = this.adapt;
+      // 落後 → 更敢拚；領先 → 守成；殘局 → 整體更積極
+      const aggr = clamp(this.ambition + (st < 0 ? -st * 0.35 : -st * 0.20) + ph * 0.20, 0, 1.3);
+      const risk = clamp(this.nerve + (st < 0 ? -st * 0.30 : 0) + ph * 0.15, 0, 1.3);
+      // 吹牛被抓越多 → 越收斂；落後/殘局 → 略增搏一把
+      const caughtRate = a.bluffsMade ? a.bluffsCaught / a.bluffsMade : 0;
+      const bluffProp = clamp(1 - caughtRate * 0.6 + (st < 0 ? 0.15 : 0) + ph * 0.10, 0.25, 1.4);
+      // 質疑猜錯越多 → 越謹慎(threshold↓)；殘局/落後 → 更願冒險質疑
+      const wrongRate = a.challMade ? a.challWrong / a.challMade : 0;
+      const challBias = -wrongRate * 0.12 + ph * 0.06 + (st < 0 ? 0.03 : 0);
+      return { aggr, risk, bluffProp, challBias, st, ph };
     }
 
     // 對手「宣稱角色種類數」超過其手牌數的程度（吹牛嫌疑）
@@ -214,6 +252,9 @@
       else if (this.think === 'analysis') threshold -= 0.04;
       // 亡國模式規則認知：各變體都讓「錯誤質疑」更慘（被多收金幣／奪牌／被換牌），更謹慎
       if (game.mode === 'kingdom') threshold -= 0.06 * (0.6 + this.depth);
+
+      // 過程中的動態調整：自己質疑常猜錯 → 更謹慎；殘局/落後 → 更願冒險質疑
+      threshold += this._dyn(game).challBias;
 
       // 思考越深 → 越少憑運氣（隨機幅度小）；直覺/低智商 → 更隨機
       threshold += (Math.random() - 0.5) * 0.10 * clamp(1.5 - this.iq * 0.7 - this.depth * 0.6, 0.25, 1.4);
@@ -373,8 +414,10 @@
       // 8+ 幾乎必政變：囤金幣只會被白白政變掉，且 10 就強制（修正觀察到的「囤到 11 反而送頭」）
       if (me.coins >= 8) return { type: 'coup', targetId: target.id };
       // 7：殘血必收，否則依野心決定政變或續攢（賭徒更急著動手、思考者更願再等一拍）
+      const dyn = this._dynCache || {};
       const coupUrge = 0.30 + this.ambition * 0.60
-        + (this.think === 'gamble' ? 0.15 : 0) - (this.think === 'analysis' ? 0.08 : 0);
+        + (this.think === 'gamble' ? 0.15 : 0) - (this.think === 'analysis' ? 0.08 : 0)
+        + (dyn.aggr != null ? (dyn.aggr - this.ambition) * 0.5 : 0); // 落後/殘局更急著動手
       if (me.coins >= 7 && (target.cards.length === 1 || Math.random() < coupUrge))
         return { type: 'coup', targetId: target.id };
 
@@ -407,8 +450,9 @@
       const r = Math.random();
       const dec = this.deceit;
       // 思考型態調節詐唬頻率：計謀／賭徒更愛吹牛、思考型謹慎少詐、直覺型居中
-      const bluffMul = this.think === 'scheme' ? 1.25 : this.think === 'gamble' ? 1.35
-        : this.think === 'analysis' ? 0.7 : 1.0;
+      // 再乘上動態調整：吹牛常被抓 → 收斂；落後/殘局 → 略增
+      const bluffMul = (this.think === 'scheme' ? 1.25 : this.think === 'gamble' ? 1.35
+        : this.think === 'analysis' ? 0.7 : 1.0) * (dyn.bluffProp != null ? dyn.bluffProp : 1);
       // 吹牛暗殺（有錢、夠敢）
       if (me.coins >= 3 && r < 0.10 * dec * bluffMul * (0.5 + this.ambition)) {
         return { type: 'assassinate', targetId: target.id };
@@ -474,8 +518,10 @@
       const INF = 7, GAINC = 0.9, COSTC = 0.7;
       const tgt = a.targetId != null ? game.players[a.targetId] : null;
       const has = r => holdsRole(me.cards, r);
-      const riskTol = 1 - this.nerve * 0.35;                 // 膽識高 → 風險罰則打折
-      const pc = this._bluffRisk(game) * riskTol;
+      const dyn = this._dynCache || {};
+      const riskTol = 1 - (dyn.risk != null ? dyn.risk : this.nerve) * 0.35; // 膽識高/落後 → 風險罰則打折
+      // 詐唬被抓多 → 主觀更怕被抓（風險感放大）；落後/殘局 → 略降
+      const pc = this._bluffRisk(game) * riskTol / (dyn.bluffProp != null ? clamp(dyn.bluffProp, 0.4, 1.4) : 1);
       const grudgeB = (tgt && this.grudge[tgt.id]) ? Math.min(3, this.grudge[tgt.id]) * this.vengeance * 0.6 : 0;
       switch (a.type) {
         case 'income': return 1 * GAINC + 0.2;               // 穩、無風險
@@ -522,6 +568,7 @@
     // 想越久 budget 越大 → 評估越多候選、噪音越小 → 決策品質越高（直覺型則少算、憑本能）。
     chooseAction(game) {
       const me = game.players[this.id];
+      this._dynCache = this._dyn(game); // 本回合的動態調整（_basePolicy / evalAction 取用）
       const tgt = this.pickTarget(game);
       this.probing = false;
       if (!tgt) { this.focusId = null; return { type: 'income' }; }
@@ -550,6 +597,10 @@
       if (best.type !== 'foreign_aid') this.probing = false;
       // 策略規劃：鎖定目標跨回合（思考/計謀型）
       if (best.targetId != null) this.focusId = best.targetId;
+      // 過程中學習：記錄這次是否吹牛（之後 _dyn 用被抓率收斂詐唬）
+      const CLAIM = { tax: 'Duke', steal: 'Captain', assassinate: 'Assassin', exchange: 'Ambassador' };
+      const claim = CLAIM[best.type];
+      if (claim && !holdsRole(me.cards, claim)) this.adapt.bluffsMade++;
       return best;
     }
   }
