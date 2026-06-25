@@ -12,7 +12,7 @@
   const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
   const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
@@ -200,7 +200,7 @@
       }
 
       if (action.type === 'assassinate') {
-        if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
+        if (holdsRole(me.cards, 'Contessa')) return { block: true, character: 'Contessa' };
         const wouldDie = myInf === 1; // 假夫人高風險（拆穿一次失兩張）；保命時更敢賭
         const pr = Math.min(0.9, (wouldDie ? 0.55 : 0.18) * (0.4 + this.deceit + this.nerve * 0.5));
         if (Math.random() < pr) return { block: true, character: 'Contessa' };
@@ -304,7 +304,7 @@
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
-      if (me.cards.includes('Assassin') && me.coins >= 3) {
+      if (holdsRole(me.cards, 'Assassin') && me.coins >= 3) {
         return { type: 'assassinate', targetId: target.id };
       }
       // 真 Captain 偷竊 — 被某人擋過「一次」就別再撞同一面盾（智商越高越果斷），改攢錢
@@ -320,7 +320,7 @@
       if (holdsRole(me.cards, 'Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
       if (me.cards.includes('Ambassador')) {
-        const weak = !holdsRole(me.cards, 'Duke') && !me.cards.includes('Contessa');
+        const weak = !holdsRole(me.cards, 'Duke') && !holdsRole(me.cards, 'Contessa');
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 

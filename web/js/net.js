@@ -20,6 +20,7 @@
     return {
       myId: viewerId,
       mode: game.mode || 'normal',
+      banditCoins: game.banditCoins || 0, // 強盜卡累積金幣（持有者卡面顯示用）
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,

@@ -371,16 +371,20 @@ body.minimal .log-line.log-private { color: #aecbff; background: rgba(120,160,25
   background: #efe6cf; user-select: none; padding: 0;
 }
 .card-img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
-/* 國王（亡國模式）：公爵畫像疊上王冠標記 */
-.king-crown {
+/* 亡國模式變體：沿用原角色畫像，疊上專屬標記與光邊 */
+.variant-badge {
   position: absolute; top: 5px; left: 50%; transform: translateX(-50%); z-index: 3;
-  background: linear-gradient(180deg, #f6da55, #c8920e); color: #3a2a05;
-  font-weight: 900; font-size: 10px; letter-spacing: .5px;
-  padding: 2px 7px; border-radius: 10px; border: 1px solid #fff3c4;
+  color: #2a1d05; font-weight: 900; font-size: 9.5px; letter-spacing: .3px;
+  padding: 2px 6px; border-radius: 10px; border: 1px solid rgba(255,255,255,.7);
   box-shadow: 0 1px 4px rgba(0,0,0,.55); white-space: nowrap;
 }
-.card.King { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
-.mini.lost.King { border-color: #f0c64a; }
+.variant-badge.king   { background: linear-gradient(180deg, #f6da55, #c8920e); }
+.variant-badge.bandit { background: linear-gradient(180deg, #e2a33c, #9c5b14); color: #2a1605; }
+.variant-badge.queen  { background: linear-gradient(180deg, #f0a6c6, #c54f86); color: #3a0820; }
+.card.King   { border-color: #f0c64a; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(240,200,74,.55), 0 5px 13px rgba(0,0,0,.5); }
+.card.Bandit { border-color: #d99536; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(217,149,54,.5), 0 5px 13px rgba(0,0,0,.5); }
+.card.Queen  { border-color: #e58bb4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18), 0 0 14px rgba(229,139,180,.5), 0 5px 13px rgba(0,0,0,.5); }
+.mini.lost.King { border-color: #f0c64a; } .mini.lost.Bandit { border-color: #d99536; } .mini.lost.Queen { border-color: #e58bb4; }
 .mini-crown { position: absolute; top: 0; right: 0; z-index: 3; font-size: 10px; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
 /* 死牌：黑白灰燼 + DECEASED 印記 */
 .card.lost { filter: grayscale(1) brightness(.7) contrast(1.04); transform: rotate(-3deg); }
@@ -859,14 +863,18 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const ZH = {
     Duke: '公爵', Assassin: '刺客', Captain: '隊長',
     Ambassador: '大使', Contessa: '夫人',
-    King: '國王' // 亡國模式：公爵的特殊變體
+    King: '國王',   // 亡國模式：公爵的特殊變體
+    Bandit: '強盜', // 亡國模式：刺客的特殊變體
+    Queen: '皇后'   // 亡國模式：夫人的特殊變體
   };
   Coup.ZH = ZH;
 
-  // 角色變體對應：國王在所有判定上等同公爵
+  // 角色變體對應：國王＝公爵、強盜＝刺客、皇后＝夫人
   function roleMatches(card, character) {
     if (card === character) return true;
     if (character === 'Duke' && card === 'King') return true;
+    if (character === 'Assassin' && card === 'Bandit') return true;
+    if (character === 'Contessa' && card === 'Queen') return true;
     return false;
   }
   // 玩家手牌是否「持有可宣示 character 的牌」（含變體）
@@ -940,14 +948,18 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.cancelled = false; // 開新局時用來中止舊的 play() 迴圈
       this.winner = null;
       this.history = []; // 完整戰報（上帝視角：含隱藏手牌，供結束後複製回顧）
+      this.banditCoins = 0; // 亡國模式：強盜卡上累積的金幣（全場單張）
       this.setup();
     }
 
     setup() {
       const deck = [];
+      this.banditCoins = 0;
       CHARACTERS.forEach(ch => {
-        // 亡國模式：3 張公爵 → 2 公爵 + 1 國王（其餘角色不變）
+        // 亡國模式：每種特殊角色把其中 1 張替換為變體
         if (this.mode === 'kingdom' && ch === 'Duke') deck.push('King', 'Duke', 'Duke');
+        else if (this.mode === 'kingdom' && ch === 'Assassin') deck.push('Bandit', 'Assassin', 'Assassin');
+        else if (this.mode === 'kingdom' && ch === 'Contessa') deck.push('Queen', 'Contessa', 'Contessa');
         else deck.push(ch, ch, ch);
       });
       shuffle(deck);
@@ -992,6 +1004,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
       const card = player.cards.splice(idx, 1)[0];
       player.lost.push(card);
+      if (card === 'Bandit') this.banditCoins = 0; // 強盜陣亡 → 卡上累積金幣隨之消滅
       this.record({ k: 'lose', who: player.id, card });
       this.log(`💥 ${player.name} 的一名隨從墮入深淵，攤開【${ZH[card]} ${card}】（永久消逝，不可再用）`);
       if (player.cards.length === 0) {
@@ -1120,6 +1133,40 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return lines.join('\n');
     }
 
+    // 被質疑證實為真時，決定攤出哪張牌（手握變體 → 攤變體以發動特殊能力）
+    pickRevealCard(claimant, character) {
+      const c = claimant.cards;
+      if (character === 'Duke' && c.includes('King')) return 'King';
+      if (character === 'Contessa' && c.includes('Queen')) return 'Queen'; // 皇后額外抽牌恆有利 → 一律攤
+      if (character === 'Assassin' && c.includes('Bandit')) {
+        // 強盜：卡上有錢可兌現、或別無普通刺客時攤強盜；否則攤普通刺客保留強盜
+        if ((this.banditCoins || 0) > 0 || !c.includes('Assassin')) return 'Bandit';
+      }
+      return character;
+    }
+
+    // 🗡️ 強盜「兌現」：持有者收取強盜卡累積的全部金幣，卡上歸零
+    async banditCashIn(bandit) {
+      const got = this.banditCoins || 0;
+      this.banditCoins = 0;
+      bandit.coins += got;
+      this.log(`🗡️ 強盜現身！${bandit.name} 收取強盜卡上累積的 ${got} 金幣`);
+      this.hooks.onState();
+      if (got > 0) await this.hooks.pause();
+    }
+
+    // 👸 皇后「恩典」：額外抽一張牌（手牌可超過上限 → 等同多一條命）
+    async queenBonus(queen) {
+      this.shuffleDeck();
+      const extra = this.drawRandom();
+      if (!extra) return;
+      queen.cards.push(extra);
+      this.log(`👸 皇后恩典！${queen.name} 額外抽一張牌，手牌增為 ${queen.cards.length} 張（可超過上限）`);
+      if (queen.isHuman) this.notifyPrivate(queen.id, `👸 皇后額外抽到：【${ZH[extra]} ${extra}】（你現在有 ${queen.cards.length} 張手牌）`);
+      this.hooks.onState();
+      await this.hooks.pause();
+    }
+
     // 👑 國王「強制徵收」：質疑者額外被收 2 金幣，質疑者的下家再被收 1 金幣（下家為國王本人則略過）
     async kingLevy(king, challenger) {
       const t1 = Math.min(2, challenger.coins);
@@ -1162,17 +1209,19 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         const truthful = holdsRole(claimant.cards, character);
         this.record({ k: 'chal', by: pid, of: claimantId, ch: character, truthful });
         if (truthful) {
-          // 亡國模式：公爵宣示且手握國王 → 攤國王（觸發強制徵收）
-          const revealed = (character === 'Duke' && claimant.cards.includes('King')) ? 'King' : character;
+          // 亡國模式：決定攤出的牌（手握變體則攤變體以發動特殊能力）
+          const revealed = this.pickRevealCard(claimant, character);
           this.log(`✅ ${claimant.name} 亮出真正的【${ZH[revealed]} ${revealed}】，命運審判了質疑者！`);
           await this.loseInfluence(p);
-          if (revealed === 'King') await this.kingLevy(claimant, p); // 👑 強制徵收
+          if (revealed === 'King') await this.kingLevy(claimant, p);     // 👑 強制徵收
+          if (revealed === 'Bandit') await this.banditCashIn(claimant);  // 🗡️ 強盜兌現
           const fresh = this.swapCard(claimant, revealed); // 換新牌，身分重新隱藏
           this.record({ k: 'swap', who: claimantId, ret: revealed, got: fresh });
           this.notifySwap(claimantId, character); // 通知 AI：此玩家手牌已變,重新評估內部機率
           this.log(`🔀 ${claimant.name} 將證明的【${ZH[revealed]} ${revealed}】洗回命運之輪，改抽一張新牌（原牌並未死亡）`);
           // 改抽到哪張只私密告知本人（不進共享歷程、不廣播）
           if (claimant.isHuman && fresh) this.notifyPrivate(claimantId, `🎴 你把【${ZH[revealed]} ${revealed}】洗回，改抽到【${ZH[fresh]} ${fresh}】`);
+          if (revealed === 'Queen') await this.queenBonus(claimant);     // 👸 皇后額外抽牌
           this.hooks.onState();
           return { challenged: true, success: false, challenger: pid };
         } else {
@@ -1384,11 +1433,19 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           this.notifyOutcome({ type: 'steal', actorId: actor.id, targetId: target.id, blocked: false });
           break;
         }
-        case 'assassinate':
+        case 'assassinate': {
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
           this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
+          const before = target.cards.length;
           await this.loseInfluence(target);
+          const killed = target.cards.length < before; // 匕首真的造成影響力損失才算「成功」
+          // 亡國模式：持強盜者「成功」暗殺 → 強盜卡累積 1 金幣
+          if (killed && this.mode === 'kingdom' && actor.cards.includes('Bandit')) {
+            this.banditCoins = (this.banditCoins || 0) + 1;
+            this.notifyPrivate(actor.id, `🗡️ 強盜得手！你的強盜卡已累積 ${this.banditCoins} 金幣（被質疑攤牌時收取）`);
+          }
           break;
+        }
         case 'exchange':
           await this.doExchange(actor);
           break;
@@ -1482,7 +1539,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
   const holdsRole = Coup.holdsRole || ((cards, ch) => (cards || []).includes(ch));
   const roleMatches = Coup.roleMatches || ((c, ch) => c === ch);
 
-  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6 };
+  const VALUE = { Duke: 5, Captain: 4, Assassin: 4, Ambassador: 4, Contessa: 3, King: 6, Bandit: 5, Queen: 4 };
   const STYLES = ['leader', 'even', 'finish', 'rich', 'random'];
   const rnd = (a, b) => a + Math.random() * (b - a);
   const sum = obj => Object.keys(obj).reduce((s, k) => s + obj[k], 0);
@@ -1670,7 +1727,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       }
 
       if (action.type === 'assassinate') {
-        if (me.cards.includes('Contessa')) return { block: true, character: 'Contessa' };
+        if (holdsRole(me.cards, 'Contessa')) return { block: true, character: 'Contessa' };
         const wouldDie = myInf === 1; // 假夫人高風險（拆穿一次失兩張）；保命時更敢賭
         const pr = Math.min(0.9, (wouldDie ? 0.55 : 0.18) * (0.4 + this.deceit + this.nerve * 0.5));
         if (Math.random() < pr) return { block: true, character: 'Contessa' };
@@ -1774,7 +1831,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         return { type: 'coup', targetId: target.id };
 
       // 真 Assassin 暗殺
-      if (me.cards.includes('Assassin') && me.coins >= 3) {
+      if (holdsRole(me.cards, 'Assassin') && me.coins >= 3) {
         return { type: 'assassinate', targetId: target.id };
       }
       // 真 Captain 偷竊 — 被某人擋過「一次」就別再撞同一面盾（智商越高越果斷），改攢錢
@@ -1790,7 +1847,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (holdsRole(me.cards, 'Duke')) return { type: 'tax' };
       // 大使換牌（手牌偏弱時）
       if (me.cards.includes('Ambassador')) {
-        const weak = !holdsRole(me.cards, 'Duke') && !me.cards.includes('Contessa');
+        const weak = !holdsRole(me.cards, 'Duke') && !holdsRole(me.cards, 'Contessa');
         if (weak && Math.random() < 0.4 + 0.2 * this.iq) return { type: 'exchange' };
       }
 
@@ -1877,9 +1934,13 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     Captain:    { zh: '隊長', en: 'Captain',    arcana: '戰車 The Chariot',      roman: 'VII',  sym: '⚓' },
     Ambassador: { zh: '大使', en: 'Ambassador', arcana: '女祭司 High Priestess', roman: 'II',   sym: '☽' },
     Contessa:   { zh: '夫人', en: 'Contessa',   arcana: '女皇 The Empress',      roman: 'III',  sym: '♕' },
-    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' } // 亡國模式：公爵變體
+    King:       { zh: '國王', en: 'King',       arcana: '皇帝·王 The King',      roman: 'IV★',  sym: '👑' }, // 公爵變體
+    Bandit:     { zh: '強盜', en: 'Bandit',     arcana: '死神·盜 The Bandit',    roman: 'XIII★',sym: '🗡' }, // 刺客變體
+    Queen:      { zh: '皇后', en: 'Queen',      arcana: '女皇·后 The Queen',     roman: 'III★', sym: '👸' }  // 夫人變體
   };
-  const imgRole = ch => (ch === 'King' ? 'Duke' : ch); // 國王沿用公爵畫像（疊王冠標記）
+  // 變體沿用原角色畫像（疊專屬標記）
+  const VARIANT_BASE = { King: 'Duke', Bandit: 'Assassin', Queen: 'Contessa' };
+  const imgRole = ch => VARIANT_BASE[ch] || ch;
 
   // 每角色一整張版畫風塔羅插畫（inline SVG，無需圖檔）。viewBox 100x150，
   // 由 cardEl 包上 <svg> 與外框；以 currentColor 線描呈現。
@@ -2248,7 +2309,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     // 質疑為真：該角色牌在中央 3D 翻開,爆發專屬色光芒
     showReveal(msg) {
       if (typeof document === 'undefined' || msg.indexOf('亮出真正的') < 0) return;
-      const m = msg.match(/(King|Duke|Assassin|Captain|Ambassador|Contessa)/);
+      const m = msg.match(/(King|Bandit|Queen|Duke|Assassin|Captain|Ambassador|Contessa)/);
       const stage = document.getElementById('stage');
       if (!m || !stage || typeof stage.appendChild !== 'function') return;
       const wrap = document.createElement('div');
@@ -2290,9 +2351,14 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         return '<div class="card back"><div class="back-orn">✦</div></div>';
       }
       const a = ARCANA[ch] || ARCANA.Duke;
+      const bandit = (this.game && this.game.banditCoins) || 0;
+      const badge =
+        ch === 'King'   ? '<div class="variant-badge king">👑 國王</div>' :
+        ch === 'Bandit' ? `<div class="variant-badge bandit">🗡 強盜 💰${bandit}</div>` :
+        ch === 'Queen'  ? '<div class="variant-badge queen">👸 皇后</div>' : '';
       return `<div class="card ${ch} ${lost ? 'lost' : ''}">
         <img class="card-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
-        ${ch === 'King' ? '<div class="king-crown">👑 國王</div>' : ''}
+        ${badge}
         ${lost ? `<div class="card-deceased">DECEASED<span>${a.roman}</span></div>` : ''}
       </div>`;
     },
@@ -2301,9 +2367,10 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     miniCard(ch, lost) {
       if (!lost) return '<div class="mini back"></div>';
       const a = ARCANA[ch] || ARCANA.Duke;
+      const mark = VARIANT_BASE[ch] ? `<span class="mini-crown">${ARCANA[ch].sym}</span>` : '';
       return `<div class="mini lost ${ch}" title="${a.zh} ${a.en}（死牌）">
         <img class="mini-img" src="cards/${imgRole(ch)}.webp" alt="${a.zh} ${a.en}" draggable="false" />
-        ${ch === 'King' ? '<span class="mini-crown">👑</span>' : ''}
+        ${mark}
         <span class="mini-x">✕</span></div>`;
     },
 
@@ -2660,6 +2727,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     return {
       myId: viewerId,
       mode: game.mode || 'normal',
+      banditCoins: game.banditCoins || 0, // 強盜卡累積金幣（持有者卡面顯示用）
       current: game.current,
       over: !!game.over,
       winnerId: game.winner ? game.winner.id : null,
