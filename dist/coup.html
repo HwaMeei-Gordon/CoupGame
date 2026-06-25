@@ -1859,30 +1859,34 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     thinkTime(game, kind, info) {
       const me = game.players[this.id];
       const MIN = 7000, MAX = 30000;
-      // 決策難度 0..1
+      // 本回合難度/重要性 hard：局面越關鍵，越值得（也越需要）多規劃
       let hard;
       if (kind === 'action') {
         const opps = game.players.filter(p => p && p.alive && p.id !== this.id);
-        hard = 0.32
-          + (me && me.coins >= 6 ? 0.18 : 0)        // 接近政變門檻，抉擇變重
-          + (opps.length >= 3 ? 0.15 : 0)           // 目標多 → 更難挑
-          + (me && me.cards && me.cards.length === 1 ? 0.18 : 0) // 殘血，步步驚心
-          + this.deceit * 0.18;                     // 會詐者要盤算要不要裝
+        const maxOpp = opps.reduce((m, o) => Math.max(m, o.coins), 0);
+        hard = 0.26
+          + (me && me.coins >= 7 ? 0.20 : me && me.coins >= 6 ? 0.12 : 0) // 我能政變/接近 → 大抉擇
+          + (maxOpp >= 7 ? 0.16 : 0)                  // 有人能政變我 → 高風險，得想清楚
+          + (opps.length >= 3 ? 0.12 : 0)             // 目標多 → 更難挑
+          + (me && me.cards && me.cards.length === 1 ? 0.20 : 0) // 殘血，生死一線
+          + this.deceit * 0.12;                       // 會詐者要盤算要不要裝
       } else { // react：質疑 / 反制
         const sus = (info && info.suspicion) || 0;
         hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
       }
       hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
-      // 思考「時間」由深度+難度決定（純表演：直覺型快、思考型久）
-      const quality = clamp(this.depth * 0.55 + hard * 0.5, 0, 1);
-      let t = MIN + (MAX - MIN) * quality;
-      // 「真的算幾條候選」只看技術——人人技術都高，所以人人都算很多、都很厲害（與時間脫鉤）
-      this._deliberation = Math.round(5 + this.skill * 7); // ≈ 11~12 條候選，全員適用
-      // 果斷秒答：高膽識/淺思考、局面不難 → 想得快（但仍是好決定，budget 不變）
+      // 本回合「規劃量」quality = 型態傾向(depth) + 局勢必要性(hard)。
+      // 這一輪想越多 → 想越久 + 算越多候選 + 噪音越小（＝這一手越聰明）。逐回合而定。
+      let quality = clamp(this.depth * 0.42 + hard * 0.58, 0, 1);
+      // 果斷秒答：高膽識/淺思考型、且局面不難 → 這一輪「沒多想」靠直覺 → quality 壓低（那手較可能非最佳）
       const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
-      if (hard < 0.5 && Math.random() < decisive * 0.4) t = 2400 + Math.random() * 3600;
-      // 裝模作樣：會吹牛者偶爾刻意拖很久（時間長＝未必真在想，可能在裝）
-      else if (kind === 'action' && Math.random() < this.deceit * 0.16) t = MAX * 0.82 + Math.random() * MAX * 0.18;
+      let feign = false;
+      if (hard < 0.45 && Math.random() < decisive * 0.45) quality = Math.min(quality, 0.16 + Math.random() * 0.16);
+      else if (kind === 'action' && Math.random() < this.deceit * 0.16) feign = true; // 裝：時間長但沒真想
+      // 思考時間：規劃越多想越久；裝模作樣＝時間長但真實聰明度(quality)不變（長考未必真在想）
+      let t = MIN + (MAX - MIN) * (feign ? Math.max(quality, 0.85) : quality);
+      if (quality < 0.2 && !feign) t = 2400 + Math.random() * 3600; // 秒答的視覺
+      if (kind === 'action') { this._deliberation = Math.round(2 + quality * 10); this._roundQuality = quality; }
       return Math.round(t);
     }
 
@@ -2314,8 +2318,9 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       if (!tgt) { this.focusId = null; return { type: 'income' }; }
       if (me.coins >= 10) { this.focusId = tgt.id; return { type: 'coup', targetId: tgt.id }; } // 強制
 
-      const budget = this._deliberation || Math.round(5 + this.skill * 7);
-      this._deliberation = 0; // 用完歸零（下次 thinkTime 再設）
+      const budget = this._deliberation || Math.round(2 + this.depth * 8);
+      const q = this._roundQuality != null ? this._roundQuality : 0.5; // 本回合規劃量
+      this._deliberation = 0; this._roundQuality = null; // 用完歸零（下次 thinkTime 再設）
 
       // 候選池：多次取樣本能手（風格/詐術/性格） + 列舉理性候選
       const pool = [];
@@ -2325,7 +2330,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
       // 技術高 → 認真評估全部候選、噪音小、挑得出最佳手（人人厲害；風格差異在 evalAction 權重）
       const considered = budget <= 3 ? pool.slice(0, 3) : pool;
-      const noise = (1 - this.skill) * 2.2;        // 技術越高 → 評估噪音越小、越能挑出最佳
+      const noise = (1 - q) * 3.0;                  // 本回合規劃越多(想越久) → 噪音越小 → 這一手越聰明
       let best = null, bestV = -Infinity;
       considered.forEach(a => {
         const v = this.evalAction(game, a) + this._styleBonus(a.type) + (Math.random() * 2 - 1) * noise;
