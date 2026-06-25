@@ -138,12 +138,16 @@
         hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
       }
       hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
-      let t = MIN + (MAX - MIN) * clamp(this.depth * 0.5 + hard * 0.6, 0, 1);
-      // 果斷秒答：高膽識/淺思考、且局面不難 → 製造「他早就想好了」的對比
+      // 深思品質 quality → 決定 budget（真的算幾條候選）與思考秒數，兩者一致：想越久＝算越多
+      const quality = clamp(this.depth * 0.55 + hard * 0.5, 0, 1);
+      let budget = Math.round(2 + quality * 9);   // 2~11 條候選
+      let t = MIN + (MAX - MIN) * quality;
+      // 果斷秒答：高膽識/淺思考、且局面不難 → 少算、靠本能（製造「他早想好了」對比）
       const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
-      if (hard < 0.5 && Math.random() < decisive * 0.4) t = 2400 + Math.random() * 3600;
-      // 裝模作樣：會吹牛者偶爾刻意拖很久（即使簡單）→ 長考未必真在想
+      if (hard < 0.5 && Math.random() < decisive * 0.4) { t = 2400 + Math.random() * 3600; budget = Math.max(1, Math.round(budget * 0.4)); }
+      // 裝模作樣：會吹牛者偶爾刻意拖很久（時間長但 budget 不變——長考未必真在想，可能在裝）
       else if (kind === 'action' && Math.random() < this.deceit * 0.16) t = MAX * 0.82 + Math.random() * MAX * 0.18;
+      if (kind === 'action') this._deliberation = budget; // 供 chooseAction 取用
       return Math.round(t);
     }
 
@@ -345,7 +349,8 @@
       return threat;
     }
 
-    chooseAction(game) {
+    // 直覺策略（本能手）：快速、帶性格與隨機/吹牛。深思時會被當成候選之一再評估。
+    _basePolicy(game) {
       const me = game.players[this.id];
       const opps = game.players.filter(p => p.alive && p.id !== this.id);
       let target = this.pickTarget(game);
@@ -427,6 +432,125 @@
       }
       // 無公爵威脅：正常多半拿外援(+2 優於收入)
       return Math.random() < 0.7 ? { type: 'foreign_aid' } : { type: 'income' };
+    }
+
+    // 列舉當前合法且有意義的候選行動（供深思評估）
+    _candidates(game) {
+      const me = game.players[this.id];
+      const opps = game.players.filter(p => p.alive && p.id !== this.id);
+      const out = [{ type: 'income' }, { type: 'tax' }, { type: 'exchange' }];
+      if (me.coins < 10) out.push({ type: 'foreign_aid' });
+      const tgt = this.pickTarget(game);
+      const st = this.stealTarget(opps);
+      if (st) out.push({ type: 'steal', targetId: st.id });
+      if (me.coins >= 3 && tgt) out.push({ type: 'assassinate', targetId: tgt.id });
+      if (me.coins >= 7 && tgt) out.push({ type: 'coup', targetId: tgt.id });
+      return out;
+    }
+
+    // 某角色「至少一名（指定）對手持有」的機率（不指定＝任一對手）
+    _pAnyHas(game, character, onlyId) {
+      const ids = onlyId != null ? [onlyId]
+        : game.players.filter(p => p.alive && p.id !== this.id).map(p => p.id);
+      let pNo = 1;
+      ids.forEach(id => { pNo *= (1 - this.estimateOpponentHas(game, id, character)); });
+      return 1 - pNo;
+    }
+
+    // 詐唬（宣稱沒有的角色）被抓機率：對手越多、我牌越少（宣稱越誇張）越危險；擅詐者較不易露餡
+    _bluffRisk(game) {
+      const me = game.players[this.id];
+      const n = game.players.filter(p => p.alive && p.id !== this.id).length;
+      let pc = clamp(0.11 * n + (me.cards.length === 1 ? 0.10 : 0), 0.05, 0.78);
+      pc *= (1 - this.deceit * 0.4);
+      return clamp(pc, 0.02, 0.85);
+    }
+
+    // 行動的期望價值評估（深思的核心）：含經濟/影響力收益、被質疑/反制風險、性格權重。
+    // 單位約以「金幣當量」計；一張影響力 ≈ 7。深思者據此挑出高 EV 手，直覺者噪音大常憑本能。
+    evalAction(game, a) {
+      if (!a) return -Infinity;
+      const me = game.players[this.id];
+      const INF = 7, GAINC = 0.9, COSTC = 0.7;
+      const tgt = a.targetId != null ? game.players[a.targetId] : null;
+      const has = r => holdsRole(me.cards, r);
+      const riskTol = 1 - this.nerve * 0.35;                 // 膽識高 → 風險罰則打折
+      const pc = this._bluffRisk(game) * riskTol;
+      const grudgeB = (tgt && this.grudge[tgt.id]) ? Math.min(3, this.grudge[tgt.id]) * this.vengeance * 0.6 : 0;
+      switch (a.type) {
+        case 'income': return 1 * GAINC + 0.2;               // 穩、無風險
+        case 'foreign_aid': {
+          const pB = Math.max(this.dukeBlockThreat(game), 0.6 * this._pAnyHas(game, 'Duke'));
+          return 2 * GAINC * (1 - pB);
+        }
+        case 'tax':
+          if (has('Duke')) return 3 * GAINC + 0.4;           // 真公爵，被質疑反害對方
+          return 3 * GAINC * (1 - pc) - pc * INF * riskTol;  // 吹牛課稅
+        case 'steal': {
+          if (!tgt) return -1;
+          const amt = Math.min(2, tgt.coins);
+          const pB = 0.7 * (1 - (1 - this.estimateOpponentHas(game, tgt.id, 'Captain')) *
+                                 (1 - this.estimateOpponentHas(game, tgt.id, 'Ambassador')));
+          const base = amt * GAINC * (1 - pB) + grudgeB;
+          if (has('Captain')) return base + 0.3;
+          return base * (1 - pc) - pc * INF * riskTol;
+        }
+        case 'assassinate': {
+          if (!tgt) return -1;
+          const killV = INF * (tgt.cards.length === 1 ? 1.35 : 1.0) * (1 + this.ambition * 0.25) + grudgeB * 1.5;
+          const pB = 0.8 * this.estimateOpponentHas(game, tgt.id, 'Contessa');
+          const ev = killV * (1 - pB) - 3 * COSTC;
+          if (has('Assassin')) return ev;
+          return ev * (1 - pc) - pc * INF * riskTol;          // 吹牛暗殺被質疑掉一張
+        }
+        case 'exchange': {
+          const weak = !has('Duke') && !has('Contessa') && !has('Assassin');
+          const v = (weak ? 1.8 : 0.8) + (me.cards.length === 1 ? 0.5 : 0);
+          if (has('Ambassador')) return v;
+          return v * (1 - pc) - pc * INF * riskTol;
+        }
+        case 'coup': {
+          if (!tgt) return -1;
+          const killV = INF * (tgt.cards.length === 1 ? 1.4 : 1.0) * (1 + this.ambition * 0.3) + grudgeB * 1.5;
+          return killV - 7 * COSTC + Math.max(0, me.coins - 7) * 0.6; // 不可擋/不可質疑；囤太多金幣→催促動手
+        }
+      }
+      return 0;
+    }
+
+    // 主決策：深思＝真的算更多。預算(budget)由 thinkTime 依思考深度/局面難度設定——
+    // 想越久 budget 越大 → 評估越多候選、噪音越小 → 決策品質越高（直覺型則少算、憑本能）。
+    chooseAction(game) {
+      const me = game.players[this.id];
+      const tgt = this.pickTarget(game);
+      this.probing = false;
+      if (!tgt) { this.focusId = null; return { type: 'income' }; }
+      if (me.coins >= 10) { this.focusId = tgt.id; return { type: 'coup', targetId: tgt.id }; } // 強制
+
+      const budget = this._deliberation || Math.round(2 + this.depth * 7);
+      this._deliberation = 0; // 用完歸零（下次 thinkTime 再設）
+
+      // 候選池：多次取樣本能手（隨機/吹牛/性格） + 列舉理性候選
+      const pool = [];
+      const samples = clamp(Math.round(budget * 0.6), 1, 6);
+      for (let i = 0; i < samples; i++) pool.push(this._basePolicy(game));
+      this._candidates(game).forEach(a => pool.push(a));
+
+      // 直覺/低預算：只認真看少數幾個（容易就跟著第一個本能走、偶爾漏掉好棋）
+      const considered = budget <= 3 ? pool.slice(0, 3) : pool;
+      const noise = (1 - this.depth) * 3.5;        // 思考越深 → 評估噪音越小、越能挑出最佳
+      let best = null, bestV = -Infinity;
+      considered.forEach(a => {
+        const v = this.evalAction(game, a) + (Math.random() * 2 - 1) * noise;
+        if (v > bestV) { bestV = v; best = a; }
+      });
+      best = best || { type: 'income' };
+
+      // probing 只有最終確為 foreign_aid 時才保留（本能取樣時可能設過）
+      if (best.type !== 'foreign_aid') this.probing = false;
+      // 策略規劃：鎖定目標跨回合（思考/計謀型）
+      if (best.targetId != null) this.focusId = best.targetId;
+      return best;
     }
   }
 
