@@ -587,16 +587,19 @@
           this.notifyOutcome({ type: 'steal', actorId: actor.id, targetId: target.id, blocked: false });
           break;
         }
-        case 'assassinate':
+        case 'assassinate': {
           this.log(`🗡️ 匕首劃破夜空，命中 ${target.name}`);
           this.notifyOutcome({ type: 'assassinate', actorId: actor.id, targetId: target.id, blocked: false });
+          const before = target.cards.length;
           await this.loseInfluence(target);
+          const killed = target.cards.length < before; // 匕首真的造成影響力損失才算「成功」
           // 亡國模式：持強盜者「成功」暗殺 → 強盜卡累積 1 金幣
-          if (this.mode === 'kingdom' && actor.cards.includes('Bandit')) {
+          if (killed && this.mode === 'kingdom' && actor.cards.includes('Bandit')) {
             this.banditCoins = (this.banditCoins || 0) + 1;
             this.notifyPrivate(actor.id, `🗡️ 強盜得手！你的強盜卡已累積 ${this.banditCoins} 金幣（被質疑攤牌時收取）`);
           }
           break;
+        }
         case 'exchange':
           await this.doExchange(actor);
           break;

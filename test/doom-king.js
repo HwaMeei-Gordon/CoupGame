@@ -62,7 +62,7 @@ ok(holdsRole(['Captain'], 'Duke') === false, 'holdsRole：沒公爵就是沒有'
   ok(g.players[1].coins === 0, 'P1 被國王收 2 金幣（2→0）');
   ok(g.players[2].coins === 1, 'P1 的下家 P2 被收 1 金幣（2→1）');
   ok(g.players[0].coins === 8, 'P0 國王：起手2 +徵收3 +課稅3 = 8');
-  ok(!g.players[0].cards.includes('King'), '國王已洗回牌庫換新牌');
+  // 註：國王洗回後可能被隨機重抽回手上,屬合法隨機結果,故不檢查「不在手上」
 
   // ---- 4) 下家為國王本人 → 不徵收（2 人局：P1 的下家就是 P0/國王）----
   const g2 = new GameController([{ name: 'P0' }, { name: 'P1' }], {
@@ -106,7 +106,7 @@ ok(holdsRole(['Captain'], 'Duke') === false, 'holdsRole：沒公爵就是沒有'
   await gb.resolveAction({ type: 'assassinate', actorId: 0, targetId: 2 });
   ok(gb.banditCoins === 0, '強盜被質疑兌現後卡歸零');
   ok(gb.players[0].coins === coinsBefore - 3 + 2, 'P0 兌現得 2 金幣（扣暗殺3 + 兌現2）');
-  ok(!gb.players[0].cards.includes('Bandit'), '強盜已洗回牌庫');
+  // 註：強盜洗回後可能被隨機重抽回手上,屬合法隨機結果,故不檢查「不在手上」
 
   // ---- 6) 皇后：被質疑夫人反制 → 額外抽牌（手牌可達 3）----
   const gq = new GameController([{ name: 'P0' }, { name: 'P1' }], {
