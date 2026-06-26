@@ -136,6 +136,8 @@
     log(msg) { this.hooks.onLog(msg); }
     alive() { return this.players.filter(p => p.alive); }
     influence(p) { return p.cards.length; }
+    // 金幣硬上限 10：怎樣加都不超過 10（例：8 金幣課稅 +3 → 也只到 10）。回傳實際入袋數。
+    gain(p, amt) { const g = Math.max(0, Math.min(amt, 10 - p.coins)); p.coins += g; return g; }
 
     // 從 startId 之後，依回合順序回傳其他存活玩家 id
     aliveOrderFrom(startId) {
@@ -169,37 +171,17 @@
       this.hooks.onState();
     }
 
-    // AI 思考停頓：像真人長考，依該 AI 思考型態/深度/局面難度算出秒數，經 onThink
-    // 呈現可見倒數（真人不延遲）。kind: 'action'(主要決策) / 'react'(臨場反應)
-    async aiThink(playerId, kind, info) {
+    // AI 決策前：只計算本回合的「深思預算」讓 AI 夠聰明，但【不再長時間讀秒】——馬上決定。
+    // 全場節奏交給一般 pause（speed 設定）的短拍子，像原本一樣即時。
+    aiThink(playerId, kind, info) {
       const p = this.players[playerId];
       if (!p || p.isHuman) return;
       const a = this.agents[playerId];
-      if (a && typeof a.thinkTime === 'function') {
-        const ms = a.thinkTime(this, kind || 'action', info || {});
-        await this.hooks.onThink(playerId, ms, kind || 'action');
-      } else {
-        // 後備（無 thinkTime 的代理，如連線真人）：沿用既有節奏
-        const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
-        await this.hooks.pause(scale);
-      }
+      if (a && typeof a.thinkTime === 'function') a.thinkTime(this, kind || 'action', info || {});
     }
 
-    // 全桌一起「考慮要不要質疑」的同步思考窗（營造張力；取最深者的時間、設上限）
-    async tableThink(eligibleIds) {
-      const thinkers = (eligibleIds || []).filter(id => {
-        const p = this.players[id];
-        return p && p.alive && !p.isHuman;
-      });
-      if (!thinkers.length) return;
-      let ms = 0;
-      thinkers.forEach(id => {
-        const a = this.agents[id];
-        if (a && typeof a.thinkTime === 'function') ms = Math.max(ms, a.thinkTime(this, 'react', {}));
-      });
-      ms = Math.min(ms, 9000);
-      if (ms > 0) await this.hooks.onThink(-1, ms, 'table');
-    }
+    // 質疑/反制窗：不再額外停頓（已移除讀秒），馬上判定
+    tableThink() {}
 
     // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
     shuffleDeck() { for (let pass = 0; pass < 3; pass++) shuffle(this.deck); }
@@ -439,7 +421,7 @@
 
     // 👑 國王「強制徵收」：質疑者額外被收 2 金幣，質疑者的下家再被收 1 金幣（下家為國王本人則略過）
     async kingLevy(king, challenger) {
-      const t1 = Math.min(2, challenger.coins);
+      const t1 = Math.min(2, challenger.coins, 10 - king.coins); // 國王上限 10
       challenger.coins -= t1; king.coins += t1;
       this.log(`👑 國王【強制徵收】：${king.name} 向質疑者 ${challenger.name} 索取 ${t1} 金幣`);
       this.hooks.onState();
@@ -448,7 +430,7 @@
       const nextId = order.length ? order[0] : null;
       if (nextId != null && nextId !== king.id) {
         const nxt = this.players[nextId];
-        const t2 = Math.min(1, nxt.coins);
+        const t2 = Math.min(1, nxt.coins, 10 - king.coins); // 國王上限 10
         nxt.coins -= t2; king.coins += t2;
         this.log(`👑 國王續徵：${king.name} 再向其下家 ${nxt.name} 索取 ${t2} 金幣`);
         this.hooks.onState();
@@ -651,7 +633,7 @@
       this.record({ k: 'act', actor: action.actorId, type: action.type, target: action.targetId, claim: meta ? meta.character : null, hand: actor.cards.slice() });
 
       if (action.type === 'income') {
-        actor.coins += 1;
+        this.gain(actor, 1); // 上限 10
         this.log(`💰 ${actor.name} 取一份微薄稅收 +1（共 ${actor.coins}）`);
         this.hooks.onState();
         return;
@@ -673,7 +655,7 @@
         await this.hooks.pause();
         const blocked = await this.runBlock(action);
         if (!blocked) {
-          actor.coins += 2;
+          this.gain(actor, 2); // 上限 10
           this.log(`💰 援助悄然入袋 +2（共 ${actor.coins}）`);
         } else {
           this.log(`🚫 ${actor.name} 的外援被公爵之手截斷`);
@@ -700,7 +682,7 @@
       const cres = await this.runChallenge(actor.id, meta.character, challengeEligible);
       if (cres.challenged && cres.success) {
         if (action.type === 'assassinate') {
-          actor.coins += 3; // 行動作廢 → 退費
+          this.gain(actor, 3); // 退費（上限 10）
           this.log(`↩️ 暗殺隨謊言作廢，退回 3 金幣`);
         }
         this.hooks.onState();
@@ -721,11 +703,11 @@
       // 套用效果
       switch (action.type) {
         case 'tax':
-          actor.coins += 3;
+          this.gain(actor, 3); // 上限 10（8 + 3 → 也只到 10）
           this.log(`💰 ${actor.name} 課得賦稅 +3（共 ${actor.coins}）`);
           break;
         case 'steal': {
-          const amt = Math.min(2, target.coins);
+          const amt = Math.min(2, target.coins, 10 - actor.coins); // 偷取受上限 10 限制
           target.coins -= amt;
           actor.coins += amt;
           this.log(`💰 ${actor.name} 自 ${target.name} 攫走 ${amt} 金幣`);
@@ -788,7 +770,7 @@
         await this.hooks.pause();
         if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
 
-        await this.aiThink(actor.id, 'action'); // AI 依思考深度沉吟（真人即時）
+        this.aiThink(actor.id, 'action'); // 只設定深思預算（夠聰明），不讀秒——馬上決定
         if (this.cancelled) return null;
         let action = await this.agents[actor.id].chooseAction(this);
         if (this.cancelled) return null;

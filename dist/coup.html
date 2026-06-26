@@ -1008,6 +1008,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     log(msg) { this.hooks.onLog(msg); }
     alive() { return this.players.filter(p => p.alive); }
     influence(p) { return p.cards.length; }
+    // 金幣硬上限 10：怎樣加都不超過 10（例：8 金幣課稅 +3 → 也只到 10）。回傳實際入袋數。
+    gain(p, amt) { const g = Math.max(0, Math.min(amt, 10 - p.coins)); p.coins += g; return g; }
 
     // 從 startId 之後，依回合順序回傳其他存活玩家 id
     aliveOrderFrom(startId) {
@@ -1041,37 +1043,17 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.hooks.onState();
     }
 
-    // AI 思考停頓：像真人長考，依該 AI 思考型態/深度/局面難度算出秒數，經 onThink
-    // 呈現可見倒數（真人不延遲）。kind: 'action'(主要決策) / 'react'(臨場反應)
-    async aiThink(playerId, kind, info) {
+    // AI 決策前：只計算本回合的「深思預算」讓 AI 夠聰明，但【不再長時間讀秒】——馬上決定。
+    // 全場節奏交給一般 pause（speed 設定）的短拍子，像原本一樣即時。
+    aiThink(playerId, kind, info) {
       const p = this.players[playerId];
       if (!p || p.isHuman) return;
       const a = this.agents[playerId];
-      if (a && typeof a.thinkTime === 'function') {
-        const ms = a.thinkTime(this, kind || 'action', info || {});
-        await this.hooks.onThink(playerId, ms, kind || 'action');
-      } else {
-        // 後備（無 thinkTime 的代理，如連線真人）：沿用既有節奏
-        const scale = (a && typeof a.thinkScale === 'function') ? a.thinkScale(kind || 'action') : 1;
-        await this.hooks.pause(scale);
-      }
+      if (a && typeof a.thinkTime === 'function') a.thinkTime(this, kind || 'action', info || {});
     }
 
-    // 全桌一起「考慮要不要質疑」的同步思考窗（營造張力；取最深者的時間、設上限）
-    async tableThink(eligibleIds) {
-      const thinkers = (eligibleIds || []).filter(id => {
-        const p = this.players[id];
-        return p && p.alive && !p.isHuman;
-      });
-      if (!thinkers.length) return;
-      let ms = 0;
-      thinkers.forEach(id => {
-        const a = this.agents[id];
-        if (a && typeof a.thinkTime === 'function') ms = Math.max(ms, a.thinkTime(this, 'react', {}));
-      });
-      ms = Math.min(ms, 9000);
-      if (ms > 0) await this.hooks.onThink(-1, ms, 'table');
-    }
+    // 質疑/反制窗：不再額外停頓（已移除讀秒），馬上判定
+    tableThink() {}
 
     // 徹底洗牌：多趟 Fisher-Yates，把整個牌庫順序完全打亂
     shuffleDeck() { for (let pass = 0; pass < 3; pass++) shuffle(this.deck); }
@@ -1311,7 +1293,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
 
     // 👑 國王「強制徵收」：質疑者額外被收 2 金幣，質疑者的下家再被收 1 金幣（下家為國王本人則略過）
     async kingLevy(king, challenger) {
-      const t1 = Math.min(2, challenger.coins);
+      const t1 = Math.min(2, challenger.coins, 10 - king.coins); // 國王上限 10
       challenger.coins -= t1; king.coins += t1;
       this.log(`👑 國王【強制徵收】：${king.name} 向質疑者 ${challenger.name} 索取 ${t1} 金幣`);
       this.hooks.onState();
@@ -1320,7 +1302,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const nextId = order.length ? order[0] : null;
       if (nextId != null && nextId !== king.id) {
         const nxt = this.players[nextId];
-        const t2 = Math.min(1, nxt.coins);
+        const t2 = Math.min(1, nxt.coins, 10 - king.coins); // 國王上限 10
         nxt.coins -= t2; king.coins += t2;
         this.log(`👑 國王續徵：${king.name} 再向其下家 ${nxt.name} 索取 ${t2} 金幣`);
         this.hooks.onState();
@@ -1523,7 +1505,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.record({ k: 'act', actor: action.actorId, type: action.type, target: action.targetId, claim: meta ? meta.character : null, hand: actor.cards.slice() });
 
       if (action.type === 'income') {
-        actor.coins += 1;
+        this.gain(actor, 1); // 上限 10
         this.log(`💰 ${actor.name} 取一份微薄稅收 +1（共 ${actor.coins}）`);
         this.hooks.onState();
         return;
@@ -1545,7 +1527,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         await this.hooks.pause();
         const blocked = await this.runBlock(action);
         if (!blocked) {
-          actor.coins += 2;
+          this.gain(actor, 2); // 上限 10
           this.log(`💰 援助悄然入袋 +2（共 ${actor.coins}）`);
         } else {
           this.log(`🚫 ${actor.name} 的外援被公爵之手截斷`);
@@ -1572,7 +1554,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const cres = await this.runChallenge(actor.id, meta.character, challengeEligible);
       if (cres.challenged && cres.success) {
         if (action.type === 'assassinate') {
-          actor.coins += 3; // 行動作廢 → 退費
+          this.gain(actor, 3); // 退費（上限 10）
           this.log(`↩️ 暗殺隨謊言作廢，退回 3 金幣`);
         }
         this.hooks.onState();
@@ -1593,11 +1575,11 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       // 套用效果
       switch (action.type) {
         case 'tax':
-          actor.coins += 3;
+          this.gain(actor, 3); // 上限 10（8 + 3 → 也只到 10）
           this.log(`💰 ${actor.name} 課得賦稅 +3（共 ${actor.coins}）`);
           break;
         case 'steal': {
-          const amt = Math.min(2, target.coins);
+          const amt = Math.min(2, target.coins, 10 - actor.coins); // 偷取受上限 10 限制
           target.coins -= amt;
           actor.coins += amt;
           this.log(`💰 ${actor.name} 自 ${target.name} 攫走 ${amt} 金幣`);
@@ -1660,7 +1642,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         await this.hooks.pause();
         if (this.cancelled) return null; // 開新局：中止舊迴圈，避免兩局並行驅動 UI
 
-        await this.aiThink(actor.id, 'action'); // AI 依思考深度沉吟（真人即時）
+        this.aiThink(actor.id, 'action'); // 只設定深思預算（夠聰明），不讀秒——馬上決定
         if (this.cancelled) return null;
         let action = await this.agents[actor.id].chooseAction(this);
         if (this.cancelled) return null;
@@ -1853,41 +1835,14 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return clamp(base * (0.8 + Math.random() * 0.5), 0.3, 2.8);
     }
 
-    // 擬真思考時間（毫秒）：像真人決牌時的長考。約 7~30 秒，因人因局而異——
-    // 思考越深/局面越難 → 想越久；果斷者(高膽識/直覺型)偶爾「早想好了」秒答；
-    // 會吹牛者偶爾故意拖很久裝模作樣。思考時間長＝可能在深算，也可能在裝。
-    thinkTime(game, kind, info) {
-      const me = game.players[this.id];
-      const MIN = 7000, MAX = 30000;
-      // 本回合難度/重要性 hard：局面越關鍵，越值得（也越需要）多規劃
-      let hard;
+    // 決策前準備：不再讀秒——只設定本回合的「深思預算」，讓 AI 馬上就能下出夠聰明的一手。
+    // 技術(skill)一律在線：人人都全量評估候選、噪音小、看公開牌、質疑精準；風格才是差異。
+    thinkTime(game, kind) {
       if (kind === 'action') {
-        const opps = game.players.filter(p => p && p.alive && p.id !== this.id);
-        const maxOpp = opps.reduce((m, o) => Math.max(m, o.coins), 0);
-        hard = 0.26
-          + (me && me.coins >= 7 ? 0.20 : me && me.coins >= 6 ? 0.12 : 0) // 我能政變/接近 → 大抉擇
-          + (maxOpp >= 7 ? 0.16 : 0)                  // 有人能政變我 → 高風險，得想清楚
-          + (opps.length >= 3 ? 0.12 : 0)             // 目標多 → 更難挑
-          + (me && me.cards && me.cards.length === 1 ? 0.20 : 0) // 殘血，生死一線
-          + this.deceit * 0.12;                       // 會詐者要盤算要不要裝
-      } else { // react：質疑 / 反制
-        const sus = (info && info.suspicion) || 0;
-        hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
+        this._deliberation = Math.round(7 + this.skill * 5);          // ≈ 11~12 條候選，算很多
+        this._roundQuality = clamp(0.80 + this.skill * 0.18, 0.7, 1); // 噪音小 → 夠聰明
       }
-      hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
-      // 本回合「規劃量」quality = 型態傾向(depth) + 局勢必要性(hard)。
-      // 這一輪想越多 → 想越久 + 算越多候選 + 噪音越小（＝這一手越聰明）。逐回合而定。
-      let quality = clamp(this.depth * 0.42 + hard * 0.58, 0, 1);
-      // 果斷秒答：高膽識/淺思考型、且局面不難 → 這一輪「沒多想」靠直覺 → quality 壓低（那手較可能非最佳）
-      const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
-      let feign = false;
-      if (hard < 0.45 && Math.random() < decisive * 0.45) quality = Math.min(quality, 0.16 + Math.random() * 0.16);
-      else if (kind === 'action' && Math.random() < this.deceit * 0.16) feign = true; // 裝：時間長但沒真想
-      // 思考時間：規劃越多想越久；裝模作樣＝時間長但真實聰明度(quality)不變（長考未必真在想）
-      let t = MIN + (MAX - MIN) * (feign ? Math.max(quality, 0.85) : quality);
-      if (quality < 0.2 && !feign) t = 2400 + Math.random() * 3600; // 秒答的視覺
-      if (kind === 'action') { this._deliberation = Math.round(2 + quality * 10); this._roundQuality = quality; }
-      return Math.round(t);
+      return 0; // 已不用於讀秒
     }
 
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率

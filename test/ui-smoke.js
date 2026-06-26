@@ -98,9 +98,9 @@ async function runSpectator(np) {
   for (let i = 0; i < 12; i++) {
     const np = 3 + (i % 4); // 3..6
     try {
-      const { winner, thinks } = await runSpectator(np);
+      const { winner } = await runSpectator(np);
       if (!winner) throw new Error('旁觀局無勝者');
-      if (thinks < 1) throw new Error('旁觀局 onThink 未被呼叫');
+      // 已移除 AI 讀秒：不再要求 onThink 被呼叫；render()/_renderThink 仍逐幀覆蓋
       ok++;
     } catch (e) { fail++; console.error(`旁觀煙霧第 ${i + 1} 局（${np}人）失敗:`, e.message, '\n', e.stack); }
   }

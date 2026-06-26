@@ -160,41 +160,14 @@
       return clamp(base * (0.8 + Math.random() * 0.5), 0.3, 2.8);
     }
 
-    // 擬真思考時間（毫秒）：像真人決牌時的長考。約 7~30 秒，因人因局而異——
-    // 思考越深/局面越難 → 想越久；果斷者(高膽識/直覺型)偶爾「早想好了」秒答；
-    // 會吹牛者偶爾故意拖很久裝模作樣。思考時間長＝可能在深算，也可能在裝。
-    thinkTime(game, kind, info) {
-      const me = game.players[this.id];
-      const MIN = 7000, MAX = 30000;
-      // 本回合難度/重要性 hard：局面越關鍵，越值得（也越需要）多規劃
-      let hard;
+    // 決策前準備：不再讀秒——只設定本回合的「深思預算」，讓 AI 馬上就能下出夠聰明的一手。
+    // 技術(skill)一律在線：人人都全量評估候選、噪音小、看公開牌、質疑精準；風格才是差異。
+    thinkTime(game, kind) {
       if (kind === 'action') {
-        const opps = game.players.filter(p => p && p.alive && p.id !== this.id);
-        const maxOpp = opps.reduce((m, o) => Math.max(m, o.coins), 0);
-        hard = 0.26
-          + (me && me.coins >= 7 ? 0.20 : me && me.coins >= 6 ? 0.12 : 0) // 我能政變/接近 → 大抉擇
-          + (maxOpp >= 7 ? 0.16 : 0)                  // 有人能政變我 → 高風險，得想清楚
-          + (opps.length >= 3 ? 0.12 : 0)             // 目標多 → 更難挑
-          + (me && me.cards && me.cards.length === 1 ? 0.20 : 0) // 殘血，生死一線
-          + this.deceit * 0.12;                       // 會詐者要盤算要不要裝
-      } else { // react：質疑 / 反制
-        const sus = (info && info.suspicion) || 0;
-        hard = 0.28 + Math.min(0.4, sus * 0.3) + this.deceit * 0.1;
+        this._deliberation = Math.round(7 + this.skill * 5);          // ≈ 11~12 條候選，算很多
+        this._roundQuality = clamp(0.80 + this.skill * 0.18, 0.7, 1); // 噪音小 → 夠聰明
       }
-      hard = clamp(hard + (Math.random() * 2 - 1) * 0.15, 0.04, 1);
-      // 本回合「規劃量」quality = 型態傾向(depth) + 局勢必要性(hard)。
-      // 這一輪想越多 → 想越久 + 算越多候選 + 噪音越小（＝這一手越聰明）。逐回合而定。
-      let quality = clamp(this.depth * 0.42 + hard * 0.58, 0, 1);
-      // 果斷秒答：高膽識/淺思考型、且局面不難 → 這一輪「沒多想」靠直覺 → quality 壓低（那手較可能非最佳）
-      const decisive = this.nerve * 0.5 + (1 - this.depth) * 0.5;
-      let feign = false;
-      if (hard < 0.45 && Math.random() < decisive * 0.45) quality = Math.min(quality, 0.16 + Math.random() * 0.16);
-      else if (kind === 'action' && Math.random() < this.deceit * 0.16) feign = true; // 裝：時間長但沒真想
-      // 思考時間：規劃越多想越久；裝模作樣＝時間長但真實聰明度(quality)不變（長考未必真在想）
-      let t = MIN + (MAX - MIN) * (feign ? Math.max(quality, 0.85) : quality);
-      if (quality < 0.2 && !feign) t = 2400 + Math.random() * 3600; // 秒答的視覺
-      if (kind === 'action') { this._deliberation = Math.round(2 + quality * 10); this._roundQuality = quality; }
-      return Math.round(t);
+      return 0; // 已不用於讀秒
     }
 
     // 從本 AI 視角，推估某對手「至少持有一張 character」的機率
