@@ -169,6 +169,10 @@ body {
 .k-pip.on { background: linear-gradient(180deg, #e26a5a, #b53524); }
 .k-hand { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; margin-bottom: 10px; font-size: 13px; color: var(--ink); }
 .k-h { display: inline-block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; margin: 2px 4px 2px 0; font-weight: 700; }
+.k-intel { background: rgba(47,111,158,.10); border: 1px solid #7bc0ef; border-radius: 10px; padding: 7px 10px; margin-bottom: 10px; font-size: 12.5px; color: var(--ink); }
+.k-intel small { color: var(--muted); }
+.k-seen { display: inline-block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; margin: 2px 4px 2px 0; font-weight: 700; }
+.k-seen.gone { background: linear-gradient(180deg, #d9534f, #8a1f16); color: #ffe6df; border-color: #8a1f16; }
 .k-prompt { background: rgba(166,132,31,.10); border: 1px solid var(--gold); border-radius: 12px; padding: 11px 12px; margin-bottom: 10px; }
 .k-prompt-q { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
 .k-prompt-hint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }

@@ -192,6 +192,10 @@ body {
 .k-pip.on { background: linear-gradient(180deg, #e26a5a, #b53524); }
 .k-hand { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; margin-bottom: 10px; font-size: 13px; color: var(--ink); }
 .k-h { display: inline-block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px 8px; margin: 2px 4px 2px 0; font-weight: 700; }
+.k-intel { background: rgba(47,111,158,.10); border: 1px solid #7bc0ef; border-radius: 10px; padding: 7px 10px; margin-bottom: 10px; font-size: 12.5px; color: var(--ink); }
+.k-intel small { color: var(--muted); }
+.k-seen { display: inline-block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 7px; padding: 2px 7px; margin: 2px 4px 2px 0; font-weight: 700; }
+.k-seen.gone { background: linear-gradient(180deg, #d9534f, #8a1f16); color: #ffe6df; border-color: #8a1f16; }
 .k-prompt { background: rgba(166,132,31,.10); border: 1px solid var(--gold); border-radius: 12px; padding: 11px 12px; margin-bottom: 10px; }
 .k-prompt-q { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 6px; }
 .k-prompt-hint { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
@@ -3768,6 +3772,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       this.cancelled = false;
       this.agents = {};
       this.actions = []; // 公開行動史(供推理)：{ actor, declare, target, challenged, by, bluff }
+      this.revealed = {}; // 本洗牌週期內「被質疑攤開過」的牌(公開資訊；供算牌)：type -> 次數
     }
 
     team(f) { return f === 'traitor' ? 'traitor' : 'crown'; }
@@ -3786,7 +3791,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
     say(m) { this.hooks.onLog(m); }
 
     draw() {
-      if (!this.deck.length) { this.deck = shuffle(this.discard); this.discard = []; }
+      if (!this.deck.length) { this.deck = shuffle(this.discard); this.discard = []; this.revealed = {}; } // 洗牌→公開算牌資訊重置
       if (!this.deck.length) this.deck = shuffle(CARD_TYPES.concat(CARD_TYPES)); // 後備
       return this.deck.pop();
     }
@@ -3858,7 +3863,8 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       let cardIdx = dec.cardIdx;
       if (typeof cardIdx !== 'number' || cardIdx < 0 || cardIdx >= actor.hand.length) cardIdx = 0;
       const playedCard = actor.hand.splice(cardIdx, 1)[0];
-      const rec = { actor: actor.id, declare, target: target ? target.id : null, challenged: false };
+      const rec = { actor: actor.id, declare, target: target ? target.id : null, challenged: false,
+        wasBluff: (declare !== 'harvest' && playedCard !== declare) }; // 上帝視角紀錄(分析用;AI 不讀此欄)
 
       this.say(`🎴 ${actor.name} 蓋下一張牌，宣稱要【${ACT[declare].zh}】${target ? '（對象：' + target.name + '）' : ''}`);
       this.hooks.onState();
@@ -3880,6 +3886,7 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
           const ch = this.players[challengerId];
           const bluff = (playedCard !== declare);
           rec.challenged = true; rec.by = challengerId; rec.bluff = bluff;
+          if (playedCard) this.revealed[playedCard] = (this.revealed[playedCard] || 0) + 1; // 公開算牌資訊
           this.say(`❓ ${ch.name} 質疑 ${actor.name} 的【${ACT[declare].zh}】！攤牌：${playedCard ? '【' + ACT[playedCard].zh + '】' : '（萬用）'}`);
           this.hooks.onState(); await this.hooks.pause();
           if (bluff) {
@@ -4020,12 +4027,18 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       const me = game.players[this.id];
       const info = this.read(game);
       const f = me.faction;
-      const bluff = (type) => !this.have(me, type) && Math.random() < (0.18 + this.guile * 0.5);
+      // 吹牛：避開已攤光的牌(必被算牌抓)；越少公開、越敢騙
+      const bluff = (type) => {
+        if (this.have(me, type)) return false;
+        const rev = game.revealed[type] || 0;
+        if (rev >= 2) return false;                 // 兩張都攤過 → 騙必被識破
+        return Math.random() < (0.20 + this.guile * 0.55) * (rev === 0 ? 1 : 0.5);
+      };
       const canDo = (type) => this.have(me, type) || bluff(type);
 
       // 王子：忠臣已死 → 多半公開拿 +2/+2/+2 翻盤（已無隱藏價值，明著打也得拚）
       if (f === 'prince' && !isExtra && game.canReveal(me)) {
-        if (me.morale <= 6 || me.coins < 3 || me.army < 3 || Math.random() < 0.75) return { reveal: true };
+        if (me.morale <= 4 || (me.morale <= 6 && Math.random() < 0.5) || me.army < 2) return { reveal: true };
       }
 
       // 自保：民心危急
@@ -4069,22 +4082,36 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
       return this.decl(me, 'harvest');
     }
 
-    decideChallenge(game, actorId, declare, targetId) {
+    // 算牌：此種牌「還可能在別人手上/牌庫」的張數（2 - 我手上 - 已公開攤過）
+    remaining(game, type) {
       const me = game.players[this.id];
+      const inHand = me.hand.filter(c => c === type).length;
+      return Math.max(0, 2 - inHand - (game.revealed[type] || 0));
+    }
+    // 宣稱者「在吹牛」的機率：多數宣告是誠實的(低先驗)，再由「算牌」上修——
+    // 此牌兩張都已公開(剩0)→必假；剩越少→越可疑。
+    pBluff(game, claimantId, type) {
+      const rem = this.remaining(game, type);
+      if (rem <= 0) return 1;                       // 場面上已無此牌 → 必假(白賺)
+      return clamp(0.22 + (2 - rem) * 0.16, 0.1, 0.85); // 剩2≈0.22、剩1≈0.38
+    }
+
+    // 質疑＝「嚇阻吹牛的威懾」×「算牌的證據」：
+    //  · 算死(剩0)→必拆(穩賺)；剩1→更可疑、加碼想拆。
+    //  · 行動越威脅我/隊友→越想拆(即使會猜錯，也得嚇阻對方亂吹牛)。
+    decideChallenge(game, actorId, declare, targetId) {
       if (declare === 'harvest') return false;
-      // 此行動對我/我隊有多糟
-      let harm = 0;
-      if ((declare === 'slander' || declare === 'campaign') && targetId === this.id) harm += 2;
-      // 攻擊「我認為是隊友」的也想擋(但隊友未知；用「不是最兇者」當粗略隊友)
-      const info = this.read(game);
-      const aggro = this.suspectMostAggressive(game, info);
-      if ((declare === 'slander' || declare === 'campaign') && targetId != null && (!aggro || targetId !== aggro.id) && targetId !== this.id) harm += 0.6;
-      // 強力增益(課稅/出征/換牌)也略想壓
-      if (declare === 'tax' || declare === 'campaign') harm += 0.3;
-      if (harm <= 0) return false;
-      // 質疑有風險(-2/-2)：harm 越大、我越多疑(suspicionT 低=愛質疑)才出手
-      const p = clamp(harm * 0.22 + (0.5 - this.suspicionT) * 0.3, 0, 0.8);
-      return Math.random() < p;
+      const rem = this.remaining(game, declare);
+      if (rem <= 0) return true;                    // 算牌算死 → 必拆
+      let threat = 0;
+      if ((declare === 'slander' || declare === 'campaign') && targetId === this.id) threat += 1.6;
+      const info = this.read(game); const aggro = this.suspectMostAggressive(game, info);
+      if ((declare === 'slander' || declare === 'campaign') && targetId != null && targetId !== this.id && (!aggro || targetId !== aggro.id)) threat += 0.5;
+      if (declare === 'tax' || declare === 'campaign' || declare === 'exchange') threat += 0.3;
+      if (threat <= 0 && rem >= 2) return false;    // 與我無關又無證據 → 不浪費
+      let p = threat * 0.22 + (0.5 - this.suspicionT) * 0.28; // 威懾傾向
+      if (rem === 1) p += 0.22;                      // 算牌證據：只剩1張更可疑
+      return Math.random() < clamp(p, 0, 0.85);
     }
   }
 
@@ -4200,10 +4227,15 @@ body.minimal .me-inner { border-color: rgba(134,169,255,.5); }
         }
       }
       const handStr = me.hand.length ? me.hand.map(c => `<span class="k-h">${ICON[c]} ${ACT[c].zh}</span>`).join('') : '（無）';
+      // 情報：被質疑攤開過的牌(算牌用)。攤滿 2 張＝該牌已絕→再有人宣稱必是吹牛！
+      const intel = CARD_TYPES.filter(t => (g.revealed[t] || 0) > 0)
+        .map(t => `<span class="k-seen ${(g.revealed[t] || 0) >= 2 ? 'gone' : ''}">${ICON[t]}${ACT[t].zh}×${g.revealed[t]}${(g.revealed[t] || 0) >= 2 ? '已絕' : ''}</span>`).join('');
+      const intelStr = intel ? `<div class="k-intel">🔎 已攤開（算牌）：${intel}　<small>※「已絕」者再被宣稱＝必假，質疑穩贏</small></div>` : '';
       return `<div class="k-head"><span>⚔️ 王國暗戰</span><button class="k-quit">✕ 離開</button></div>
         <div class="k-players">${g.players.map(p => this.playerCard(p, me)).join('')}</div>
         <div class="k-you">${GOAL[me.faction]}${me.alive ? '' : '　（你已陣亡，旁觀至終局）'}</div>
         <div class="k-hand">你的手牌：${handStr}</div>
+        ${intelStr}
         ${panel}
         <div class="k-log">${this.logs.map((m, i) => `<div class="k-log-line ${i === 0 ? 'new' : ''}">${m}</div>`).join('')}</div>`;
     },
