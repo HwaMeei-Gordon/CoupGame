@@ -51,7 +51,7 @@
       }, hooks || {});
       const n = configs.length;
       const fac = shuffle(factionSet(n).slice());
-      const startMorale = opts.startMorale != null ? opts.startMorale : 6;
+      const startMorale = opts.startMorale != null ? opts.startMorale : 4;
       const startCoins = opts.startCoins != null ? opts.startCoins : 2;
       const startArmy = opts.startArmy != null ? opts.startArmy : 0;
       this.deck = shuffle(CARD_TYPES.concat(CARD_TYPES)); // 各2張 = 14
@@ -67,6 +67,7 @@
       this.agents = {};
       this.actions = []; // 公開行動史(供推理)：{ actor, declare, target, challenged, by, bluff }
       this.revealed = {}; // 本洗牌週期內「被質疑攤開過」的牌(公開資訊；供算牌)：type -> 次數
+      this.coronationPending = null; // 逼近加冕的王子 id(達民心10、待撐過一輪)；公開資訊＝此刻已曝光為王子
     }
 
     team(f) { return f === 'traitor' ? 'traitor' : 'crown'; }
@@ -142,9 +143,17 @@
 
     checkWin() {
       const prince = this.prince();
-      if (!prince || !prince.alive) return this.end('traitor', '王子身殞，王國易主 —— 叛徒得逞');
+      if (!prince || !prince.alive) { this.coronationPending = null; return this.end('traitor', '王子身殞，王國易主 —— 叛徒得逞'); }
       if (this.traitorsAlive().length === 0) return this.end('crown', '叛徒盡除，朝堂清明 —— 王室安定');
       if (this.alivePlayers().length <= 1) return this.end(this.team(this.alivePlayers()[0] ? this.alivePlayers()[0].faction : 'prince'), '塵埃落定');
+      // 加冕倒數：王子民心抵頂 → 公開逼近登基，眾人僅剩一輪可反制(造謠打落民心)；撐到下一回合開始仍滿民心才加冕
+      if (prince.morale >= CAP && this.coronationPending !== prince.id) {
+        this.coronationPending = prince.id;
+        this.say(`📯 ${prince.name} 民心鼎盛、眾望所歸 —— 逼近加冕！只要撐到下一回合仍保有滿民心便將登基，此刻僅剩一輪可阻止！`);
+      } else if (prince.morale < CAP && this.coronationPending === prince.id) {
+        this.coronationPending = null;
+        this.say(`📉 ${prince.name} 民心回落，加冕受阻……`);
+      }
       return false;
     }
     end(team, reason) { this.over = true; this.winTeam = team; this.winReason = reason; return true; }
@@ -237,6 +246,12 @@
         if (++safety > 4000) { this.end('crown', '時局僵持'); break; }
         const actor = this.players[this.current];
         if (!actor.alive) { this.advance(); continue; }
+        // 加冕：王子撐過一輪反制，回合開始時仍保有滿民心 → 王室登基
+        if (actor.faction === 'prince' && actor.morale >= CAP) {
+          this.say(`👑 ${actor.name} 在萬民擁戴中加冕為王 —— 王室登基！`);
+          this.end('crown', '民心鼎盛，王子加冕 —— 王室登基');
+          break;
+        }
         this.hooks.onTurn(actor.id);
         await this.hooks.pause();
         if (this.cancelled) return null;
@@ -299,6 +314,25 @@
       game.players.forEach(p => { if (p.id === this.id || !p.alive) return; if (pred && !pred(p)) return; if (p.morale < m) { m = p.morale; best = p; } });
       return best;
     }
+    // 民心最高的對手（衝加冕的疑似王子）
+    highestMorale(game) {
+      let best = null, m = -1;
+      game.players.forEach(p => { if (p.id === this.id || !p.alive) return; if (p.morale > m) { m = p.morale; best = p; } });
+      return best;
+    }
+    // 疑似王子：王子的破綻是「養民心卻從不主動攻擊」——民心高 × 攻擊性低者最可疑。
+    // 已公開/逼近加冕者直接鎖定；否則綜合 民心 與「攻擊次數(造謠/出征)」評分。
+    princeSuspect(game, info) {
+      const known = this.knownPrince(game); if (known) return known;
+      let best = null, s = -Infinity;
+      game.players.forEach(p => {
+        if (p.id === this.id || !p.alive) return; // 連隊友都不知道，只能憑公開行為推斷(不看 faction)
+        const aggr = info.aggrBy[p.id] || 0;
+        const sc = p.morale * 1.0 - aggr * 1.6 + (p.army === 0 ? 0.5 : 0); // 養民心、不攻擊、少養兵 → 像王子
+        if (sc > s) { s = sc; best = p; }
+      });
+      return best;
+    }
 
     have(me, type) { return me.hand.indexOf(type) >= 0; }
     cardIdxFor(me, type) { const i = me.hand.indexOf(type); return i >= 0 ? i : 0; }
@@ -315,7 +349,13 @@
       return pool.slice().sort((a, b) => (rank[b] || 0) - (rank[a] || 0)).slice(0, 2);
     }
 
-    knownPrince(game) { return game.players.find(p => p.alive && p.faction === 'prince' && p.revealed); }
+    knownPrince(game) {
+      const revealed = game.players.find(p => p.alive && p.faction === 'prince' && p.revealed);
+      if (revealed) return revealed;
+      // 逼近加冕＝已曝光為王子(公開資訊)
+      if (game.coronationPending != null) { const p = game.players[game.coronationPending]; if (p && p.alive) return p; }
+      return null;
+    }
 
     chooseAction(game, isExtra) {
       const me = game.players[this.id];
@@ -335,6 +375,15 @@
         if (me.morale <= 4 || (me.morale <= 6 && Math.random() < 0.5) || me.army < 2) return { reveal: true };
       }
 
+      // 阻止加冕：有王子逼近登基(已曝光) → 全力反制(造謠打落民心；可斬則斬)
+      if (f === 'traitor' && game.coronationPending != null && game.coronationPending !== me.id) {
+        const king = game.players[game.coronationPending];
+        if (king && king.alive) {
+          if (king.army < 3 && me.army >= 3 && canDo('campaign')) return this.decl(me, 'campaign', king.id); // 破城斬王＝直接獲勝
+          if (me.coins >= 2 && canDo('slander')) return this.decl(me, 'slander', king.id);                  // 造謠 −2 打落滿民心
+        }
+      }
+
       // 自保：民心危急
       if (me.morale <= 2) {
         if (me.coins >= 2 && canDo('build')) return this.decl(me, 'build');
@@ -344,9 +393,8 @@
       // 鎖定獵物
       let prey = null;
       if (f === 'traitor') {
-        prey = this.knownPrince(game) ||
-          this.weakest(game, p => { const a = this.suspectMostAggressive(game, info); return !a || p.id !== a.id; }) ||
-          this.weakest(game);
+        // 叛徒：憑「養民心卻不攻擊」的破綻鎖定疑似王子；已公開/逼近加冕者直接鎖定
+        prey = this.princeSuspect(game, info) || this.highestMorale(game);
       } else {
         prey = this.suspectMostAggressive(game, info) || this.weakest(game);
       }
@@ -355,13 +403,30 @@
         if (prey.morale <= 2 && me.coins >= 2 && canDo('slander')) return this.decl(me, 'slander', prey.id);
         if (prey.army < 3 && me.army >= 3 && canDo('campaign')) return this.decl(me, 'campaign', prey.id);
       }
+      // 叛徒：對疑似王子(民心高、逼近加冕)造謠——既擋登基又逼死
+      if (f === 'traitor' && prey && prey.morale >= 6 && me.coins >= 2 && canDo('slander')) return this.decl(me, 'slander', prey.id);
 
-      // ---- 王子：以「活下去」為要——民心顧高、薄有護軍，少用掉民心的稅/兵 ----
+      // ---- 王子：高民心既是防禦也是勝利條件，但抵 10 會曝光、給敵人一輪反制 ----
+      // 「安全衝刺」＝沒有對手有 ≥2 金幣可造謠(也無 ≥3 軍可破城) → 撐得過那一輪，放心登基。
       if (f === 'prince') {
-        if (me.morale < CAP - 2 && me.coins >= 2 && this.have(me, 'build')) return this.decl(me, 'build');
-        if (me.morale < CAP - 1) return this.decl(me, 'harvest'); // 收成穩穩回血+錢，且不可被質疑
-        if (me.army < 3 && me.coins >= 1 && me.morale >= 6 && this.have(me, 'conscript')) return this.decl(me, 'conscript');
-        if (prey && me.coins >= 2 && this.have(me, 'slander') && (info.aggrBy[prey.id] || 0) >= 1) return this.decl(me, 'slander', prey.id);
+        const slanderers = game.players.filter(p => p.alive && p.id !== me.id && p.coins >= 2).length;
+        const breakers = game.players.filter(p => p.alive && p.id !== me.id && p.army >= 3 && me.army < 3).length;
+        const opp = game.alivePlayers().length - 1;
+        // 安全衝刺：沒人造得了謠、破得了城，且局勢已收束(對手 ≤2)——避免太早無償加冕
+        const safePush = slanderers === 0 && breakers === 0 && opp <= 2;
+        if (me.morale <= 3) { // 危急自保
+          if (me.coins >= 2 && canDo('build')) return this.decl(me, 'build');
+          if (me.army < 2 && me.coins >= 1 && this.have(me, 'conscript')) return this.decl(me, 'conscript');
+          return this.decl(me, 'harvest');
+        }
+        if (safePush) { // 沒人擋得了 → 一路衝上 10 加冕
+          if (me.coins >= 2 && canDo('build')) return this.decl(me, 'build');
+          return this.decl(me, 'harvest');
+        }
+        // 不安全：低調混入人群(別當民心最高的顯眼靶)，只攢一點護身的軍與錢，伺機等安全窗口登基
+        if (me.morale < 6 && me.coins >= 2 && this.have(me, 'build')) return this.decl(me, 'build');
+        if (me.army < 2 && me.coins >= 1 && this.have(me, 'conscript')) return this.decl(me, 'conscript');
+        if (me.coins < 3 && canDo('tax')) return this.decl(me, 'tax');
         return this.decl(me, 'harvest');
       }
 
@@ -417,9 +482,9 @@
     slander: '金幣−2，對方民心−2（到0→起義）', exchange: '抽2選2，並可再出一張'
   };
   const GOAL = {
-    prince: '👑 你是【王子】——活下去並讓兩名叛徒都死；忠臣死後可「公開身分」拿 +2/+2/+2。',
+    prince: '👑 你是【王子】——活下去！讓兩名叛徒都死，或將民心衝上 10 並撐過一輪即「加冕登基」獲勝（但抵 10 會曝光，給敵人一輪造謠反制）；忠臣死後可「公開身分」拿 +2/+2/+2。',
     loyalist: '🛡 你是【忠臣】——揪出並剷除兩名叛徒、護住王子（但你也不知他是誰）。',
-    traitor: '🗡 你是【叛徒】——找出王子並殺了他（或讓他民心歸0）。隊友是誰你也不知道。'
+    traitor: '🗡 你是【叛徒】——找出王子並殺了他（或讓他民心歸0）；他若逼近加冕，務必造謠打落其民心。隊友是誰你也不知道。'
   };
   const NAME_POOL = ['老謀子', '鐵衛', '影后', '賭徒', '修士', '暴君', '狐', '雛鳥', '血手', '屠夫'];
   const RANK = { exchange: 5, slander: 5, campaign: 4, build: 4, tax: 3, conscript: 3, support: 1 };
@@ -525,10 +590,14 @@
       const intel = CARD_TYPES.filter(t => (g.revealed[t] || 0) > 0)
         .map(t => `<span class="k-seen ${(g.revealed[t] || 0) >= 2 ? 'gone' : ''}">${ICON[t]}${ACT[t].zh}×${g.revealed[t]}${(g.revealed[t] || 0) >= 2 ? '已絕' : ''}</span>`).join('');
       const intelStr = intel ? `<div class="k-intel">🔎 已攤開（算牌）：${intel}　<small>※「已絕」者再被宣稱＝必假，質疑穩贏</small></div>` : '';
+      // 加冕倒數橫幅：有王子逼近登基(已曝光)，眾人僅剩一輪可造謠打落其民心
+      const kp = g.coronationPending != null ? g.players[g.coronationPending] : null;
+      const corStr = (kp && kp.alive) ? `<div class="k-coronation">📯 <b>${kp.name}</b> 民心鼎盛、逼近加冕！撐到其下一回合開始仍滿民心便登基 —— 此刻僅剩一輪可用<b>造謠</b>打落其民心阻止！</div>` : '';
       return `<div class="k-head"><span>⚔️ 王國暗戰</span><button class="k-quit">✕ 離開</button></div>
         <div class="k-players">${g.players.map(p => this.playerCard(p, me)).join('')}</div>
         <div class="k-you">${GOAL[me.faction]}${me.alive ? '' : '　（你已陣亡，旁觀至終局）'}</div>
         <div class="k-hand">你的手牌：${handStr}</div>
+        ${corStr}
         ${intelStr}
         ${panel}
         <div class="k-log">${this.logs.map((m, i) => `<div class="k-log-line ${i === 0 ? 'new' : ''}">${m}</div>`).join('')}</div>`;
