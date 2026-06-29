@@ -68,6 +68,7 @@
       this.actions = []; // 公開行動史(供推理)：{ actor, declare, target, challenged, by, bluff }
       this.revealed = {}; // 本洗牌週期內「被質疑攤開過」的牌(公開資訊；供算牌)：type -> 次數
       this.coronationPending = null; // 逼近加冕的王子 id(達民心10、待撐過一輪)；公開資訊＝此刻已曝光為王子
+      this.declaration = null; // 桌面當前這手牌：{ actorId, declare, targetId, revealed, challengerId, bluff }（供牌桌中央呈現）
     }
 
     team(f) { return f === 'traitor' ? 'traitor' : 'crown'; }
@@ -169,6 +170,7 @@
       const rec = { actor: actor.id, declare, target: target ? target.id : null, challenged: false,
         wasBluff: (declare !== 'harvest' && playedCard !== declare) }; // 上帝視角紀錄(分析用;AI 不讀此欄)
 
+      this.declaration = { actorId: actor.id, declare, targetId: target ? target.id : null, revealed: null, challengerId: null, bluff: null };
       this.say(`🎴 ${actor.name} 蓋下一張牌，宣稱要【${ACT[declare].zh}】${target ? '（對象：' + target.name + '）' : ''}`);
       this.hooks.onState();
       await this.hooks.pause();
@@ -190,6 +192,7 @@
           const bluff = (playedCard !== declare);
           rec.challenged = true; rec.by = challengerId; rec.bluff = bluff;
           if (playedCard) this.revealed[playedCard] = (this.revealed[playedCard] || 0) + 1; // 公開算牌資訊
+          if (this.declaration) { this.declaration.revealed = playedCard || 'harvest'; this.declaration.challengerId = challengerId; this.declaration.bluff = bluff; }
           this.say(`❓ ${ch.name} 質疑 ${actor.name} 的【${ACT[declare].zh}】！攤牌：${playedCard ? '【' + ACT[playedCard].zh + '】' : '（萬用）'}`);
           this.hooks.onState(); await this.hooks.pause();
           if (bluff) {
@@ -488,6 +491,8 @@
   };
   const NAME_POOL = ['老謀子', '鐵衛', '影后', '賭徒', '修士', '暴君', '狐', '雛鳥', '血手', '屠夫'];
   const RANK = { exchange: 5, slander: 5, campaign: 4, build: 4, tax: 3, conscript: 3, support: 1 };
+  const FCREST = { prince: '👑', loyalist: '🛡️', traitor: '🗡️', hidden: '🎭' };
+  const AVATAR = ['🦊', '🐺', '🦅', '🐍', '🦉', '🦁', '🐗', '🐅', '🦂', '🐦‍⬛']; // 各座位的角色頭像(僅裝飾)
 
   const KUI = {
     game: null, speed: 700, turn: 0, logs: [], mode: null, _resolve: null, _ctx: null, _pendingAction: null, _keepSel: [],
@@ -539,68 +544,132 @@
 
     moraleBar(m) { let s = ''; for (let i = 1; i <= 10; i++) s += `<span class="k-pip ${i <= m ? 'on' : ''}"></span>`; return s; },
 
-    playerCard(p, me) {
-      const isTurn = this.game.current === p.id && p.alive && !this.game.over;
-      const show = p.id === me.id || !p.alive || p.revealed || this.game.over;
+    // 座位環繞橢圓：人類(id0)固定在底，其餘依回合序順時針分佈
+    seatPos(idx, n) {
+      const ang = (90 + idx * 360 / n) * Math.PI / 180;
+      return { x: 50 + 41 * Math.cos(ang), y: 50 + 41 * Math.sin(ang) };
+    },
+
+    seatHTML(p, me) {
+      const g = this.game;
+      const me0 = p.id === me.id;
+      const isTurn = g.current === p.id && p.alive && !g.over;
+      const show = me0 || !p.alive || p.revealed || g.over;
+      const facClass = show ? p.faction : 'hidden';
       const fz = show ? FACTION_ZH[p.faction] : '？';
-      return `<div class="k-pl ${!p.alive ? 'dead' : ''} ${isTurn ? 'turn' : ''} ${p.id === me.id ? 'me' : ''}">
-        <div class="k-pl-top"><b>${p.name}</b><span class="k-fac ${show ? p.faction : 'hidden'}">${!p.alive ? '☠ ' : ''}${p.revealed && p.alive ? '👑公開·' : ''}${fz}</span></div>
-        <div class="k-mini"><span class="k-mini-lab">民心</span><span class="k-pips">${this.moraleBar(p.morale)}</span></div>
-        <div class="k-pl-res">🪙 ${p.coins}　⚔️ ${p.army}　🎴 ${p.hand.length}</div>
+      const crest = !p.alive ? '☠️' : FCREST[show ? p.faction : 'hidden'];
+      const king = g.coronationPending === p.id && p.alive;
+      const pos = this.seatPos(p.id, g.players.length);
+      const targetable = this.mode === 'action' && this._pendingAction && ACT[this._pendingAction].targeted && p.alive && !me0;
+      const morPct = Math.max(0, Math.min(100, p.morale * 10));
+      const backs = (p.alive && !me0) ? Array.from({ length: Math.min(p.hand.length, 3) }, (_, i) => `<span class="k-back" style="--i:${i}"></span>`).join('') : '';
+      return `<div class="k-seat ${me0 ? 'me' : ''} ${isTurn ? 'turn' : ''} ${!p.alive ? 'dead' : ''} ${king ? 'king' : ''} ${targetable ? 'targetable' : ''}"
+        style="left:${pos.x}%;top:${pos.y}%" ${targetable ? `data-tgt="${p.id}"` : ''}>
+        ${king ? '<div class="k-halo"></div>' : ''}
+        <div class="k-backs">${backs}</div>
+        <div class="k-ava ${facClass}"><span class="k-ava-face">${AVATAR[p.id % AVATAR.length]}</span><span class="k-crest">${crest}</span></div>
+        <div class="k-seat-name">${me0 ? '你' : p.name}</div>
+        <div class="k-seat-fac ${facClass}">${!p.alive ? '☠ ' : ''}${p.revealed && p.alive ? '公開·' : ''}${fz}</div>
+        <div class="k-mor"><span class="k-mor-fill" style="width:${morPct}%"></span><span class="k-mor-n">${p.morale}</span></div>
+        <div class="k-seat-res"><span>🪙${p.coins}</span><span>⚔️${p.army}</span><span>🎴${p.hand.length}</span></div>
       </div>`;
+    },
+
+    centerHTML() {
+      const g = this.game;
+      const d = g.declaration;
+      let stage;
+      if (d) {
+        const actor = g.players[d.actorId];
+        const tgt = d.targetId != null ? g.players[d.targetId] : null;
+        if (d.revealed) {
+          const isHarvest = d.revealed === 'harvest';
+          const cardZh = isHarvest ? '萬用' : ACT[d.revealed].zh;
+          stage = `<div class="k-decl ${d.bluff ? 'bust' : 'truth'}">
+            <div class="k-tcard up">${isHarvest ? '🃏' : ICON[d.revealed]}<small>${cardZh}</small></div>
+            <div class="k-decl-t"><b>${actor.name}</b> 宣稱【${ACT[d.declare].zh}】<br>${d.bluff ? '🔨 吹牛被拆穿！' : '🛡️ 所言屬實！'}</div>
+          </div>`;
+        } else {
+          stage = `<div class="k-decl">
+            <div class="k-tcard back"></div>
+            <div class="k-decl-t"><b>${actor.name}</b> 宣稱<br><span class="k-decl-act">${ICON[d.declare]} ${ACT[d.declare].zh}</span>${tgt ? ` <span class="k-decl-arrow">→ ${tgt.name}</span>` : ''}</div>
+          </div>`;
+        }
+      } else {
+        stage = `<div class="k-decl idle"><div class="k-tcard back"></div><div class="k-decl-t">王國暗戰</div></div>`;
+      }
+      return `<div class="k-center">
+        <div class="k-deck" title="牌庫剩餘">🂠<span>${g.deck.length}</span></div>
+        ${stage}
+      </div>`;
+    },
+
+    panelHTML() {
+      const g = this.game, me = g.players[0];
+      if (this.mode === 'challenge' && this._resolve) {
+        const c = this._ctx, a = g.players[c.actorId], t = c.targetId != null ? g.players[c.targetId] : null;
+        return `<div class="k-sheet"><div class="k-sheet-q">❓ <b>${a.name}</b> 宣稱【${ICON[c.declare]}${ACT[c.declare].zh}】${t ? '（對象：' + t.name + '）' : ''}——你要質疑嗎？</div>
+          <div class="k-sheet-hint">質疑對：他民心−2金幣−2、你民心+2｜質疑錯：你民心−2金幣−2</div>
+          <div class="k-btns"><button class="k-b danger" data-ch="1">⚖️ 質疑！</button><button class="k-b" data-ch="0">略過</button></div></div>`;
+      }
+      if (this.mode === 'keep' && this._resolve) {
+        const pool = this._ctx.pool;
+        return `<div class="k-sheet"><div class="k-sheet-q">🔀 換牌：點選要【保留】的 2 張</div>
+          <div class="k-keeprow">${pool.map((c, i) => `<button class="k-card ${this._keepSel.indexOf(i) >= 0 ? 'sel' : ''}" data-keep="${i}">${ICON[c]}<small>${ACT[c].zh}</small></button>`).join('')}</div>
+          <div class="k-btns"><button class="k-b act" data-keepok="1" ${this._keepSel.length === 2 ? '' : 'disabled'}>確定保留</button></div></div>`;
+      }
+      if (this.mode === 'action' && this._resolve && me.alive) {
+        if (this._pendingAction) {
+          const ty = this._pendingAction;
+          return `<div class="k-sheet"><div class="k-sheet-q">${ICON[ty]} ${ACT[ty].zh}——<b>點選牌桌上的對象</b></div>
+            <div class="k-btns"><button class="k-b" data-tgtcancel="1">↩ 返回</button></div></div>`;
+        }
+        const canReveal = g.canReveal(me) && !this._ctx.isExtra;
+        const acts = ['harvest', 'tax', 'build', 'conscript', 'support', 'campaign', 'slander', 'exchange'];
+        return `<div class="k-sheet"><div class="k-sheet-q">${this._ctx.isExtra ? '🔀 換牌後可再出一張：' : '輪到你——蓋一張牌並宣稱行動（手牌沒有＝吹牛）'}</div>
+          <div class="k-acts2">` + acts.map(ty => {
+          if (this._ctx.isExtra && ty === 'exchange') return '';
+          const afford = ACT[ty].can(me);
+          const honest = ty === 'harvest' ? true : me.hand.indexOf(ty) >= 0;
+          const tag = ty === 'harvest' ? '' : (honest ? '<i class="k-honest">真</i>' : '<i class="k-lie">詐</i>');
+          return `<button class="k-act2" data-a="${ty}" ${afford ? '' : 'disabled'}><span class="k-a2-h">${ICON[ty]} ${ACT[ty].zh}${tag}</span><small>${ADESC[ty]}</small></button>`;
+        }).join('') + `</div>` +
+          (canReveal ? `<button class="k-b reveal" data-reveal="1">👑 公開王子身分（+2 民心/金幣/軍隊，從此明著打）</button>` : '') +
+          `</div>`;
+      }
+      return '';
     },
 
     bodyHTML() {
       const g = this.game, me = g.players[0];
-      // 互動區
-      let panel = '';
-      if (this.mode === 'challenge' && this._resolve) {
-        const c = this._ctx, a = g.players[c.actorId], t = c.targetId != null ? g.players[c.targetId] : null;
-        panel = `<div class="k-prompt"><div class="k-prompt-q">❓ ${a.name} 宣稱【${ICON[c.declare]}${ACT[c.declare].zh}】${t ? '（對象：' + t.name + '）' : ''}——你要質疑嗎？</div>
-          <div class="k-prompt-hint">質疑對：他民心−2金幣−2、你民心+2｜質疑錯：你民心−2金幣−2</div>
-          <div class="k-btns"><button class="k-b danger" data-ch="1">⚖️ 質疑！</button><button class="k-b" data-ch="0">略過</button></div></div>`;
-      } else if (this.mode === 'keep' && this._resolve) {
-        const pool = this._ctx.pool;
-        panel = `<div class="k-prompt"><div class="k-prompt-q">🔀 換牌：點選要【保留】的 2 張</div>
-          <div class="k-keeprow">${pool.map((c, i) => `<button class="k-card ${this._keepSel.indexOf(i) >= 0 ? 'sel' : ''}" data-keep="${i}">${ICON[c]}<small>${ACT[c].zh}</small></button>`).join('')}</div>
-          <div class="k-btns"><button class="k-b act" data-keepok="1" ${this._keepSel.length === 2 ? '' : 'disabled'}>確定保留</button></div></div>`;
-      } else if (this.mode === 'action' && this._resolve && me.alive) {
-        if (this._pendingAction) {
-          const ty = this._pendingAction;
-          panel = `<div class="k-prompt"><div class="k-prompt-q">${ICON[ty]} ${ACT[ty].zh}——選擇對象：</div><div class="k-btns">` +
-            g.players.filter(p => p.alive && p.id !== 0).map(p => `<button class="k-b act" data-tgt="${p.id}">${p.name}</button>`).join('') +
-            `<button class="k-b" data-tgtcancel="1">返回</button></div></div>`;
-        } else {
-          const canReveal = g.canReveal(me) && !this._ctx.isExtra;
-          const acts = ['harvest', 'tax', 'build', 'conscript', 'support', 'campaign', 'slander', 'exchange'];
-          panel = `<div class="k-prompt"><div class="k-prompt-q">${this._ctx.isExtra ? '🔀 換牌後可再出一張：' : '輪到你——蓋一張牌並宣稱行動（手牌沒有＝吹牛）：'}</div>
-            <div class="k-acts2">` + acts.map(ty => {
-            if (this._ctx.isExtra && ty === 'exchange') return '';
-            const afford = ACT[ty].can(me);
-            const honest = ty === 'harvest' ? true : me.hand.indexOf(ty) >= 0;
-            const tag = ty === 'harvest' ? '' : (honest ? '<i class="k-honest">🎴真</i>' : '<i class="k-lie">🎭詐</i>');
-            return `<button class="k-act2" data-a="${ty}" ${afford ? '' : 'disabled'}>${ICON[ty]} ${ACT[ty].zh}${tag}<small>${ADESC[ty]}</small></button>`;
-          }).join('') + `</div>` +
-            (canReveal ? `<div class="k-btns"><button class="k-b reveal" data-reveal="1">👑 公開王子身分（+2民心/金幣/軍隊，從此明著打）</button></div>` : '') +
-            `</div>`;
-        }
-      }
-      const handStr = me.hand.length ? me.hand.map(c => `<span class="k-h">${ICON[c]} ${ACT[c].zh}</span>`).join('') : '（無）';
-      // 情報：被質疑攤開過的牌(算牌用)。攤滿 2 張＝該牌已絕→再有人宣稱必是吹牛！
+      const seats = g.players.map(p => this.seatHTML(p, me)).join('');
+      // 你的手牌(扇形展開)
+      const hand = me.hand.length
+        ? me.hand.map((c, i) => `<div class="k-cardface" style="--k:${i - (me.hand.length - 1) / 2}">${ICON[c]}<small>${ACT[c].zh}</small></div>`).join('')
+        : '<div class="k-cardface empty">手牌已空</div>';
+      // 算牌情報
       const intel = CARD_TYPES.filter(t => (g.revealed[t] || 0) > 0)
         .map(t => `<span class="k-seen ${(g.revealed[t] || 0) >= 2 ? 'gone' : ''}">${ICON[t]}${ACT[t].zh}×${g.revealed[t]}${(g.revealed[t] || 0) >= 2 ? '已絕' : ''}</span>`).join('');
-      const intelStr = intel ? `<div class="k-intel">🔎 已攤開（算牌）：${intel}　<small>※「已絕」者再被宣稱＝必假，質疑穩贏</small></div>` : '';
-      // 加冕倒數橫幅：有王子逼近登基(已曝光)，眾人僅剩一輪可造謠打落其民心
+      const intelStr = intel ? `<div class="k-intel">🔎 已攤開（算牌）：${intel}</div>` : '';
+      // 加冕倒數橫幅
       const kp = g.coronationPending != null ? g.players[g.coronationPending] : null;
-      const corStr = (kp && kp.alive) ? `<div class="k-coronation">📯 <b>${kp.name}</b> 民心鼎盛、逼近加冕！撐到其下一回合開始仍滿民心便登基 —— 此刻僅剩一輪可用<b>造謠</b>打落其民心阻止！</div>` : '';
-      return `<div class="k-head"><span>⚔️ 王國暗戰</span><button class="k-quit">✕ 離開</button></div>
-        <div class="k-players">${g.players.map(p => this.playerCard(p, me)).join('')}</div>
-        <div class="k-you">${GOAL[me.faction]}${me.alive ? '' : '　（你已陣亡，旁觀至終局）'}</div>
-        <div class="k-hand">你的手牌：${handStr}</div>
+      const corStr = (kp && kp.alive) ? `<div class="k-coronation">📯 <b>${kp.name}</b> 逼近加冕！撐到其下一回合仍滿民心便登基 —— 僅剩一輪可用<b>造謠</b>打落其民心阻止！</div>` : '';
+      const panel = this.panelHTML();
+      const newest = this.logs.length ? this.logs[0] : '';
+      return `<div class="k-head"><span>⚔️ 王國暗戰</span>
+          <button class="k-info-btn" data-info="1" aria-label="說明">？</button>
+          <button class="k-quit">✕</button></div>
         ${corStr}
+        <div class="k-felt n${g.players.length}"><div class="k-felt-in">${this.centerHTML()}${seats}</div></div>
         ${intelStr}
-        ${panel}
-        <div class="k-log">${this.logs.map((m, i) => `<div class="k-log-line ${i === 0 ? 'new' : ''}">${m}</div>`).join('')}</div>`;
+        <div class="k-self ${me.alive ? '' : 'dead'}">
+          <div class="k-self-lab">你的手牌${me.alive ? '' : '（你已陣亡，旁觀至終局）'}</div>
+          <div class="k-selfhand">${hand}</div>
+        </div>
+        ${panel ? panel : `<div class="k-ticker">${newest}</div>`}
+        <details class="k-logwrap"><summary>戰報</summary>
+          <div class="k-log">${this.logs.map((m, i) => `<div class="k-log-line ${i === 0 ? 'new' : ''}">${m}</div>`).join('')}</div>
+        </details>`;
     },
 
     render() {
@@ -609,6 +678,7 @@
       if (typeof root.querySelector !== 'function') return;
       const me = this.game.players[0];
       const q = root.querySelector('.k-quit'); if (q) q.onclick = () => this.quit();
+      const ib = root.querySelector('[data-info]'); if (ib) ib.onclick = () => this.showInfo();
       root.querySelectorAll('[data-ch]').forEach(b => b.onclick = () => this._done(b.dataset.ch === '1'));
       root.querySelectorAll('[data-a]').forEach(b => b.onclick = () => {
         const ty = b.dataset.a;
@@ -617,7 +687,8 @@
         this._done({ declare: ty, cardIdx: this._cardIdx(me, ty) });
       });
       root.querySelectorAll('[data-tgt]').forEach(b => b.onclick = () => {
-        const ty = this._pendingAction; this._done({ declare: ty, targetId: +b.dataset.tgt, cardIdx: this._cardIdx(me, ty) });
+        const ty = this._pendingAction; if (!ty) return;
+        this._done({ declare: ty, targetId: +b.dataset.tgt, cardIdx: this._cardIdx(me, ty) });
       });
       const tc = root.querySelector('[data-tgtcancel]'); if (tc) tc.onclick = () => { this._pendingAction = null; this.render(); };
       const rv = root.querySelector('[data-reveal]'); if (rv) rv.onclick = () => this._done({ reveal: true });
@@ -629,6 +700,23 @@
       const ko = root.querySelector('[data-keepok]'); if (ko) ko.onclick = () => {
         const pool = this._ctx.pool; this._done(this._keepSel.map(i => pool[i]));
       };
+    },
+
+    showInfo() {
+      const root = this.el(); if (!root || !root.querySelector) return;
+      const me = this.game.players[0];
+      const box = root.querySelector('.k-box'); if (!box) return;
+      const ov = document.createElement('div'); ov.className = 'k-result';
+      ov.innerHTML = `<div class="k-result-in info">
+        <div class="k-r-title">你的身分與目標</div>
+        <div class="k-info-goal">${GOAL[me.faction]}</div>
+        <div class="k-info-rules"><b>牌桌速覽</b><br>
+          🌾收成(不可質疑) 金幣+1民心+1｜💰課稅 金幣+3民心−1｜🏛️建設 金幣−2民心+2｜⚔️徵兵 軍隊+2<br>
+          🗣️造謠 對方民心−2｜🔥出征 對方軍隊−3(不足→斬殺)｜🤝支援｜🔀換牌<br>
+          民心歸0 即出局；王子民心達10並撐過一輪＝加冕登基。</div>
+        <button class="k-again" data-close="1">明白了</button></div>`;
+      box.appendChild(ov);
+      const c = ov.querySelector('[data-close]'); if (c) c.onclick = () => ov.remove();
     },
 
     showResult(g) {
