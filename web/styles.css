@@ -96,6 +96,70 @@ body {
   font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
 }
 .home-spectate:active { filter: brightness(1.12); }
+.home-kingdom {
+  width: 100%; min-height: 42px;
+  background: linear-gradient(180deg, #8a3b2e, #5a1f16); color: #ffe6df; border: none; border-radius: 11px;
+  font-size: 14px; font-weight: 700; font-family: var(--font); cursor: pointer;
+}
+.home-kingdom:active { filter: brightness(1.12); }
+
+/* ---------- 王國暗戰（隱藏陣營模式）---------- */
+#kingdom {
+  position: fixed; inset: 0; z-index: 220; display: none;
+  align-items: flex-start; justify-content: center; padding: 12px;
+  background: linear-gradient(160deg, var(--bg1), var(--bg0)); overflow-y: auto;
+}
+.k-box { width: 480px; max-width: 96vw; }
+.k-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.k-head span { font-family: var(--font); font-weight: 700; font-size: 20px; color: var(--gold-lt); letter-spacing: 2px; }
+.k-quit { background: var(--panel2); color: var(--gold-lt); border: 1px solid var(--line); border-radius: 9px; padding: 7px 11px; font-family: inherit; cursor: pointer; }
+.k-morale { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.k-m-lab { font-size: 13px; color: var(--muted); font-weight: 700; }
+.k-m-track { display: flex; flex: 1; gap: 3px; }
+.k-m-cell { flex: 1 1 0; text-align: center; font-size: 11px; font-weight: 700; padding: 6px 0; border-radius: 5px;
+  background: rgba(120,95,50,.14); color: var(--muted); border: 1px solid transparent; }
+.k-m-cell.on { background: linear-gradient(180deg, #e8c45a, #c8920e); color: #2a1d05; }
+.k-m-cell.win { box-shadow: 0 0 0 1px #2f7a24 inset; }
+.k-m-cell.win.on { background: linear-gradient(180deg, #6fce4f, #2f8a1f); color: #06240a; }
+.k-m-cell.lose { box-shadow: 0 0 0 1px #a82a3e inset; }
+.k-players { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 12px; }
+.k-pl { background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px; }
+.k-pl.me { border-color: var(--gold-lt); box-shadow: 0 0 0 1.5px rgba(166,132,31,.3) inset; }
+.k-pl.turn { box-shadow: 0 0 0 2px rgba(232,196,90,.7), 0 0 14px rgba(232,196,90,.4); }
+.k-pl.dead { opacity: .5; filter: grayscale(.6); }
+.k-pl-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.k-pl-top b { font-size: 14px; color: var(--ink); }
+.k-fac { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
+.k-fac.hidden { background: rgba(80,70,60,.18); color: var(--muted); }
+.k-fac.prince { background: linear-gradient(180deg, #f6da55, #c8920e); color: #2a1d05; }
+.k-fac.loyalist { background: linear-gradient(180deg, #7bc0ef, #2f6f9e); color: #06243a; }
+.k-fac.traitor { background: linear-gradient(180deg, #d9534f, #8a1f16); color: #ffe6df; }
+.k-pl-res { font-size: 13px; color: var(--muted); }
+.k-you { background: var(--panel2); border: 1px dashed var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: var(--ink); margin-bottom: 12px; line-height: 1.5; }
+.k-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.k-act { flex: 1 1 30%; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: linear-gradient(180deg, var(--btn1), var(--btn2)); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; padding: 6px; }
+.k-act small { font-size: 10px; font-weight: 400; color: var(--muted); }
+.k-act:active { filter: brightness(1.06); }
+.k-act:disabled { opacity: .4; cursor: not-allowed; }
+.k-act.tgt { background: linear-gradient(180deg, #e9a08f, #c8624f); color: #2a0d07; }
+.k-act.cancel { background: var(--panel2); }
+.k-pick-label { flex: 1 1 100%; font-size: 13px; color: var(--muted); }
+.k-log { background: rgba(40,30,16,.04); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; max-height: 34vh; overflow-y: auto; }
+.k-log-line { font-size: 12.5px; color: var(--ink); padding: 3px 0; border-bottom: 1px solid rgba(120,95,50,.08); }
+.k-log-line.new { color: var(--gold-lt); font-weight: 700; }
+.k-result { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20,14,6,.55); border-radius: 14px; }
+.k-result-in { width: 340px; max-width: 90vw; text-align: center; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--gold); border-radius: 16px; padding: 22px 18px; box-shadow: 0 18px 50px rgba(0,0,0,.5); }
+.k-result-in.win .k-r-title { color: #2f8a1f; }
+.k-result-in.lose .k-r-title { color: #a82a3e; }
+.k-r-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.k-r-sub { font-size: 14px; color: var(--ink); margin-bottom: 4px; }
+.k-r-team { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.k-r-roster { font-size: 12px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
+.k-again, .k-home2 { min-height: 44px; margin: 4px; padding: 0 18px; border: none; border-radius: 10px; font-family: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+.k-again { background: linear-gradient(180deg, var(--gold-lt), var(--gold)); color: #2a1d05; }
+.k-home2 { background: var(--panel2); color: var(--gold-lt); border: 1px solid var(--line); }
 
 /* AI 思考徽章：當前思考者顯示倒數秒數（越久＝在深算或在裝）；等待者持續「盤算中」 */
 .think-badge { font-size: 11px; font-weight: 700; white-space: nowrap; letter-spacing: .5px; }

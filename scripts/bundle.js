@@ -20,7 +20,7 @@ html = html.replace(
 );
 
 // 內聯各 JS（保持原順序）
-['engine', 'ai', 'ui', 'net', 'main'].forEach(name => {
+['engine', 'ai', 'ui', 'net', 'kingdom', 'main'].forEach(name => {
   const js = fs.readFileSync(path.join(WEB, 'js', `${name}.js`), 'utf8');
   const tag = new RegExp(`<script src="js/${name}\\.js"></script>`);
   html = html.replace(tag, `<script>\n${js}\n</script>`);

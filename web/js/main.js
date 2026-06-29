@@ -174,6 +174,13 @@
     const specBtn = document.getElementById('homeSpectate');
     if (specBtn) specBtn.onclick = () => enterGame(true);
     document.getElementById('homeOnline').onclick = () => { home.style.display = 'none'; lobby.open(); };
+    const kBtn = document.getElementById('homeKingdom');
+    if (kBtn) kBtn.onclick = () => {
+      const n = parseInt(document.getElementById('homeNum').value, 10) || 4;
+      const speed = SPEEDS[document.getElementById('homeSpeed').value] || 700;
+      home.style.display = 'none';
+      if (root.Coup.Kingdom && root.Coup.Kingdom.UI) root.Coup.Kingdom.UI.start(Math.max(4, n), speed);
+    };
     document.getElementById('homeBtn').onclick = () => { setup.classList.remove('open'); showHome(); };
     // 套用首頁記憶的主題（與遊戲內一致）
     if (saved) { try { document.getElementById('homeTheme').value = saved; } catch (e) {} }
